@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+python-dotenv
+langchain-google-genai
+langchain-community
+gunicorn # Essential for deployment on Render
