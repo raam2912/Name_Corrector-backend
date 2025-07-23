@@ -27,7 +27,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from langchain.output_parsers import PydanticOutputParser
 
 # ReportLab imports for PDF generation
