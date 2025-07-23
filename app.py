@@ -373,11 +373,6 @@ class SecurityManager:
         sanitized = re.sub(r'\s+', ' ', sanitized).strip()
         return sanitized[:100]  # Limit length
 
-# --- RequestType Enum (Added for MessageParser) ---
-class RequestType(Enum):
-    VALIDATE_NAME = "validate_name"
-    GENERATE_REPORT = "generate_report"
-
 # --- Message Parser (Defined early) ---
 class MessageParser:
     """Handles parsing of different message types from the frontend."""
@@ -415,17 +410,9 @@ class MessageParser:
             current_life_path_number=int(match.group(4))
         )
 
-    @staticmethod
-    def determine_request_type(message: str) -> RequestType:
-        """Determine the type of request from the message."""
-        if message.startswith("VALIDATE_NAME_ADVANCED:"):
-            return RequestType.VALIDATE_NAME
-        elif message.startswith("GENERATE_ADVANCED_REPORT:"):
-            return RequestType.GENERATE_REPORT
-        elif message.startswith("GET_NAME_SUGGESTIONS:"): # Although frontend doesn't use this directly, it's defined
-            return RequestType.GENERATE_REPORT # Treat as report for now, or create new enum if separate
-        else:
-            raise ValueError("Unknown request type")
+    # Note: RequestType enum and its usage were removed in previous iterations,
+    # but if you re-introduce it, ensure it's defined.
+    # For now, the if/elif in enhanced_chat handles routing directly based on string prefixes.
 
 # --- Name Suggestion Engine (Defined early) ---
 class NameSuggestionEngine:
@@ -951,7 +938,7 @@ def generate_advanced_report(user_message: str) -> tuple:
 """
         
         # Calculate and explain each suggested name
-        for suggested_name in suggested_names[:8]:  # Limit to 8 suggestions
+        for suggested_name in suggested_names[:5]:  # OPTIMIZATION: Reduced to 5 suggestions
             try:
                 calc = AdvancedNumerologyCalculator()
                 new_expression, details = calc.calculate_expression_number(suggested_name)
@@ -962,7 +949,7 @@ def generate_advanced_report(user_message: str) -> tuple:
                 Original name: "{original_full_name}" (Expression {current_exp_num})
                 New Expression interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
                 
-                Write a compelling 2-3 sentence explanation of why this name change would be beneficial.
+                Write a concise 1-2 sentence explanation of why this name change would be beneficial.
                 **Strongly emphasize the new Expression Number and its core benefits** using bold Markdown.
                 Focus on practical benefits and energy alignment.
                 """
@@ -1109,7 +1096,7 @@ def validate_name_advanced(user_message: str) -> tuple:
         5. If invalid, suggest what type of energy/number would be better (e.g., "Consider names aligning with 8 or 1 for greater success.").
         
         Use **bold Markdown** for key numbers, concepts, and status indicators. Use bullet points for lists where appropriate.
-        Be specific, encouraging, and practical. Write 3-4 sentences, clearly structured.
+        Be specific, encouraging, and practical. Write 2-3 concise sentences, clearly structured.
         """
         
         detailed_explanation = llm_manager.analytical_llm.invoke(explanation_prompt).content
