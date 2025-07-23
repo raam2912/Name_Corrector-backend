@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import datetime
 import re
 import json
-import asyncio
+import asyncio # Not explicitly used in current routes but often in async Flask
 import logging
 from functools import wraps
 from typing import Dict, List, Optional, Tuple
@@ -17,18 +17,19 @@ from enum import Enum
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 import time
-import secrets
-import hmac
+import secrets # Not explicitly used in current routes
+import hmac # Not explicitly used in current routes
 import psutil
-from collections import Counter
+from collections import Counter # Not explicitly used in current routes
 
-# Advanced Langchain imports
+# Langchain imports (cleaned up to only what's strictly used now)
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain.output_parsers import PydanticOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
+# Fix for Pydantic v1 deprecation warning
+from pydantic.v1 import BaseModel, Field # Changed from langchain_core.pydantic_v1
+from langchain.output_parsers import PydanticOutputParser # Still used for structured output
 
 # Load environment variables
 load_dotenv()
@@ -50,19 +51,23 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
 app.config['CACHE_TYPE'] = 'simple'  # Use simple cache if Redis not available
 app.config['CACHE_DEFAULT_TIMEOUT'] = 300
 
-# Initialize extensions
+# Initialize extensions (cache and limiter)
+cache = None
+limiter = None
 try:
     cache = Cache(app)
+    # Fix: Ensure key_func is passed correctly and only once.
+    # The default_limits argument should not implicitly set key_func.
     limiter = Limiter(
         app,
         key_func=get_remote_address,
         default_limits=["200 per day", "50 per hour"],
         storage_uri=os.getenv('REDIS_URL', 'memory://')
     )
+    logger.info("Flask-Caching and Flask-Limiter initialized successfully.")
 except Exception as e:
-    logger.warning(f"Could not initialize Redis features: {e}")
-    cache = None
-    limiter = None
+    logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
+
 
 # CORS Configuration
 CORS(app, resources={r"/*": {"origins": [
@@ -70,7 +75,7 @@ CORS(app, resources={r"/*": {"origins": [
     "http://localhost:3000"
 ]}})
 
-# --- Data Models ---
+# --- Data Models (Defined early to avoid NameError) ---
 class NumberType(Enum):
     EXPRESSION = "expression"
     LIFE_PATH = "life_path"
@@ -78,13 +83,28 @@ class NumberType(Enum):
     PERSONALITY = "personality"
 
 @dataclass
-class NumerologyProfile:
+class NumerologyDetails:
     full_name: str
     birth_date: str
     expression_number: int
     life_path_number: int
     soul_urge_number: Optional[int] = None
     personality_number: Optional[int] = None
+
+@dataclass
+class ValidationRequest:
+    original_full_name: str
+    birth_date: str
+    desired_outcome: str
+    suggested_name: str
+
+@dataclass
+class ReportRequest:
+    full_name: str
+    birth_date: str
+    desired_outcome: str
+    current_expression_number: int
+    current_life_path_number: int
 
 class NameSuggestion(BaseModel):
     name: str = Field(description="Full name suggestion")
@@ -95,7 +115,7 @@ class NameSuggestionsOutput(BaseModel):
     suggestions: List[NameSuggestion] = Field(description="List of name suggestions")
     reasoning: str = Field(description="Overall reasoning for suggestions")
 
-# --- Advanced Numerology Calculator ---
+# --- Advanced Numerology Calculator (Defined early) ---
 class AdvancedNumerologyCalculator:
     NUMEROLOGY_MAP = {
         'A': 1, 'J': 1, 'S': 1,
@@ -325,7 +345,7 @@ class AdvancedNumerologyCalculator:
             "is_master_number": final_number in AdvancedNumerologyCalculator.MASTER_NUMBERS
         }
 
-# --- Security Manager ---
+# --- Security Manager (Defined early) ---
 class SecurityManager:
     @staticmethod
     def validate_input_security(data: str) -> bool:
@@ -353,7 +373,122 @@ class SecurityManager:
         sanitized = re.sub(r'\s+', ' ', sanitized).strip()
         return sanitized[:100]  # Limit length
 
-# --- LLM Manager ---
+# --- RequestType Enum (Add before MessageParser) ---
+class RequestType(Enum):
+    VALIDATE_NAME = "validate_name"
+    GENERATE_REPORT = "generate_report"
+    GENERATE_SUGGESTIONS = "generate_suggestions"
+
+# --- Message Parser (Defined early) ---
+class MessageParser:
+    """Handles parsing of different message types from the frontend."""
+    
+    @staticmethod
+    def parse_validation_request(message: str) -> Optional[ValidationRequest]:
+        """Parse VALIDATE_NAME_ADVANCED message format."""
+        pattern = r"Original Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\", Suggested Name to Validate: \"(.*?)\""
+        match = re.search(pattern, message)
+        
+        if not match:
+            return None
+        
+        return ValidationRequest(
+            original_full_name=match.group(1),
+            birth_date=match.group(2),
+            desired_outcome=match.group(3),
+            suggested_name=match.group(4)
+        )
+
+    @staticmethod
+    def parse_report_request(message: str) -> Optional[ReportRequest]:
+        """Parse GENERATE_ADVANCED_REPORT message format."""
+        pattern = r"My full name is \"(.*?)\" and my birth date is \"(.*?)\"\. My current Name \(Expression\) Number is (\d+) and Life Path Number is (\d+)\. I desire the following positive outcome in my life: \"(.*?)\"\."
+        match = re.search(pattern, message)
+        
+        if not match:
+            return None
+        
+        return ReportRequest(
+            full_name=match.group(1),
+            birth_date=match.group(2),
+            desired_outcome=match.group(5), # Desired outcome is the 5th group
+            current_expression_number=int(match.group(3)),
+            current_life_path_number=int(match.group(4))
+        )
+
+    @staticmethod
+    def determine_request_type(message: str) -> RequestType:
+        """Determine the type of request from the message."""
+        if message.startswith("VALIDATE_NAME_ADVANCED:"):
+            return RequestType.VALIDATE_NAME
+        elif message.startswith("GENERATE_ADVANCED_REPORT:"):
+            return RequestType.GENERATE_REPORT
+        elif message.startswith("GET_NAME_SUGGESTIONS:"): # Although frontend doesn't use this directly, it's defined
+            return RequestType.GENERATE_REPORT # Treat as report for now, or create new enum if separate
+        else:
+            raise ValueError("Unknown request type")
+
+# --- Name Suggestion Engine (Defined early) ---
+class NameSuggestionEngine:
+    """Handles logic for suggesting names and resolving names for calculation."""
+    
+    @staticmethod
+    def resolve_full_name_for_calculation(original_name: str, suggested_name_part: str) -> str:
+        """
+        Determine the full name to use for calculation based on the suggested name part.
+        If suggested_name_part is a single word, it's assumed to replace the first name.
+        Otherwise, suggested_name_part is used as the full name.
+        """
+        original_parts = original_name.strip().split()
+        suggested_parts = suggested_name_part.strip().split()
+        
+        if not suggested_name_part: # If suggested part is empty, return original
+            return original_name
+
+        # If suggested_name_part is a single word and original name has multiple parts
+        if len(suggested_parts) == 1 and len(original_parts) > 1:
+            # Replace the first name with the suggested name, preserving middle/last names
+            return suggested_name_part + " " + " ".join(original_parts[1:])
+        else:
+            # If suggested_name_part is already a full name (multiple words) or original was single word, use it directly
+            return suggested_name_part
+
+    @staticmethod
+    def determine_target_numbers_for_outcome(desired_outcome: str) -> List[int]:
+        """Determine optimal numerology numbers based on desired outcome."""
+        outcome_lower = desired_outcome.lower()
+        
+        target_map = {
+            'success': [1, 8, 22],
+            'leadership': [1, 8, 22],
+            'business': [8, 22, 4],
+            'relationships': [2, 6, 11],
+            'love': [2, 6, 33],
+            'creativity': [3, 11],
+            'communication': [3, 5],
+            'stability': [4, 22],
+            'adventure': [5],
+            'freedom': [5],
+            'family': [6, 33],
+            'spirituality': [7, 11, 33],
+            'wisdom': [7, 9],
+            'wealth': [8, 22],
+            'compassion': [6, 9, 33],
+            'healing': [6, 33]
+        }
+        
+        for keyword, numbers in target_map.items():
+            if keyword in outcome_lower:
+                return numbers
+        
+        if any(word in outcome_lower for word in ['career', 'work', 'job']):
+            return [1, 8, 22]
+        elif any(word in outcome_lower for word in ['peace', 'harmony', 'balance']):
+            return [2, 6, 11]
+        else:
+            return [1, 3, 6, 8] # General positive numbers
+
+# --- LLM Manager (Defined early) ---
 class LLMManager:
     def __init__(self):
         self.llm = None
@@ -410,10 +545,10 @@ class LLMManager:
             logger.error(f"Error initializing LLM: {e}")
             return False
 
-# Initialize global LLM manager
+# Global instance of LLM manager (Defined immediately after its class)
 llm_manager = LLMManager()
 
-# --- Utility Functions ---
+# --- Utility Functions (These can be defined after classes as they don't create instances of the classes directly at global scope) ---
 def performance_monitor(f):
     """Decorator to monitor function performance"""
     @wraps(f)
@@ -456,9 +591,11 @@ def rate_limited(limit_string="30 per minute"):
         def wrapper(*args, **kwargs):
             if limiter is not None:
                 # Use Flask-Limiter if available
+                # Note: Flask-Limiter expects the decorated function to be a Flask view function
+                # This decorator might need adjustment if used on non-view functions.
                 return limiter.limit(limit_string)(f)(*args, **kwargs)
             else:
-                # Simple in-memory rate limiting fallback
+                # Simple in-memory rate limiting fallback (not implemented here)
                 return f(*args, **kwargs)
         return wrapper
     return decorator
@@ -466,7 +603,7 @@ def rate_limited(limit_string="30 per minute"):
 @cached_operation(timeout=3600)
 @performance_monitor
 def get_comprehensive_numerology_profile(full_name: str, birth_date: str) -> Dict:
-    """Get complete numerology profile with caching"""
+    """Get comprehensive numerology profile with caching"""
     calculator = AdvancedNumerologyCalculator()
     
     # Calculate all numbers
@@ -503,19 +640,34 @@ def calculate_number_compatibility(expression: int, life_path: int) -> Dict:
         (1, 6): 0.7, (1, 7): 0.4, (1, 8): 0.9, (1, 9): 0.7, (1, 11): 0.8,
         (2, 2): 0.9, (2, 3): 0.7, (2, 4): 0.8, (2, 5): 0.5, (2, 6): 0.9,
         (2, 7): 0.8, (2, 8): 0.6, (2, 9): 0.8, (2, 11): 0.9, (2, 22): 0.8,
-        # Add more combinations as needed
+        (3, 3): 0.9, (3, 4): 0.6, (3, 5): 0.9, (3, 6): 0.8, (3, 7): 0.7,
+        (3, 8): 0.7, (3, 9): 0.9, (3, 11): 0.7, (3, 22): 0.6, (3, 33): 0.8,
+        (4, 4): 0.9, (4, 5): 0.6, (4, 6): 0.8, (4, 7): 0.9, (4, 8): 0.7,
+        (4, 9): 0.6, (4, 11): 0.7, (4, 22): 0.9, (4, 33): 0.7,
+        (5, 5): 0.9, (5, 6): 0.6, (5, 7): 0.8, (5, 8): 0.7, (5, 9): 0.7,
+        (5, 11): 0.8, (5, 22): 0.7, (5, 33): 0.6,
+        (6, 6): 0.9, (6, 7): 0.7, (6, 8): 0.8, (6, 9): 0.9, (6, 11): 0.9,
+        (6, 22): 0.8, (6, 33): 0.9,
+        (7, 7): 0.9, (7, 8): 0.6, (7, 9): 0.8, (7, 11): 0.9, (7, 22): 0.8,
+        (7, 33): 0.9,
+        (8, 8): 0.9, (8, 9): 0.7, (8, 11): 0.7, (8, 22): 0.9, (8, 33): 0.8,
+        (9, 9): 0.9, (9, 11): 0.8, (9, 22): 0.7, (9, 33): 0.9,
+        (11, 11): 0.9, (11, 22): 0.8, (11, 33): 0.9,
+        (22, 22): 0.9, (22, 33): 0.8,
+        (33, 33): 0.9
     }
     
-    key = (min(expression, life_path), max(expression, life_path))
+    # Ensure order for key lookup
+    key = tuple(sorted((expression, life_path)))
     score = compatibility_scores.get(key, 0.6)  # Default compatibility
     
     synergy_areas = []
     if score > 0.8:
-        synergy_areas = ["Natural harmony", "Shared goals", "Mutual support"]
+        synergy_areas = ["Natural harmony", "Shared goals", "Mutual support", "Effortless understanding"]
     elif score > 0.6:
-        synergy_areas = ["Complementary strengths", "Growth opportunities"]
+        synergy_areas = ["Complementary strengths", "Growth opportunities", "Dynamic balance"]
     else:
-        synergy_areas = ["Learning experiences", "Character building"]
+        synergy_areas = ["Learning experiences", "Character building", "Areas for conscious effort"]
     
     return {
         "compatibility_score": score,
@@ -532,49 +684,74 @@ def analyze_karmic_lessons(name: str) -> Dict:
         if letter in calc.NUMEROLOGY_MAP:
             name_numbers.add(calc.NUMEROLOGY_MAP[letter])
     
-    missing_numbers = set(range(1, 10)) - name_numbers
+    missing_numbers = sorted(list(set(range(1, 10)) - name_numbers)) # Ensure consistent order
     
-    karmic_lessons = {
-        1: "Learning independence and leadership",
-        2: "Developing cooperation and patience", 
-        3: "Cultivating creativity and communication",
-        4: "Building discipline and organization",
-        5: "Embracing change and freedom",
-        6: "Accepting responsibility and nurturing",
-        7: "Seeking spiritual understanding",
-        8: "Mastering material world success",
-        9: "Developing universal compassion"
+    karmic_lessons_map = {
+        1: "Learning independence and leadership (Self-reliance, initiative)",
+        2: "Developing cooperation and patience (Diplomacy, sensitivity)", 
+        3: "Cultivating creativity and communication (Self-expression, joy)",
+        4: "Building discipline and organization (Stability, hard work)",
+        5: "Embracing change and freedom (Adaptability, versatility)",
+        6: "Accepting responsibility and nurturing (Harmony, selfless service)",
+        7: "Seeking spiritual understanding (Introspection, wisdom)",
+        8: "Mastering material world success (Abundance, power)",
+        9: "Developing universal compassion (Humanitarianism, completion)"
     }
     
+    lessons_list = [karmic_lessons_map[num] for num in missing_numbers]
+    
     return {
-        "missing_numbers": list(missing_numbers),
-        "lessons": [karmic_lessons[num] for num in missing_numbers],
-        "priority_lesson": karmic_lessons[min(missing_numbers)] if missing_numbers else "All lessons integrated"
+        "missing_numbers": missing_numbers,
+        "lessons": lessons_list,
+        "priority_lesson": lessons_list[0] if lessons_list else "All core lessons integrated"
     }
 
 def generate_timing_recommendations(profile: Dict) -> Dict:
     """Generate optimal timing recommendations"""
     current_year = datetime.datetime.now().year
-    birth_year = int(profile["birth_date"].split("-")[0])
-    personal_year = ((current_year - birth_year) % 9) + 1
+    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
+    
+    # To calculate current personal year accurately:
+    # Reduce current month, day, and current year to single digits (or master numbers)
+    # Then sum them and reduce again.
+    
+    today = datetime.date.today()
+    personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today.month, True)
+    personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(today.day, True)
+    personal_year_calc_year = AdvancedNumerologyCalculator.reduce_number(current_year, True)
+    
+    personal_year = AdvancedNumerologyCalculator.reduce_number(personal_year_calc_month + personal_year_calc_day + personal_year_calc_year, True)
     
     optimal_activities = {
-        1: ["New beginnings", "Leadership roles", "Starting businesses"],
-        2: ["Partnerships", "Collaboration", "Relationship building"],
-        3: ["Creative projects", "Communication", "Social activities"],
-        4: ["Building foundations", "Organization", "Hard work"],
-        5: ["Travel", "Change", "New experiences"],
-        6: ["Family matters", "Home improvement", "Service to others"],
-        7: ["Study", "Reflection", "Spiritual growth"],
-        8: ["Business expansion", "Financial planning", "Achievement"],
-        9: ["Completion", "Letting go", "Humanitarian service"]
+        1: ["Initiating new projects", "Taking leadership roles", "Embracing independence"],
+        2: ["Forming partnerships", "Collaborating on projects", "Nurturing relationships"],
+        3: ["Creative expression", "Socializing", "Communicating ideas"],
+        4: ["Building foundations", "Organizing finances", "Working diligently"],
+        5: ["Embracing change", "Traveling", "Seeking new experiences"],
+        6: ["Focusing on family/home", "Providing service", "Nurturing self and others"],
+        7: ["Introspection", "Study and research", "Spiritual development"],
+        8: ["Material achievement", "Business expansion", "Financial management"],
+        9: ["Completion of cycles", "Humanitarian efforts", "Letting go of the past"],
+        11: ["Spiritual insight", "Inspiring others", "Intuitive breakthroughs"],
+        22: ["Large-scale building", "Manifesting big dreams", "Global impact"],
+        33: ["Compassionate service", "Healing", "Teaching universal love"]
     }
+    
+    # Best months can be complex, often related to the personal year number itself.
+    # For simplicity, let's suggest months whose numerological value aligns or are traditionally favorable.
+    # This is a placeholder; real numerology timing is more nuanced.
+    best_months_map = {
+        1: [1, 10], 2: [2, 11], 3: [3, 12], 4: [4], 5: [5], 6: [6], 7: [7], 8: [8], 9: [9],
+        11: [2, 11], 22: [4], 33: [6]
+    }
+    
+    recommended_months = best_months_map.get(personal_year, [1, 7]) # Default to Jan, July
     
     return {
         "current_personal_year": personal_year,
-        "optimal_activities": optimal_activities.get(personal_year, []),
-        "energy_description": f"Personal Year {personal_year} brings energy of {optimal_activities.get(personal_year, ['growth'])[0].lower()}",
-        "best_months": [(personal_year + i - 1) % 12 + 1 for i in range(3)],  # Next 3 optimal months
+        "optimal_activities": optimal_activities.get(personal_year, ["General growth and development"]),
+        "energy_description": f"Your Personal Year {personal_year} resonates with the energy of {optimal_activities.get(personal_year, ['growth'])[0].lower()}.",
+        "best_months_for_action": recommended_months,
     }
 
 # --- API Endpoints ---
@@ -587,8 +764,8 @@ def health_check():
             "memory_percent": psutil.virtual_memory().percent,
             "timestamp": datetime.datetime.now().isoformat()
         }
-    except:
-        system_metrics = {"status": "metrics unavailable"}
+    except Exception as e:
+        system_metrics = {"status": f"metrics unavailable: {e}"}
     
     return jsonify({
         "status": "healthy",
@@ -602,7 +779,7 @@ def health_check():
 @app.route("/profile", methods=["POST"])
 @rate_limited("10 per minute")
 @performance_monitor
-def get_numerology_profile():
+def get_numerology_profile_endpoint(): # Renamed to avoid conflict if any
     """Get comprehensive numerology profile"""
     data = request.get_json()
     
@@ -638,7 +815,7 @@ def enhanced_chat():
 
     logger.info(f"Received message: {user_message[:100]}...")
 
-    if llm_manager.llm is None:
+    if not llm_manager.llm: # Check if the main LLM is initialized
         return jsonify({"error": "Chatbot not initialized"}), 500
 
     # Security validation
@@ -686,7 +863,7 @@ def generate_advanced_report(user_message: str) -> tuple:
         current_exp_num = int(current_exp_num_str)
         current_life_path_num = int(current_life_path_num_str)
 
-        # Get comprehensive profile
+        # Get comprehensive profile (this will use caching)
         profile = get_comprehensive_numerology_profile(original_full_name, birth_date)
         
         # Generate introduction
@@ -749,6 +926,27 @@ def generate_advanced_report(user_message: str) -> tuple:
 
 **Compatibility Analysis**: {profile.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}
 
+"""
+        # Add other profile details
+        if profile.get('soul_urge_number'):
+            full_report += f"""
+**Soul Urge Number {profile['soul_urge_number']}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile['soul_urge_number'], {}).get('core', 'Universal energy')}
+"""
+        if profile.get('personality_number'):
+            full_report += f"""
+**Personality Number {profile['personality_number']}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile['personality_number'], {}).get('core', 'Universal energy')}
+"""
+        if profile.get('expression_details', {}).get('karmic_debt'):
+            full_report += f"""
+**Karmic Debt (Expression):** Yes (Number {profile['expression_details']['karmic_debt']}) - This indicates a specific lesson related to past actions.
+"""
+        if profile.get('life_path_details', {}).get('karmic_debt_numbers'):
+            full_report += f"""
+**Karmic Debt (Life Path):** Yes (Numbers {', '.join(map(str, profile['life_path_details']['karmic_debt_numbers']))}) - These are areas for growth and balance.
+"""
+
+
+        full_report += """
 ## 🎯 Suggested Name Corrections
 
 """
@@ -789,7 +987,7 @@ def generate_advanced_report(user_message: str) -> tuple:
 
 **Current Personal Year:** {timing['current_personal_year']}
 **Recommended Activities:** {', '.join(timing['optimal_activities'])}
-**Best Implementation Months:** {', '.join(map(str, timing['best_months']))}
+**Best Implementation Months:** {', '.join(map(str, timing['best_months_for_action']))}
 
 {timing['energy_description']}
 
@@ -804,13 +1002,55 @@ def generate_advanced_report(user_message: str) -> tuple:
 **Priority Focus:** {profile['karmic_lessons']['priority_lesson']}
 
 """
+        # Add analytics and insights
+        insights = {
+            "uniqueness_score": calculate_uniqueness_score(profile),
+            "success_prediction": predict_success_areas(profile),
+            "challenge_analysis": identify_potential_challenges(profile),
+            "development_recommendations": get_development_recommendations(profile),
+            "yearly_forecast": generate_yearly_forecast(profile, 3)  # 3-year forecast
+        }
+
+        full_report += f"""
+## 📊 Advanced Insights for Your Journey
+
+**Uniqueness of Your Profile:** {insights['uniqueness_score']['interpretation']} (Score: {insights['uniqueness_score']['score']:.2f})
+*Factors:* {', '.join(insights['uniqueness_score']['rarity_factors'])}
+
+**Predicted Success Areas:** {', '.join(insights['success_prediction']['combined_strengths'])}
+*Confidence:* {insights['success_prediction']['confidence_level']}
+
+**Potential Challenges:** {', '.join(insights['challenge_analysis']['potential_challenges'])}
+*Strategies:* {', '.join(insights['challenge_analysis']['mitigation_strategies'])}
+
+**Development Recommendations:**
+*Immediate Focus:* {insights['development_recommendations']['immediate_focus']}
+*Long-Term Goal:* {insights['development_recommendations']['long_term_goal']}
+*Karmic Work:* {', '.join(insights['development_recommendations']['karmic_work'])}
+*Monthly Practices:* {', '.join(insights['development_recommendations']['monthly_practices'])}
+
+"""
         
+        full_report += """
+### 🗓️ Your 3-Year Numerological Forecast
+"""
+        for year, data in insights['yearly_forecast'].items():
+            full_report += f"""
+**{year} (Personal Year {data['personal_year']}):**
+*Theme:* {data['theme']}
+*Focus:* {data['focus_areas']}
+*Optimal Months:* {', '.join(map(str, data['optimal_months']))}
+*Energy Level:* {data['energy_level']}
+"""
+
         full_report += "\n---\n*For a detailed consultation and personalized guidance, book your appointment at Sheelaa.com*"
         
         return jsonify({"response": full_report}), 200
         
     except Exception as e:
         logger.error(f"Error generating advanced report: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Failed to generate advanced report"}), 500
 
 def validate_name_advanced(user_message: str) -> tuple:
@@ -828,12 +1068,10 @@ def validate_name_advanced(user_message: str) -> tuple:
         original_full_name, birth_date, desired_outcome, suggested_name = validation_match.groups()
         
         # Determine full name for calculation
-        full_name_for_calculation = suggested_name.strip()
-        original_parts = original_full_name.split()
-        
-        # Smart name completion logic
-        if len(full_name_for_calculation.split()) == 1 and len(original_parts) > 1:
-            full_name_for_calculation = full_name_for_calculation + " " + " ".join(original_parts[1:])
+        full_name_for_calculation = NameSuggestionEngine.resolve_full_name_for_calculation(
+            original_full_name,
+            suggested_name
+        )
         
         # Calculate numerology for the suggested name
         calc = AdvancedNumerologyCalculator()
@@ -845,7 +1083,7 @@ def validate_name_advanced(user_message: str) -> tuple:
         compatibility = calculate_number_compatibility(new_expression, life_path)
         
         # Determine validation result
-        is_valid = compatibility['compatibility_score'] > 0.6
+        is_valid = compatibility['compatibility_score'] >= 0.7 # Adjusted threshold for "valid"
         status_emoji = "✅" if is_valid else "❌"
         status_text = "Valid for your goals" if is_valid else "Needs optimization"
         
@@ -864,11 +1102,11 @@ def validate_name_advanced(user_message: str) -> tuple:
         New Expression {new_expression}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
         
         Explain:
-        1. How well the new expression number supports the desired outcome
-        2. The energetic shift from original to new name
-        3. Compatibility with life path number
-        4. Practical considerations for this name change
-        5. If invalid, suggest what type of energy/number would be better
+        1. How well the new expression number supports the desired outcome.
+        2. The energetic shift from original to new name.
+        3. Compatibility with life path number.
+        4. Practical considerations for this name change.
+        5. If invalid, suggest what type of energy/number would be better (e.g., "Consider names aligning with 8 or 1 for greater success.").
         
         Be specific, encouraging, and practical. Write 3-4 sentences.
         """
@@ -898,6 +1136,8 @@ def validate_name_advanced(user_message: str) -> tuple:
         
     except Exception as e:
         logger.error(f"Error in advanced name validation: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Failed to validate name"}), 500
 
 def generate_name_suggestions(user_message: str) -> tuple:
@@ -1033,7 +1273,7 @@ def calculate_uniqueness_score(profile: Dict) -> Dict:
     life_path = profile.get('life_path_number', 5)
     
     # Master numbers are rarer
-    rarity_multiplier = 1.5 if expression in [11, 22, 33] else 1.0
+    rarity_multiplier = 1.5 if expression in AdvancedNumerologyCalculator.MASTER_NUMBERS else 1.0
     combination_rarity = abs(expression - life_path) / 10.0
     
     uniqueness = min(0.95, (combination_rarity + 0.3) * rarity_multiplier)
@@ -1152,13 +1392,19 @@ def get_development_recommendations(profile: Dict) -> Dict:
 def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     """Generate multi-year numerological forecast"""
     current_year = datetime.datetime.now().year
-    birth_year = int(profile["birth_date"].split("-")[0])
+    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
     
     forecast = {}
     
     for year_offset in range(years):
         target_year = current_year + year_offset
-        personal_year = ((target_year - birth_year) % 9) + 1
+        # Recalculate personal year for target_year
+        today_for_calc = datetime.date(target_year, datetime.date.today().month, datetime.date.today().day)
+        personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today_for_calc.month, True)
+        personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(today_for_calc.day, True)
+        personal_year_calc_year = AdvancedNumerologyCalculator.reduce_number(target_year, True)
+        
+        personal_year = AdvancedNumerologyCalculator.reduce_number(personal_year_calc_month + personal_year_calc_day + personal_year_calc_year, True)
         
         year_themes = {
             1: {"theme": "New Beginnings", "focus": "Starting fresh, leadership opportunities"},
@@ -1167,9 +1413,12 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
             4: {"theme": "Building Foundations", "focus": "Hard work, organization, stability"},
             5: {"theme": "Freedom & Change", "focus": "Travel, new experiences, adventure"},
             6: {"theme": "Responsibility", "focus": "Family, service, nurturing others"},
-            7: {"theme": "Spiritual Growth", "focus": "Study, reflection, inner development"},
+            7: {"theme": "Introspection", "focus": "Study, reflection, inner development"},
             8: {"theme": "Material Success", "focus": "Business, finance, achievement"},
-            9: {"theme": "Completion", "focus": "Endings, humanitarian service, wisdom"}
+            9: {"theme": "Completion", "focus": "Endings, humanitarian service, wisdom"},
+            11: {"theme": "Spiritual Illumination", "focus": "Intuitive breakthroughs, inspiring others"},
+            22: {"theme": "Master Builder Year", "focus": "Large-scale manifestation, practical idealism"},
+            33: {"theme": "Universal Service", "focus": "Compassionate leadership, healing the world"}
         }
         
         year_info = year_themes.get(personal_year, {"theme": "Growth", "focus": "Personal development"})
@@ -1178,8 +1427,8 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
             "personal_year": personal_year,
             "theme": year_info["theme"],
             "focus_areas": year_info["focus"],
-            "optimal_months": [(personal_year + i - 1) % 12 + 1 for i in range(3)],
-            "energy_level": "High" if personal_year in [1, 3, 5, 8] else "Moderate" if personal_year in [2, 6, 9] else "Reflective"
+            "optimal_months": [(personal_year + i - 1) % 12 + 1 for i in range(3)], # Simple placeholder
+            "energy_level": "High" if personal_year in [1, 3, 5, 8, 11, 22, 33] else "Moderate" if personal_year in [2, 6, 9] else "Reflective"
         }
     
     return forecast
@@ -1218,22 +1467,17 @@ def initialize_application():
     logger.info("Application initialized successfully")
     return True
 
-# Initialize before first request
-@app.before_first_request
-def before_first_request():
-    initialize_application()
+# Call initialization directly when the module is loaded by Gunicorn
+# This replaces @app.before_first_request for Flask 2.3+ compatibility
+initialize_application()
 
 # Development server initialization
 if __name__ == "__main__":
-    # Initialize for development
-    success = initialize_application()
-    if not success:
-        logger.error("Failed to initialize application components")
-        exit(1)
-    
+    # In development, initialize_application() is already called above.
+    # We just run the Flask app here.
     logger.info("Starting development server...")
     app.run(
         host="0.0.0.0", 
         port=int(os.getenv("PORT", 5000)),
-        debug=os.getenv("FLASK_ENV") == "development"
+        debug=os.getenv("FLASK_ENV") == "development" # Debug mode based on FLASK_ENV
     )
