@@ -36,7 +36,7 @@ load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG, # IMPORTANT: Set to DEBUG to see the full incoming message
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
@@ -75,7 +75,7 @@ CORS(app, resources={r"/*": {"origins": [
     "http://localhost:3000"
 ]}})
 
-# --- Data Models (Defined early to avoid NameError) ---
+# --- Data Models ---
 class NumberType(Enum):
     EXPRESSION = "expression"
     LIFE_PATH = "life_path"
@@ -115,7 +115,7 @@ class NameSuggestionsOutput(BaseModel):
     suggestions: List[NameSuggestion] = Field(description="List of name suggestions")
     reasoning: str = Field(description="Overall reasoning for suggestions")
 
-# --- Advanced Numerology Calculator (Defined early) ---
+# --- Advanced Numerology Calculator ---
 class AdvancedNumerologyCalculator:
     NUMEROLOGY_MAP = {
         'A': 1, 'J': 1, 'S': 1,
@@ -345,7 +345,7 @@ class AdvancedNumerologyCalculator:
             "is_master_number": final_number in AdvancedNumerologyCalculator.MASTER_NUMBERS
         }
 
-# --- Security Manager (Defined early) ---
+# --- Security Manager ---
 class SecurityManager:
     @staticmethod
     def validate_input_security(data: str) -> bool:
@@ -373,7 +373,7 @@ class SecurityManager:
         sanitized = re.sub(r'\s+', ' ', sanitized).strip()
         return sanitized[:100]  # Limit length
 
-# --- Message Parser (Defined early) ---
+# --- Message Parser ---
 class MessageParser:
     """Handles parsing of different message types from the frontend."""
     
@@ -411,11 +411,7 @@ class MessageParser:
             current_life_path_number=int(match.group(4))
         )
 
-    # Note: RequestType enum and its usage were removed in previous iterations,
-    # but if you re-introduce it, ensure it's defined.
-    # For now, the if/elif in enhanced_chat handles routing directly based on string prefixes.
-
-# --- Name Suggestion Engine (Defined early) ---
+# --- Name Suggestion Engine ---
 class NameSuggestionEngine:
     """Handles logic for suggesting names and resolving names for calculation."""
     
@@ -475,7 +471,7 @@ class NameSuggestionEngine:
         else:
             return [1, 3, 6, 8] # General positive numbers
 
-# --- LLM Manager (Defined early) ---
+# --- LLM Manager ---
 class LLMManager:
     def __init__(self):
         self.llm = None
@@ -532,10 +528,10 @@ class LLMManager:
             logger.error(f"Error initializing LLM: {e}")
             return False
 
-# Global instance of LLM manager (Defined immediately after its class)
+# Global instance of LLM manager
 llm_manager = LLMManager()
 
-# --- Utility Functions (These can be defined after classes as they don't create instances of the classes directly at global scope) ---
+# --- Core Utility/Helper Functions ---
 def performance_monitor(f):
     """Decorator to monitor function performance"""
     @wraps(f)
@@ -741,6 +737,180 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
         "best_months_for_action": recommended_months,
     }
 
+# --- Analytics and Insights Helper Functions (DEFINITIVELY MOVED TO BE DEFINED BEFORE USAGE) ---
+
+def get_mitigation_strategies(expression: int) -> List[str]:
+    """Get strategies to mitigate challenges"""
+    strategies = {
+        1: ["Practice patience", "Develop listening skills", "Embrace collaboration"],
+        2: ["Build confidence", "Practice decision-making", "Set boundaries"],
+        3: ["Focus on priorities", "Develop discipline", "Deepen relationships"],
+        4: ["Embrace flexibility", "Take breaks", "Express creativity"],
+        5: ["Practice commitment", "Develop grounding habits", "Plan ahead"],
+        6: ["Over-responsibility", "Interference", "Martyrdom"],
+        7: ["Engage socially", "Express emotions", "Apply knowledge practically"],
+        8: ["Balance work-life", "Nurture relationships", "Practice generosity"],
+        9: ["Set realistic expectations", "Practice self-compassion", "Take breaks"],
+        11: ["Grounding exercises", "Manage nervous energy", "Set realistic goals"],
+        22: ["Delegate tasks", "Prioritize self-care", "Break down large goals"],
+        33: ["Establish strong boundaries", "Practice self-love", "Seek support"]
+    }
+    return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
+
+def get_growth_opportunities(expression: int) -> List[str]:
+    """Get growth opportunities based on expression number"""
+    opportunities = {
+        1: ["Leadership development", "Mentoring others", "Innovation projects"],
+        2: ["Conflict resolution", "Team building", "Emotional intelligence"],
+        3: ["Public speaking", "Creative projects", "Social networking"],
+        4: ["Project management", "Systems thinking", "Financial planning"],
+        5: ["Cultural exploration", "Technology adoption", "Network expansion"],
+        6: ["Community service", "Healing arts", "Family development"],
+        7: ["Research projects", "Spiritual studies", "Analytical work"],
+        8: ["Business development", "Financial management", "Strategic planning"],
+        9: ["Global initiatives", "Teaching opportunities", "Humanitarian work"],
+        11: ["Spiritual leadership", "Intuitive development", "Inspiring others"],
+        22: ["Large-scale project execution", "Building lasting structures", "Transformational leadership"],
+        33: ["Global humanitarian efforts", "Teaching universal love", "Healing initiatives"]
+    }
+    return opportunities.get(expression, ["Personal development", "Skill building", "Service opportunities"])
+
+def calculate_uniqueness_score(profile: Dict) -> Dict:
+    """Calculate how unique this numerological profile is"""
+    expression = profile.get('expression_number', 5)
+    life_path = profile.get('life_path_number', 5)
+    
+    # Master numbers are rarer
+    rarity_multiplier = 1.5 if expression in AdvancedNumerologyCalculator.MASTER_NUMBERS else 1.0
+    combination_rarity = abs(expression - life_path) / 10.0
+    
+    uniqueness = min(0.95, (combination_rarity + 0.3) * rarity_multiplier)
+    
+    return {
+        "score": uniqueness,
+        "interpretation": "Highly unique" if uniqueness > 0.8 else "Moderately unique" if uniqueness > 0.6 else "Common pattern",
+        "rarity_factors": ["Master number present"] if rarity_multiplier > 1 else ["Standard numerical pattern"]
+    }
+
+def predict_success_areas(profile: Dict) -> Dict:
+    """Predict areas of likely success"""
+    expression = profile.get('expression_number', 5)
+    life_path = profile.get('life_path_number', 5)
+    
+    success_areas = {
+        1: ["Leadership", "Entrepreneurship", "Innovation"],
+        2: ["Collaboration", "Diplomacy", "Counseling"],
+        3: ["Creative arts", "Communication", "Entertainment"],
+        4: ["Management", "Organization", "Finance"],
+        5: ["Travel", "Technology", "Sales"],
+        6: ["Healthcare", "Education", "Service"],
+        7: ["Research", "Analysis", "Spirituality"],
+        8: ["Business", "Finance", "Authority"],
+        9: ["Humanitarian work", "Teaching", "Global reach"],
+        11: ["Inspiration", "Spiritual teaching", "Innovation"],
+        22: ["Large-scale building", "Transformation", "Leadership"],
+        33: ["Healing", "Teaching", "Service leadership"]
+    }
+    
+    primary = success_areas.get(expression, ["General success"])
+    secondary = success_areas.get(life_path, [])
+    
+    combined = list(set(primary + secondary))
+    
+    return {
+        "primary_areas": primary,
+        "secondary_areas": secondary,
+        "combined_strengths": combined[:6],
+        "confidence_level": "High" if len(combined) > 4 else "Moderate"
+    }
+
+def identify_potential_challenges(profile: Dict) -> Dict:
+    """Identify potential challenges and growth areas"""
+    expression = profile.get('expression_number', 5)
+    
+    challenges = {
+        1: ["Impatience", "Domination tendency", "Isolation"],
+        2: ["Over-sensitivity", "Indecision", "Dependency"],
+        3: ["Scattered energy", "Superficiality", "Inconsistency"],
+        4: ["Rigidity", "Resistance to change", "Workaholic tendencies"],
+        5: ["Restlessness", "Commitment issues", "Impulsiveness"],
+        6: ["Over-responsibility", "Interference", "Martyrdom"],
+        7: ["Isolation", "Over-analysis", "Emotional detachment"],
+        8: ["Materialism", "Power struggles", "Relationship neglect"],
+        9: ["Emotional volatility", "Disappointment", "Burnout"],
+        11: ["Nervous tension", "Unrealistic expectations", "Hypersensitivity"],
+        22: ["Overwhelming pressure", "Perfectionism", "Burnout risk"],
+        33: ["Emotional overwhelm", "Boundary issues", "Self-sacrifice"]
+    }
+    
+    return {
+        "potential_challenges": challenges.get(expression, ["General life challenges"]),
+        "mitigation_strategies": get_mitigation_strategies(expression), # Now defined
+        "growth_opportunities": get_growth_opportunities(expression) # Now defined
+    }
+
+def get_development_recommendations(profile: Dict) -> Dict:
+    """Get personalized development recommendations"""
+    expression = profile.get('expression_number', 5)
+    life_path = profile.get('life_path_number', 5)
+    karmic_lessons = profile.get('karmic_lessons', {}).get('lessons', [])
+    
+    return {
+        "immediate_focus": f"Develop your Expression {expression} energy through {get_growth_opportunities(expression)[0].lower()}",
+        "long_term_goal": f"Align with your Life Path {life_path} by embracing {get_growth_opportunities(life_path)[0].lower()}",
+        "karmic_work": karmic_lessons[:2] if karmic_lessons else ["Continue spiritual growth"],
+        "monthly_practices": [
+            "Daily meditation or reflection",
+            "Journaling about number patterns",
+            "Practicing your key number's positive traits",
+            "Working on challenge mitigation"
+        ]
+    }
+
+def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
+    """Generate multi-year numerological forecast"""
+    current_year = datetime.datetime.now().year
+    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
+    
+    forecast = {}
+    
+    for year_offset in range(years):
+        target_year = current_year + year_offset
+        # Recalculate personal year for target_year
+        today_for_calc = datetime.date(target_year, datetime.date.today().month, datetime.date.today().day)
+        personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today_for_calc.month, True)
+        personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(today_for_calc.day, True)
+        personal_year_calc_year = AdvancedNumerologyCalculator.reduce_number(target_year, True)
+        
+        personal_year = AdvancedNumerologyCalculator.reduce_number(personal_year_calc_month + personal_year_calc_day + personal_year_calc_year, True)
+        
+        year_themes = {
+            1: {"theme": "New Beginnings", "focus": "Starting fresh, leadership opportunities"},
+            2: {"theme": "Cooperation", "focus": "Partnerships, relationship building"},
+            3: {"theme": "Creative Expression", "focus": "Communication, artistic pursuits"},
+            4: {"theme": "Building Foundations", "focus": "Hard work, organization, stability"},
+            5: {"theme": "Freedom & Change", "focus": "Travel, new experiences, adventure"},
+            6: {"theme": "Responsibility", "focus": "Family, service, nurturing others"},
+            7: {"theme": "Introspection", "focus": "Study, reflection, inner development"},
+            8: {"theme": "Material Success", "focus": "Business, finance, achievement"},
+            9: {"theme": "Completion", "focus": "Endings, humanitarian service, wisdom"},
+            11: {"theme": "Spiritual Illumination", "focus": "Intuitive breakthroughs, inspiring others"},
+            22: {"theme": "Master Builder Year", "focus": "Large-scale manifestation, practical idealism"},
+            33: {"theme": "Universal Service", "focus": "Compassionate leadership, healing the world"}
+        }
+        
+        year_info = year_themes.get(personal_year, {"theme": "Growth", "focus": "Personal development"})
+        
+        forecast[target_year] = {
+            "personal_year": personal_year,
+            "theme": year_info["theme"],
+            "focus_areas": year_info["focus"],
+            "optimal_months": [(personal_year + i - 1) % 12 + 1 for i in range(3)], # Simple placeholder
+            "energy_level": "High" if personal_year in [1, 3, 5, 8, 11, 22, 33] else "Moderate" if personal_year in [2, 6, 9] else "Reflective"
+        }
+    
+    return forecast
+
 # --- API Endpoints ---
 @app.route("/health", methods=["GET"])
 def health_check():
@@ -837,14 +1007,19 @@ def enhanced_chat():
 def generate_advanced_report(user_message: str) -> tuple:
     """Generate advanced numerology report with comprehensive analysis"""
     try:
+        # Add debug logging for the incoming message
+        logger.debug(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {user_message}")
+
         # Parse the message to extract user details
         # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
         report_data_match = re.search(
-           r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
+            r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
             user_message
         )
         
         if not report_data_match:
+            # Log the full message if it fails to match
+            logger.error(f"Failed to match GENERATE_ADVANCED_REPORT regex for message: {user_message}")
             return jsonify({"error": "Invalid format for GENERATE_ADVANCED_REPORT message."}), 400
         
         original_full_name, birth_date, current_exp_num_str, current_life_path_num_str, desired_outcome = report_data_match.groups()
@@ -886,7 +1061,7 @@ def generate_advanced_report(user_message: str) -> tuple:
         
         Original Name: "{original_full_name}"
         Current Expression: {current_exp_num}
-        Life Path: {current_life_path_num}
+        Life Path: {current_life_path_num} 
         
         Guidelines:
         - Maintain connection to original identity
@@ -1168,7 +1343,6 @@ def generate_name_suggestions(user_message: str) -> tuple:
             Original Name: {full_name}
             Current Expression: {current_expression}
             Life Path: {life_path}
-            Desired Outcome: {desired_outcome}
             
             Consider:
             1. Cultural appropriateness and respect
@@ -1234,206 +1408,6 @@ def generate_name_suggestions(user_message: str) -> tuple:
     except Exception as e:
         logger.error(f"Error generating name suggestions: {e}")
         return jsonify({"error": "Failed to generate name suggestions"}), 500
-
-# --- Analytics and Insights ---
-@app.route("/analytics/profile-insights", methods=["POST"])
-@rate_limited("5 per minute")
-def get_profile_insights():
-    """Get advanced insights and analytics for a profile"""
-    data = request.get_json()
-    
-    if not data or not data.get("full_name") or not data.get("birth_date"):
-        return jsonify({"error": "Both full_name and birth_date are required"}), 400
-    
-    try:
-        profile = get_comprehensive_numerology_profile(data["full_name"], data["birth_date"])
-        
-        # Generate advanced insights
-        insights = {
-            "uniqueness_score": calculate_uniqueness_score(profile),
-            "success_prediction": predict_success_areas(profile),
-            "challenge_analysis": identify_potential_challenges(profile),
-            "development_recommendations": get_development_recommendations(profile),
-            "yearly_forecast": generate_yearly_forecast(profile, 3)  # 3-year forecast
-        }
-        
-        return jsonify(insights), 200
-        
-    except Exception as e:
-        logger.error(f"Error generating profile insights: {e}")
-        return jsonify({"error": "Failed to generate insights"}), 500
-
-def calculate_uniqueness_score(profile: Dict) -> Dict:
-    """Calculate how unique this numerological profile is"""
-    expression = profile.get('expression_number', 5)
-    life_path = profile.get('life_path_number', 5)
-    
-    # Master numbers are rarer
-    rarity_multiplier = 1.5 if expression in AdvancedNumerologyCalculator.MASTER_NUMBERS else 1.0
-    combination_rarity = abs(expression - life_path) / 10.0
-    
-    uniqueness = min(0.95, (combination_rarity + 0.3) * rarity_multiplier)
-    
-    return {
-        "score": uniqueness,
-        "interpretation": "Highly unique" if uniqueness > 0.8 else "Moderately unique" if uniqueness > 0.6 else "Common pattern",
-        "rarity_factors": ["Master number present"] if rarity_multiplier > 1 else ["Standard numerical pattern"]
-    }
-
-def predict_success_areas(profile: Dict) -> Dict:
-    """Predict areas of likely success"""
-    expression = profile.get('expression_number', 5)
-    life_path = profile.get('life_path_number', 5)
-    
-    success_areas = {
-        1: ["Leadership", "Entrepreneurship", "Innovation"],
-        2: ["Collaboration", "Diplomacy", "Counseling"],
-        3: ["Creative arts", "Communication", "Entertainment"],
-        4: ["Management", "Organization", "Finance"],
-        5: ["Travel", "Technology", "Sales"],
-        6: ["Healthcare", "Education", "Service"],
-        7: ["Research", "Analysis", "Spirituality"],
-        8: ["Business", "Finance", "Authority"],
-        9: ["Humanitarian work", "Teaching", "Global reach"],
-        11: ["Inspiration", "Spiritual teaching", "Innovation"],
-        22: ["Large-scale building", "Transformation", "Leadership"],
-        33: ["Healing", "Teaching", "Service leadership"]
-    }
-    
-    primary = success_areas.get(expression, ["General success"])
-    secondary = success_areas.get(life_path, [])
-    
-    combined = list(set(primary + secondary))
-    
-    return {
-        "primary_areas": primary,
-        "secondary_areas": secondary,
-        "combined_strengths": combined[:6],
-        "confidence_level": "High" if len(combined) > 4 else "Moderate"
-    }
-
-def get_mitigation_strategies(expression: int) -> list:
-    """Return mitigation strategies for a given expression number."""
-    strategies = {
-        1: ["Practice patience", "Collaborate with others", "Balance independence with teamwork"],
-        2: ["Build self-confidence", "Set boundaries", "Develop decision-making skills"],
-        3: ["Focus on depth", "Commit to projects", "Embrace emotional honesty"],
-        4: ["Embrace flexibility", "Try new approaches", "Balance work with relaxation"],
-        5: ["Cultivate stability", "Commit to routines", "Practice mindfulness"],
-        6: ["Prioritize self-care", "Delegate responsibilities", "Respect others' autonomy"],
-        7: ["Connect with others", "Balance analysis with action", "Express emotions openly"],
-        8: ["Value relationships", "Balance material and spiritual pursuits", "Practice humility"],
-        9: ["Set healthy boundaries", "Accept imperfections", "Practice emotional resilience"],
-        11: ["Ground yourself", "Manage expectations", "Practice self-care"],
-        22: ["Delegate tasks", "Set realistic goals", "Take breaks to avoid burnout"],
-        33: ["Maintain boundaries", "Practice self-love", "Seek support when overwhelmed"]
-    }
-    return strategies.get(expression, ["General self-improvement strategies"])
-
-def get_growth_opportunities(expression: int) -> list:
-    """Return growth opportunities for a given expression number."""
-    opportunities = {
-        1: ["Leadership development", "Initiative", "Self-reliance"],
-        2: ["Cooperation", "Diplomacy", "Emotional intelligence"],
-        3: ["Creative expression", "Communication", "Optimism"],
-        4: ["Discipline", "Organization", "Building foundations"],
-        5: ["Adaptability", "Embracing change", "Exploration"],
-        6: ["Nurturing", "Responsibility", "Service to others"],
-        7: ["Introspection", "Spiritual growth", "Analytical thinking"],
-        8: ["Material success", "Strategic planning", "Leadership"],
-        9: ["Compassion", "Humanitarianism", "Wisdom"],
-        11: ["Spiritual insight", "Inspiration", "Visionary thinking"],
-        22: ["Manifestation", "Practical idealism", "Large-scale achievement"],
-        33: ["Healing", "Teaching", "Universal service"]
-    }
-    return opportunities.get(expression, ["Personal growth", "Self-improvement"])
-
-def identify_potential_challenges(profile: Dict) -> Dict:
-    """Identify potential challenges and growth areas"""
-    expression = profile.get('expression_number', 5)
-    
-    challenges = {
-        1: ["Impatience", "Domination tendency", "Isolation"],
-        2: ["Over-sensitivity", "Indecision", "Dependency"],
-        3: ["Scattered energy", "Superficiality", "Inconsistency"],
-        4: ["Rigidity", "Resistance to change", "Workaholic tendencies"],
-        5: ["Restlessness", "Commitment issues", "Impulsiveness"],
-        6: ["Over-responsibility", "Interference", "Martyrdom"],
-        7: ["Isolation", "Over-analysis", "Emotional detachment"],
-        8: ["Materialism", "Power struggles", "Relationship neglect"],
-        9: ["Emotional volatility", "Disappointment", "Burnout"],
-        11: ["Nervous tension", "Unrealistic expectations", "Hypersensitivity"],
-        22: ["Overwhelming pressure", "Perfectionism", "Burnout risk"],
-        33: ["Emotional overwhelm", "Boundary issues", "Self-sacrifice"]
-    }
-    
-    return {
-        "potential_challenges": challenges.get(expression, ["General life challenges"]),
-        "mitigation_strategies": get_mitigation_strategies(expression),
-        "growth_opportunities": get_growth_opportunities(expression)
-    }
-
-def get_development_recommendations(profile: Dict) -> Dict:
-    """Get personalized development recommendations"""
-    expression = profile.get('expression_number', 5)
-    life_path = profile.get('life_path_number', 5)
-    karmic_lessons = profile.get('karmic_lessons', {}).get('lessons', [])
-    
-    return {
-        "immediate_focus": f"Develop your Expression {expression} energy through {get_growth_opportunities(expression)[0].lower()}",
-        "long_term_goal": f"Align with your Life Path {life_path} by embracing {get_growth_opportunities(life_path)[0].lower()}",
-        "karmic_work": karmic_lessons[:2] if karmic_lessons else ["Continue spiritual growth"],
-        "monthly_practices": [
-            "Daily meditation or reflection",
-            "Journaling about number patterns",
-            "Practicing your key number's positive traits",
-            "Working on challenge mitigation"
-        ]
-    }
-
-def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
-    """Generate multi-year numerological forecast"""
-    current_year = datetime.datetime.now().year
-    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
-    
-    forecast = {}
-    
-    for year_offset in range(years):
-        target_year = current_year + year_offset
-        # Recalculate personal year for target_year
-        today_for_calc = datetime.date(target_year, datetime.date.today().month, datetime.date.today().day)
-        personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today_for_calc.month, True)
-        personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(today_for_calc.day, True)
-        personal_year_calc_year = AdvancedNumerologyCalculator.reduce_number(target_year, True)
-        
-        personal_year = AdvancedNumerologyCalculator.reduce_number(personal_year_calc_month + personal_year_calc_day + personal_year_calc_year, True)
-        
-        year_themes = {
-            1: {"theme": "New Beginnings", "focus": "Starting fresh, leadership opportunities"},
-            2: {"theme": "Cooperation", "focus": "Partnerships, relationship building"},
-            3: {"theme": "Creative Expression", "focus": "Communication, artistic pursuits"},
-            4: {"theme": "Building Foundations", "focus": "Hard work, organization, stability"},
-            5: {"theme": "Freedom & Change", "focus": "Travel, new experiences, adventure"},
-            6: {"theme": "Responsibility", "focus": "Family, service, nurturing others"},
-            7: {"theme": "Introspection", "focus": "Study, reflection, inner development"},
-            8: {"theme": "Material Success", "focus": "Business, finance, achievement"},
-            9: {"theme": "Completion", "focus": "Endings, humanitarian service, wisdom"},
-            11: {"theme": "Spiritual Illumination", "focus": "Intuitive breakthroughs, inspiring others"},
-            22: {"theme": "Master Builder Year", "focus": "Large-scale manifestation, practical idealism"},
-            33: {"theme": "Universal Service", "focus": "Compassionate leadership, healing the world"}
-        }
-        
-        year_info = year_themes.get(personal_year, {"theme": "Growth", "focus": "Personal development"})
-        
-        forecast[target_year] = {
-            "personal_year": personal_year,
-            "theme": year_info["theme"],
-            "focus_areas": year_info["focus"],
-            "optimal_months": [(personal_year + i - 1) % 12 + 1 for i in range(3)], # Simple placeholder
-            "energy_level": "High" if personal_year in [1, 3, 5, 8, 11, 22, 33] else "Moderate" if personal_year in [2, 6, 9] else "Reflective"
-        }
-    
-    return forecast
 
 # --- Error Handlers ---
 @app.errorhandler(429)
