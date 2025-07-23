@@ -145,7 +145,7 @@ class AdvancedNumerologyCalculator:
             "spiritual": "Learning to balance self-reliance with healthy interdependence."
         },
         2: {
-            "core": "Cooperation, balance, diplomacy, harmony, and partnership. It fosters strong relationships, intuition, and a gentle, supportive nature.",
+            "core": "Cooperation, balance, diplomacy, harmony, and partnership. It fosters strong relationships, intuition, and a gentle, supportive nature. Number 2 is the peacemaker, symbolizing duality, grace, and tact. It represents sensitivity, empathy, and the ability to work well with others. Those influenced by 2 are often mediators, seeking equilibrium and understanding. They excel in collaborative efforts and bring a calming presence to any situation.",
             "psychological": "Natural mediators with high emotional intelligence and sensitivity to others' needs.",
             "career": "Excel in counseling, diplomacy, team coordination, and supportive roles.",
             "relationships": "Devoted partners who create harmony but may sacrifice their own needs.",
@@ -153,7 +153,7 @@ class AdvancedNumerologyCalculator:
             "spiritual": "Learning to value their own needs while serving others."
         },
         3: {
-            "core": "Creativity, self-expression, communication, optimism, and joy. It enhances social interactions, artistic pursuits, and a vibrant outlook on life.",
+            "core": "Creativity, self-expression, communication, optimism, and joy. It enhances social interactions, artistic pursuits, and a vibrant outlook on life. Number 3 is the number of expression, inspiration, and growth. It signifies imagination, enthusiasm, and a natural talent for communication. Individuals with a strong 3 influence are often charismatic, artistic, and enjoy being in the spotlight. They bring light and joy to others through their creative endeavors and optimistic spirit.",
             "psychological": "Natural entertainers and communicators with infectious enthusiasm and artistic flair.",
             "career": "Thrive in creative fields, media, entertainment, marketing, and any role involving communication.",
             "relationships": "Charming and social partners who bring joy but may struggle with depth and commitment.",
@@ -161,7 +161,7 @@ class AdvancedNumerologyCalculator:
             "spiritual": "Learning to channel creative gifts for higher purpose and authentic expression."
         },
         4: {
-            "core": "Stability, diligent hard work, discipline, organization, and building strong foundations for lasting security.",
+            "core": "Stability, diligent hard work, discipline, organization, and building strong foundations for lasting security. It signifies reliability and a practical approach. Number 4 is the builder, representing order, structure, and practicality. It is associated with responsibility, honesty, and a strong work ethic. Those influenced by 4 are often methodical, reliable, and persistent. They excel at creating systems, managing resources, and ensuring long-term security through diligent effort.",
             "psychological": "Methodical planners who value structure, reliability, and systematic approaches to life.",
             "career": "Excel in project management, finance, construction, systems analysis, and administrative roles.",
             "relationships": "Dependable partners who provide security but may struggle with spontaneity and emotional expression.",
@@ -169,7 +169,7 @@ class AdvancedNumerologyCalculator:
             "spiritual": "Learning to embrace flexibility while maintaining their natural gift for creating order."
         },
         5: {
-            "core": "Freedom, dynamic change, adventure, versatility, and adaptability. It encourages embracing new experiences, travel, and a love for personal liberty.",
+            "core": "Freedom, dynamic change, adventure, versatility, and adaptability. It encourages embracing new experiences, travel, and a love for personal liberty. Number 5 is the number of change, symbolizing curiosity, progress, and a desire for new horizons. It represents adaptability, resourcelessness, and a love for exploration. Individuals with a strong 5 influence are often restless, seeking variety and excitement. They thrive on challenges and are quick to embrace new opportunities, often leading to diverse life experiences.",
             "psychological": "Natural explorers with insatiable curiosity and need for variety and stimulation.",
             "career": "Thrive in travel, sales, media, technology, and any field offering variety and change.",
             "relationships": "Exciting partners who bring adventure but may struggle with commitment and routine.",
@@ -177,7 +177,7 @@ class AdvancedNumerologyCalculator:
             "spiritual": "Learning to find freedom within commitment and depth within exploration."
         },
         6: {
-            "core": "Responsibility, nurturing, harmony, selfless service, and love. It fosters deep connections in family and community, embodying care and compassion.",
+            "core": "Responsibility, nurturing, harmony, selfless service, and love. It fosters deep connections in family and community, embodying care and compassion. Number 6 is the number of harmony and domesticity, symbolizing love, empathy, and service to others. It is associated with responsibility, protection, and a strong sense of community. Those influenced by 6 are often caregivers, dedicated to their family and friends. They find fulfillment in supporting others and creating a peaceful, loving environment.",
             "psychological": "Natural caregivers with strong sense of responsibility and desire to heal and help others.",
             "career": "Excel in healthcare, education, counseling, social work, and family business.",
             "relationships": "Devoted partners who create beautiful homes but may become overly controlling or sacrificial.",
@@ -373,11 +373,10 @@ class SecurityManager:
         sanitized = re.sub(r'\s+', ' ', sanitized).strip()
         return sanitized[:100]  # Limit length
 
-# --- RequestType Enum (Add before MessageParser) ---
+# --- RequestType Enum (Added for MessageParser) ---
 class RequestType(Enum):
     VALIDATE_NAME = "validate_name"
     GENERATE_REPORT = "generate_report"
-    GENERATE_SUGGESTIONS = "generate_suggestions"
 
 # --- Message Parser (Defined early) ---
 class MessageParser:
@@ -882,12 +881,12 @@ def generate_advanced_report(user_message: str) -> tuple:
         Life Path {current_life_path_num}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_life_path_num, {}).get('core', 'Universal energy')}
         
         Write a detailed, empathetic introduction that:
-        1. Acknowledges their unique numerological signature
-        2. Explains how their current numbers work together
-        3. Connects their profile to their desired outcome
-        4. Sets the stage for name corrections
+        1. Acknowledges their unique numerological signature. Use **strong bolding** for key numbers and concepts.
+        2. Explains how their current numbers work together, highlighting their strengths.
+        3. Connects their profile to their desired outcome, emphasizing potential for transformation.
+        4. Sets the stage for the insightful name corrections and advanced insights that follow.
         
-        Be warm, wise, and encouraging. Write 3-4 paragraphs.
+        Be warm, wise, and encouraging. Use Markdown to structure and emphasize key points. Aim for 3-4 paragraphs.
         """
         
         intro_response = llm_manager.analytical_llm.invoke(intro_prompt).content
@@ -964,6 +963,7 @@ def generate_advanced_report(user_message: str) -> tuple:
                 New Expression interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
                 
                 Write a compelling 2-3 sentence explanation of why this name change would be beneficial.
+                **Strongly emphasize the new Expression Number and its core benefits** using bold Markdown.
                 Focus on practical benefits and energy alignment.
                 """
                 
@@ -1102,13 +1102,14 @@ def validate_name_advanced(user_message: str) -> tuple:
         New Expression {new_expression}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
         
         Explain:
-        1. How well the new expression number supports the desired outcome.
-        2. The energetic shift from original to new name.
-        3. Compatibility with life path number.
+        1. How well the **new expression number ({new_expression})** supports the desired outcome.
+        2. The **energetic shift** from original to new name.
+        3. **Compatibility** with life path number.
         4. Practical considerations for this name change.
         5. If invalid, suggest what type of energy/number would be better (e.g., "Consider names aligning with 8 or 1 for greater success.").
         
-        Be specific, encouraging, and practical. Write 3-4 sentences.
+        Use **bold Markdown** for key numbers, concepts, and status indicators. Use bullet points for lists where appropriate.
+        Be specific, encouraging, and practical. Write 3-4 sentences, clearly structured.
         """
         
         detailed_explanation = llm_manager.analytical_llm.invoke(explanation_prompt).content
