@@ -6,4 +6,7 @@ psutil
 python-dotenv
 langchain-google-genai
 langchain-community
-gunicorn # Essential for deployment on Render
+gunicorn 
+ydantic==1.10.13 
+
+reportlab 
