@@ -232,11 +232,16 @@ When generating name suggestions, ensure they are acceptable, usable, and sound 
     **B) For Suggested Name Validation Requests (Query starts with `VALIDATE_NAME:`):**
         - The `User Query` will provide: `original_full_name`, `birth_date`, `desired_outcome`, and `suggested_name_to_validate`.
         - **Crucially, when validating `suggested_name_to_validate`:**
-            - If `suggested_name_to_validate` is a partial name (e.g., "Raam"), assume it is intended to replace the *first name* or be a *new first name* within the context of the `original_full_name`. In this case, calculate the Expression Number for the *full name that would result* (e.g., "Raam [Original Middle Name] [Original Last Name]").
-            - If `suggested_name_to_validate` is a full name (e.g., "Raam Kumar"), use that full name directly for calculation.
+            - **If `suggested_name_to_validate` is a partial name (e.g., "Raam", "Naraayanan", "V"):**
+                - You MUST use the `original_full_name` provided in the query to form a complete name for calculation.
+                - **Strategy:** Assume the `suggested_name_to_validate` is intended to be the *new first name*. Replace the first word of `original_full_name` with `suggested_name_to_validate` to form a `full_name_for_calculation`.
+                - Example: If `original_full_name` is "Raam Naraayanan V" and `suggested_name_to_validate` is "Rahul", then `full_name_for_calculation` becomes "Rahul Naraayanan V".
+                - If `suggested_name_to_validate` is a middle or last name, you must still use the `original_full_name` as context to form a complete name for calculation.
+            - **If `suggested_name_to_validate` is already a full name (contains multiple words, e.g., "Rahul Sharma"):**
+                - Use `suggested_name_to_validate` directly as `full_name_for_calculation`.
             - **NEVER ask for the full name or birth date again.** These are provided in the `User Query`.
 
-        - **Step 1: Calculate Suggested Name Numerology.** Determine the Expression Number of the `suggested_name_to_validate` (or the derived full name).
+        - **Step 1: Calculate Suggested Name Numerology.** Determine the Expression Number of the `full_name_for_calculation` using the `numerology_calculator` tool and the provided `birth_date`.
         - **Step 2: Determine Status (Valid/Invalid) and Explanation.**
             - **Status:** Clearly state if the suggested name is **"Valid for your goals"** or **"Invalid for your goals"**.
             - **Explanation (Visually Clear & Concise):**
