@@ -21,14 +21,13 @@ import secrets
 import hmac
 import psutil
 from collections import Counter
-import sys # Import sys for sys.exit()
+import sys
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-# FIX: Changed import from pydantic.v1 to pydantic for Pydantic 1.x compatibility
 from pydantic import BaseModel, Field 
 from langchain.output_parsers import PydanticOutputParser
 
@@ -72,13 +71,9 @@ try:
         default_limits=["200 per day", "50 per hour"],
         storage_uri=os.getenv('REDIS_URL', 'memory://')
     )
-    
     logger.info("Flask-Caching and Flask-Limiter initialized successfully.")
 except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
-    # The conditional decorators (@limiter.limit(...) if limiter else lambda f: f)
-    # already handle the case where 'limiter' might be None, so the app won't crash.
-
 
 # CORS Configuration
 CORS(app, resources={r"/*": {"origins": [
@@ -1052,10 +1047,39 @@ def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
 
+# Helper to run async functions in a synchronous Flask context
+def run_async_in_sync(coroutine):
+    """
+    Runs an async coroutine in a new, isolated event loop.
+    This is necessary when calling async functions from a synchronous Flask view
+    running under a WSGI server like Gunicorn.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError: # No running loop
+        loop = None
+
+    if loop and loop.is_running():
+        # If a loop is already running (e.g., in a different thread of Gunicorn worker),
+        # use run_coroutine_threadsafe or a similar approach.
+        # For simplicity and robustness across various WSGI setups, we'll create a new loop.
+        # This might not be the most performant for very high concurrency, but it's reliable.
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        try:
+            return new_loop.run_until_complete(coroutine)
+        finally:
+            new_loop.close()
+            asyncio.set_event_loop(loop) # Restore original loop if it existed
+    else:
+        # No running loop, safe to use asyncio.run
+        return asyncio.run(coroutine)
+
+
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute") # Apply rate limit using the custom decorator
 @performance_monitor
-async def chat():
+def chat(): # Removed 'async' keyword here
     """Handles chat messages and advanced report/validation requests."""
     data = request.json
     message = data.get('message')
@@ -1132,16 +1156,14 @@ async def chat():
             messages = [system_message, human_message]
             
             # Get response from creative LLM for the report
-            loop = asyncio.get_event_loop()
-            report_response = await loop.run_in_executor(llm_manager.executor, llm_manager.creative_llm.invoke, messages)
+            # FIX: Use the synchronous helper to run the async LLM call
+            report_response = run_async_in_sync(llm_manager.creative_llm.invoke(messages))
             
             # Store the full report data, including the LLM's response, for PDF generation
             full_report_data = {
                 **llm_input_data, # Include all calculated profile data
                 "intro_response": report_response.content # This is the LLM generated Markdown report
             }
-            # This is where you might cache full_report_data if needed for PDF endpoint
-            # For now, we'll rely on the frontend sending it back for PDF generation.
 
             return jsonify({"response": report_response.content}), 200
 
@@ -1186,8 +1208,8 @@ async def chat():
             messages = [system_message, human_message]
             
             # Get response from analytical LLM for validation
-            loop = asyncio.get_event_loop()
-            validation_response = await loop.run_in_executor(llm_manager.executor, llm_manager.analytical_llm.invoke, messages)
+            # FIX: Use the synchronous helper to run the async LLM call
+            validation_response = run_async_in_sync(llm_manager.analytical_llm.invoke(messages))
             
             return jsonify({"response": validation_response.content}), 200
 
@@ -1206,8 +1228,9 @@ async def chat():
             
             chain = prompt | llm_manager.llm
             
-            loop = asyncio.get_event_loop()
-            ai_response = await loop.run_in_executor(llm_manager.executor, chain.invoke, {"input": message})
+            # Get response from LLM for general chat
+            # FIX: Use the synchronous helper to run the async LLM call
+            ai_response = run_async_in_sync(chain.invoke({"input": message}))
             
             # Add AI response to memory
             llm_manager.memory.chat_history.add_ai_message(ai_response.content)
@@ -1316,7 +1339,7 @@ def initialize_application():
     logger.info("Application initialized successfully")
     return True
 
-# FIX: Call initialization directly when the module is loaded.
+# Call initialization directly when the module is loaded.
 # This ensures it runs once when Gunicorn loads the app.
 initialize_application()
 
