@@ -396,7 +396,8 @@ class MessageParser:
     @staticmethod
     def parse_report_request(message: str) -> Optional[ReportRequest]:
         """Parse GENERATE_ADVANCED_REPORT message format."""
-        pattern = r"My full name is \"(.*?)\" and my birth date is \"(.*?)\"\. My current Name \(Expression\) Number is (\d+) and Life Path Number is (\d+)\. I desire the following positive outcome in my life: \"(.*?)\"\."
+        # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
+        pattern = r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?"
         match = re.search(pattern, message)
         
         if not match:
@@ -837,8 +838,9 @@ def generate_advanced_report(user_message: str) -> tuple:
     """Generate advanced numerology report with comprehensive analysis"""
     try:
         # Parse the message to extract user details
+        # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
         report_data_match = re.search(
-           r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
+            r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
             user_message
         )
         
@@ -938,7 +940,7 @@ def generate_advanced_report(user_message: str) -> tuple:
 """
         
         # Calculate and explain each suggested name
-        for suggested_name in suggested_names[:5]:  # OPTIMIZATION: Reduced to 5 suggestions
+        for suggested_name in suggested_names[:3]:  # OPTIMIZATION: Further reduced to 3 suggestions
             try:
                 calc = AdvancedNumerologyCalculator()
                 new_expression, details = calc.calculate_expression_number(suggested_name)
@@ -966,6 +968,12 @@ def generate_advanced_report(user_message: str) -> tuple:
                 logger.error(f"Error processing name {suggested_name}: {e}")
                 continue
         
+        # Add a note about limited suggestions for free tier
+        if len(suggested_names) > 3:
+            full_report += """
+*Note: Only the top 3 suggestions are detailed here to optimize processing for the free tier. For more personalized options, consider a full consultation.*
+"""
+
         # Add timing recommendations if available
         if 'timing_recommendations' in profile:
             timing = profile['timing_recommendations']
@@ -1304,6 +1312,42 @@ def predict_success_areas(profile: Dict) -> Dict:
         "confidence_level": "High" if len(combined) > 4 else "Moderate"
     }
 
+def get_mitigation_strategies(expression: int) -> list:
+    """Return mitigation strategies for a given expression number."""
+    strategies = {
+        1: ["Practice patience", "Collaborate with others", "Balance independence with teamwork"],
+        2: ["Build self-confidence", "Set boundaries", "Develop decision-making skills"],
+        3: ["Focus on depth", "Commit to projects", "Embrace emotional honesty"],
+        4: ["Embrace flexibility", "Try new approaches", "Balance work with relaxation"],
+        5: ["Cultivate stability", "Commit to routines", "Practice mindfulness"],
+        6: ["Prioritize self-care", "Delegate responsibilities", "Respect others' autonomy"],
+        7: ["Connect with others", "Balance analysis with action", "Express emotions openly"],
+        8: ["Value relationships", "Balance material and spiritual pursuits", "Practice humility"],
+        9: ["Set healthy boundaries", "Accept imperfections", "Practice emotional resilience"],
+        11: ["Ground yourself", "Manage expectations", "Practice self-care"],
+        22: ["Delegate tasks", "Set realistic goals", "Take breaks to avoid burnout"],
+        33: ["Maintain boundaries", "Practice self-love", "Seek support when overwhelmed"]
+    }
+    return strategies.get(expression, ["General self-improvement strategies"])
+
+def get_growth_opportunities(expression: int) -> list:
+    """Return growth opportunities for a given expression number."""
+    opportunities = {
+        1: ["Leadership development", "Initiative", "Self-reliance"],
+        2: ["Cooperation", "Diplomacy", "Emotional intelligence"],
+        3: ["Creative expression", "Communication", "Optimism"],
+        4: ["Discipline", "Organization", "Building foundations"],
+        5: ["Adaptability", "Embracing change", "Exploration"],
+        6: ["Nurturing", "Responsibility", "Service to others"],
+        7: ["Introspection", "Spiritual growth", "Analytical thinking"],
+        8: ["Material success", "Strategic planning", "Leadership"],
+        9: ["Compassion", "Humanitarianism", "Wisdom"],
+        11: ["Spiritual insight", "Inspiration", "Visionary thinking"],
+        22: ["Manifestation", "Practical idealism", "Large-scale achievement"],
+        33: ["Healing", "Teaching", "Universal service"]
+    }
+    return opportunities.get(expression, ["Personal growth", "Self-improvement"])
+
 def identify_potential_challenges(profile: Dict) -> Dict:
     """Identify potential challenges and growth areas"""
     expression = profile.get('expression_number', 5)
@@ -1328,36 +1372,6 @@ def identify_potential_challenges(profile: Dict) -> Dict:
         "mitigation_strategies": get_mitigation_strategies(expression),
         "growth_opportunities": get_growth_opportunities(expression)
     }
-
-def get_mitigation_strategies(expression: int) -> List[str]:
-    """Get strategies to mitigate challenges"""
-    strategies = {
-        1: ["Practice patience", "Develop listening skills", "Embrace collaboration"],
-        2: ["Build confidence", "Practice decision-making", "Set boundaries"],
-        3: ["Focus on priorities", "Develop discipline", "Deepen relationships"],
-        4: ["Embrace flexibility", "Take breaks", "Express creativity"],
-        5: ["Practice commitment", "Develop grounding habits", "Plan ahead"],
-        6: ["Practice self-care", "Respect others' autonomy", "Set limits"],
-        7: ["Engage socially", "Express emotions", "Apply knowledge practically"],
-        8: ["Balance work-life", "Nurture relationships", "Practice generosity"],
-        9: ["Set realistic expectations", "Practice self-compassion", "Take breaks"]
-    }
-    return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
-
-def get_growth_opportunities(expression: int) -> List[str]:
-    """Get growth opportunities based on expression number"""
-    opportunities = {
-        1: ["Leadership development", "Mentoring others", "Innovation projects"],
-        2: ["Conflict resolution", "Team building", "Emotional intelligence"],
-        3: ["Public speaking", "Creative projects", "Social networking"],
-        4: ["Project management", "Systems thinking", "Financial planning"],
-        5: ["Cultural exploration", "Technology adoption", "Network expansion"],
-        6: ["Community service", "Healing arts", "Family development"],
-        7: ["Research projects", "Spiritual studies", "Analytical work"],
-        8: ["Business development", "Financial management", "Strategic planning"],
-        9: ["Global initiatives", "Teaching opportunities", "Humanitarian work"]
-    }
-    return opportunities.get(expression, ["Personal development", "Skill building", "Service opportunities"])
 
 def get_development_recommendations(profile: Dict) -> Dict:
     """Get personalized development recommendations"""
