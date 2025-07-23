@@ -36,7 +36,7 @@ load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG, # IMPORTANT: Set to DEBUG to see the full incoming message
+    level=logging.INFO, # CHANGED: Reverted to INFO for production
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
@@ -737,7 +737,7 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
         "best_months_for_action": recommended_months,
     }
 
-# --- Analytics and Insights Helper Functions (DEFINITIVELY MOVED TO BE DEFINED BEFORE USAGE) ---
+# --- Analytics and Insights Helper Functions ---
 
 def get_mitigation_strategies(expression: int) -> List[str]:
     """Get strategies to mitigate challenges"""
@@ -845,8 +845,8 @@ def identify_potential_challenges(profile: Dict) -> Dict:
     
     return {
         "potential_challenges": challenges.get(expression, ["General life challenges"]),
-        "mitigation_strategies": get_mitigation_strategies(expression), # Now defined
-        "growth_opportunities": get_growth_opportunities(expression) # Now defined
+        "mitigation_strategies": get_mitigation_strategies(expression),
+        "growth_opportunities": get_growth_opportunities(expression)
     }
 
 def get_development_recommendations(profile: Dict) -> Dict:
@@ -1061,7 +1061,7 @@ def generate_advanced_report(user_message: str) -> tuple:
         
         Original Name: "{original_full_name}"
         Current Expression: {current_exp_num}
-        Life Path: {current_life_path_num} 
+        Life Path: {current_life_path_num}
         
         Guidelines:
         - Maintain connection to original identity
@@ -1115,7 +1115,8 @@ def generate_advanced_report(user_message: str) -> tuple:
 """
         
         # Calculate and explain each suggested name
-        for suggested_name in suggested_names[:3]:  # OPTIMIZATION: Further reduced to 3 suggestions
+        # CHANGED: Now detailing all generated suggested names (up to 10)
+        for suggested_name in suggested_names:
             try:
                 calc = AdvancedNumerologyCalculator()
                 new_expression, details = calc.calculate_expression_number(suggested_name)
@@ -1143,11 +1144,11 @@ def generate_advanced_report(user_message: str) -> tuple:
                 logger.error(f"Error processing name {suggested_name}: {e}")
                 continue
         
-        # Add a note about limited suggestions for free tier
-        if len(suggested_names) > 3:
-            full_report += """
-*Note: Only the top 3 suggestions are detailed here to optimize processing for the free tier. For more personalized options, consider a full consultation.*
-"""
+        # REMOVED: No longer need the note about limited suggestions
+        # if len(suggested_names) > 3:
+        #     full_report += """
+        # *Note: Only the top 3 suggestions are detailed here to optimize processing for the free tier. For more personalized options, consider a full consultation.*
+        # """
 
         # Add timing recommendations if available
         if 'timing_recommendations' in profile:
