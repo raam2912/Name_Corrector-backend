@@ -35,9 +35,10 @@ CORS(app, resources={r"/*": {"origins": [
 
 # --- Global Variables for LLM, Vector Store, Memory, and Agent ---
 llm = None
-vectorstore = None # Not strictly used in this specific flow
 memory = None
-agent_executor = None
+agent_executor = None # Agent will now only be used for GENERATE_REPORT
+llm_direct = None # New LLM instance for direct calls (e.g., validation interpretation)
+
 # On Render, GOOGLE_API_KEY will be pulled from environment variables.
 # For local testing, it comes from .env.
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -133,6 +134,7 @@ def numerology_calculator_tool_func(full_name: str, birth_date: str) -> str:
 
 
 # --- Define Langchain Tools ---
+# Tools are defined but will only be passed to the agent_executor, not used directly by llm_direct
 tools = [
     Tool(
         name="numerology_calculator",
@@ -165,12 +167,11 @@ Respond with genuine warmth, ancient wisdom, and focused clarity.
 **STRICT ADHERENCE TO CONTEXT & TOOLS:**
 Your responses MUST be derived EXCLUSIVELY from the output of the tools you use and the provided context.
 NEVER introduce external information, personal opinions, assumptions, or fabricated details.
-NEVER mention the internal workings of your tools (e.g., "the numerology_calculator tool requires..."). Present a seamless, wise response.
-When generating name suggestions, ensure they are acceptable, usable, and sound natural. Avoid nonsensical or overly abstract names.
+NEVER mention the internal workings of your tools (e.g., "the numerology_calculator tool requires...", "I need access to a functional tool..."). Present a seamless, wise response.
 
 **Chat History:** {chat_history}
 **Agent Scratchpad:**
-{agent_scratchpad} # This is where the agent writes its thoughts and tool calls
+{agent_scratchpad} # This is where the agent writes its thoughts and and tool calls
 
 **User Query: {input}**
 
@@ -230,30 +231,23 @@ When generating name suggestions, ensure they are acceptable, usable, and sound 
         "For a much detailed report, book your appointment using Sheelaa.com."
 
     **B) For Suggested Name Validation Requests (Query starts with `VALIDATE_NAME:`):**
-        - The `User Query` will provide: `original_full_name`, `birth_date`, `desired_outcome`, and `suggested_name_to_validate`.
-        - **Crucially, when validating `suggested_name_to_validate`:**
-            - **If `suggested_name_to_validate` is a partial name (e.g., "Raam", "Naraayanan", "V"):**
-                - You MUST use the `original_full_name` provided in the query to form a complete name for calculation.
-                - **Strategy:** Assume the `suggested_name_to_validate` is intended to be the *new first name*. Replace the first word of `original_full_name` with `suggested_name_to_validate` to form a `full_name_for_calculation`.
-                - Example: If `original_full_name` is "Raam Naraayanan V" and `suggested_name_to_validate` is "Rahul", then `full_name_for_calculation` becomes "Rahul Naraayanan V".
-                - If `suggested_name_to_validate` is a middle or last name, you must still use the `original_full_name` as context to form a complete name for calculation.
-            - **If `suggested_name_to_validate` is already a full name (contains multiple words, e.g., "Rahul Sharma"):**
-                - Use `suggested_name_to_validate` directly as `full_name_for_calculation`.
-            - **NEVER ask for the full name or birth date again.** These are provided in the `User Query`.
+        - The `User Query` will provide: `original_full_name`, `birth_date`, `desired_outcome`, `suggested_name_to_validate`, and `calculated_expression_number` (this will be provided by Python after direct tool call).
+        - **Your task here is ONLY to interpret the provided `calculated_expression_number` for `suggested_name_to_validate` against the `desired_outcome`.**
+        - **NEVER ask for the full name or birth date again.** These are provided in the `User Query`.
+        - **NEVER mention the internal workings of tools or that a calculation was performed by a tool.**
 
-        - **Step 1: Calculate Suggested Name Numerology.** Determine the Expression Number of the `full_name_for_calculation` using the `numerology_calculator` tool and the provided `birth_date`.
-        - **Step 2: Determine Status (Valid/Invalid) and Explanation.**
+        - **Step 1: Determine Status (Valid/Invalid) and Explanation.**
             - **Status:** Clearly state if the suggested name is **"Valid for your goals"** or **"Invalid for your goals"**.
             - **Explanation (Visually Clear & Concise):**
-                - **If Valid:** Provide a concise (1-2 sentences) explanation of *why* it is valid, focusing on the strong alignment of its numerological meaning with the desired outcome. Use positive, affirming language.
+                - **If Valid:** Provide a concise (1-2 sentences) explanation of *why* it is valid, focusing on the strong alignment of its numerological meaning (using `calculated_expression_number` and `NUMEROLOGY_INTERPRETATIONS`) with the desired outcome. Use positive, affirming language.
                 - **If Invalid:** Provide a concise (1-2 sentences) explanation of *why* it is invalid, focusing on the misalignment or lack of support for the desired outcome. Suggest what kind of energy/number *would* be more supportive without being redundant.
-            - **AVOID:** "The name X yields an Expression Number of Y." or "This number's energy aligns perfectly with your ambition." Get straight to the point of alignment/misalignment.
+            - **AVOID:** Repeating phrases or being overly verbose. Get straight to the point of alignment/misalignment.
 
         **Format your response clearly, using Markdown.**
         Start with a warm greeting acknowledging their proactive step.
         Then, present the validation result with clear headings and bolding for status. Use emojis for visual clarity.
         "**Suggested Name Validation for '[Suggested Name to Validate]':**"
-        "**Expression Number:** [Calculated Number]"
+        "**Expression Number:** [calculated_expression_number]"
         "**Status:** **[✅ Valid for your goals / ❌ Invalid for your goals]**"
         "**Explanation:** [Concise, direct explanation of alignment or misalignment with desired outcome.]"
 
@@ -286,54 +280,40 @@ AGENT_PROMPT = PromptTemplate(
     input_variables=["chat_history", "input", "agent_scratchpad"]
 )
 
-
-# --- Helper function to format chat history ---
-def format_chat_history(memory_instance):
-    """
-    Format the chat history from memory into a readable string format for the prompt.
-    """
-    try:
-        messages = memory_instance.chat_memory.messages
-        if not messages:
-            return "No previous conversation."
-
-        formatted_history = []
-        for message in messages:
-            if isinstance(message, HumanMessage):
-                formatted_history.append(f"User: {message.content}")
-            elif isinstance(message, AIMessage):
-                formatted_history.append(f"Assistant: {message.content}")
-
-        return "\n".join(formatted_history)
-    except Exception as e:
-        print(f"Error formatting chat history: {e}")
-        return "No previous conversation."
-
-
 # --- Function to Initialize LLM and Agent ---
 def initialize_llm_and_agent():
-    global llm, memory, agent_executor
+    global llm, memory, agent_executor, llm_direct
 
     if not GOOGLE_API_KEY:
         print("Error: GOOGLE_API_KEY not found in environment variables.")
         return False
 
     try:
-        # Initialize the LLM with tools
+        # LLM for agent (report generation)
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", # Using a powerful model for better name generation
+            model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
-            temperature=0.8, # Higher temperature for more creativity in name suggestions
+            temperature=0.8,
             top_p=0.9,
             top_k=40
         )
-        print("LLM (Gemini) initialized successfully.")
+        print("LLM (Gemini) for agent initialized successfully.")
+
+        # LLM for direct calls (validation interpretation)
+        llm_direct = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash", # Use the same model
+            google_api_key=GOOGLE_API_KEY,
+            temperature=0.7, # Slightly lower temp for more factual interpretation
+            top_p=0.9,
+            top_k=40
+        )
+        print("LLM (Gemini) for direct calls initialized successfully.")
 
         # Initialize conversational memory
         memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True, k=5)
         print("Conversational memory initialized.")
 
-        # Define the agent
+        # Define the agent (only for GENERATE_REPORT flow)
         agent = create_tool_calling_agent(
             llm=llm,
             tools=tools,
@@ -346,7 +326,7 @@ def initialize_llm_and_agent():
             tools=tools,
             verbose=True,
             memory=memory,
-            handle_parsing_errors=True # This helps the agent recover from malformed tool calls
+            handle_parsing_errors=True
         )
         print("Agent Executor initialized successfully.")
 
@@ -382,15 +362,80 @@ def chat():
 
     print(f"Received message: {user_message}")
 
-    if agent_executor is None:
-        print("Error: Agent Executor not initialized.")
+    if llm_direct is None or agent_executor is None:
+        print("Error: LLM or Agent Executor not initialized.")
         return jsonify({"error": "Chatbot not fully initialized. Please check backend logs."}), 500
 
     try:
-        # The agent executor will handle tool calls and response generation
-        result = agent_executor.invoke({"input": user_message})
+        if user_message.startswith("VALIDATE_NAME:"):
+            # --- Handle Name Validation Directly (Bypass Agent for Tool Call) ---
+            # Extract parameters from the user_message string
+            # Using regex for more robust parsing
+            match = re.search(r"Original Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\", Suggested Name to Validate: \"(.*?)\"", user_message)
+            if not match:
+                return jsonify({"error": "Invalid format for VALIDATE_NAME message."}), 400
 
-        bot_response = result.get("output", "I apologize, but I couldn't process your request at this moment. Please try again or rephrase your query.")
+            original_full_name, birth_date, desired_outcome, suggested_name_to_validate = match.groups()
+
+            # Logic to determine the full name for calculation based on suggested_name_to_validate
+            full_name_for_calculation = suggested_name_to_validate
+            original_name_parts = original_full_name.split()
+
+            # Check if the suggested name is a single word and original name has multiple parts
+            if len(suggested_name_to_validate.split()) == 1 and len(original_name_parts) > 1:
+                # Assume suggested name replaces the first name
+                full_name_for_calculation = suggested_name_to_validate + " " + " ".join(original_name_parts[1:])
+            elif len(suggested_name_to_validate.split()) == 1 and len(original_name_parts) == 1:
+                # If original name was single word and suggested is single word, just use suggested
+                full_name_for_calculation = suggested_name_to_validate
+            # If suggested_name_to_validate has multiple words, assume it's a full name already
+
+            print(f"Validating: '{suggested_name_to_validate}' in context of original full name: '{original_full_name}'")
+            print(f"Calculated name for tool: '{full_name_for_calculation}'")
+
+            # Directly call the numerology calculator tool function
+            tool_output_str = numerology_calculator_tool_func(full_name_for_calculation, birth_date)
+            print(f"Tool output for validation: {tool_output_str}")
+
+            # Parse the tool output to get the expression number
+            match_exp_num = re.search(r"Expression/Destiny Number is (\d+)", tool_output_str)
+            calculated_expression_number = None
+            if match_exp_num:
+                calculated_expression_number = int(match_exp_num.group(1))
+            else:
+                return jsonify({"error": f"Failed to extract expression number from tool output for validation: {tool_output_str}"}), 500
+
+            # Now, pass this pre-calculated result to the LLM for interpretation and formatting
+            validation_prompt = f"""
+            VALIDATE_NAME_RESULT_INTERPRETATION:
+            Original Full Name: "{original_full_name}"
+            Birth Date: "{birth_date}"
+            Desired Outcome: "{desired_outcome}"
+            Suggested Name to Validate: "{suggested_name_to_validate}"
+            Calculated Expression Number for '{full_name_for_calculation}': {calculated_expression_number}
+
+            Based on this information, provide a validation result for the suggested name.
+            Your task is ONLY to interpret the provided calculated number against the desired outcome.
+            NEVER ask for the full name or birth date again. These are provided in the context.
+            NEVER mention internal tools or that a calculation was performed by a tool.
+            Format your response clearly, using Markdown, with bolding for status and emojis:
+            "**Suggested Name Validation for '[Suggested Name to Validate]':**"
+            "**Expression Number:** {calculated_expression_number}"
+            "**Status:** **[✅ Valid for your goals / ❌ Invalid for your goals]**"
+            "**Explanation:** [Concise, direct explanation of alignment or misalignment with desired outcome.]"
+            Conclude with: "For a much detailed report, book your appointment using Sheelaa.com."
+            """
+            # Use llm_direct for this simple interpretation
+            llm_response = llm_direct.invoke(validation_prompt)
+            bot_response = llm_response.content
+
+        elif user_message.startswith("GENERATE_REPORT:"):
+            # --- Handle Report Generation via Agent ---
+            result = agent_executor.invoke({"input": user_message})
+            bot_response = result.get("output", "I apologize, but I couldn't process your request at this moment. Please try again or rephrase your query.")
+        else:
+            # Fallback for unexpected messages
+            bot_response = "I can either generate a personalized numerology report or validate a suggested name. Please start your query with 'GENERATE_REPORT:' or 'VALIDATE_NAME:' followed by your details."
 
         print(f"Sending response: {bot_response}")
         return jsonify({"response": bot_response}), 200
