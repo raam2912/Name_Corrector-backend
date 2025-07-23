@@ -64,8 +64,6 @@ cache = None
 limiter = None
 try:
     cache = Cache(app)
-    # FIX: Removed 'key_func=get_remote_address' from Limiter constructor.
-    # Flask-Limiter automatically uses get_remote_address when initialized with the app instance.
     limiter = Limiter(
         app,
         default_limits=["200 per day", "50 per hour"],
@@ -401,9 +399,11 @@ class MessageParser:
 
     @staticmethod
     def parse_report_request(message: str) -> Optional[ReportRequest]:
-        """Parse GENERATE_ADVANCED_REPORT message format."""
-        # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
-        pattern = r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?"
+        """
+        Parse GENERATE_ADVANCED_REPORT message format.
+        FIX: Adjusted regex to correctly match the prefix and handle potential newlines.
+        """
+        pattern = r"GENERATE_ADVANCED_REPORT:\s*My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*[\.\n]?"
         match = re.search(pattern, message)
         
         if not match:
@@ -748,12 +748,12 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
 def get_mitigation_strategies(expression: int) -> List[str]:
     """Get strategies to mitigate challenges"""
     strategies = {
-        1: ["Practice patience", "Develop listening skills", "Embrace collaboration"],
+        1: ["Impatience", "Domination tendency", "Isolation"], # These were challenges, not strategies. Corrected below.
         2: ["Build confidence", "Practice decision-making", "Set boundaries"],
         3: ["Focus on priorities", "Develop discipline", "Deepen relationships"],
         4: ["Embrace flexibility", "Take breaks", "Express creativity"],
         5: ["Practice commitment", "Develop grounding habits", "Plan ahead"],
-        6: ["Over-responsibility", "Interference", "Martyrdom"],
+        6: ["Over-responsibility", "Interference", "Martyrdom"], # These were challenges, not strategies. Corrected below.
         7: ["Engage socially", "Express emotions", "Apply knowledge practically"],
         8: ["Balance work-life", "Nurture relationships", "Practice generosity"],
         9: ["Set realistic expectations", "Practice self-compassion", "Take breaks"],
@@ -761,6 +761,9 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         22: ["Delegate tasks", "Prioritize self-care", "Break down large goals"],
         33: ["Establish strong boundaries", "Practice self-love", "Seek support"]
     }
+    # Corrected strategies
+    strategies[1] = ["Practice patience and listening", "Delegate tasks", "Cultivate empathy"]
+    strategies[6] = ["Set healthy boundaries", "Prioritize self-care", "Avoid over-commitment"]
     return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
 
 def get_growth_opportunities(expression: int) -> List[str]:
@@ -945,7 +948,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story = []
 
     # Title
-    Story.append(Paragraph("🌟 Your Personalized Numerology Report 🌟", styles['TitleStyle']))
+    Story.append(Paragraph("🌟 Your Personalized Numerology Report �", styles['TitleStyle']))
     Story.append(Spacer(1, 0.2 * inch))
 
     # Introduction (parsed from report_data.get('intro_response'))
@@ -1061,16 +1064,16 @@ def run_async_in_sync(coroutine):
 
     if loop and loop.is_running():
         # If a loop is already running (e.g., in a different thread of Gunicorn worker),
-        # use run_coroutine_threadsafe or a similar approach.
-        # For simplicity and robustness across various WSGI setups, we'll create a new loop.
-        # This might not be the most performant for very high concurrency, but it's reliable.
+        # create a new loop for this specific task.
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
         try:
             return new_loop.run_until_complete(coroutine)
         finally:
             new_loop.close()
-            asyncio.set_event_loop(loop) # Restore original loop if it existed
+            # It's good practice to restore the previous loop if it existed
+            if loop:
+                asyncio.set_event_loop(loop)
     else:
         # No running loop, safe to use asyncio.run
         return asyncio.run(coroutine)
@@ -1156,7 +1159,6 @@ def chat(): # Removed 'async' keyword here
             messages = [system_message, human_message]
             
             # Get response from creative LLM for the report
-            # FIX: Use the synchronous helper to run the async LLM call
             report_response = run_async_in_sync(llm_manager.creative_llm.invoke(messages))
             
             # Store the full report data, including the LLM's response, for PDF generation
@@ -1208,7 +1210,6 @@ def chat(): # Removed 'async' keyword here
             messages = [system_message, human_message]
             
             # Get response from analytical LLM for validation
-            # FIX: Use the synchronous helper to run the async LLM call
             validation_response = run_async_in_sync(llm_manager.analytical_llm.invoke(messages))
             
             return jsonify({"response": validation_response.content}), 200
@@ -1217,23 +1218,23 @@ def chat(): # Removed 'async' keyword here
             # Fallback for general chat messages
             logger.info(f"Processing general chat message: {message}")
             
-            # Add user message to memory
-            llm_manager.memory.chat_history.add_user_message(message)
+            # FIX: Corrected memory usage - directly call add_user_message on memory object
+            llm_manager.memory.add_user_message(message)
             
             # Define a simple prompt for general chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content="You are Sheelaa's Elite AI Numerology Assistant. You provide general information and guidance about numerology. Do not attempt to calculate numbers or provide personalized reports unless explicitly asked with specific details (full name, birth date). Keep responses concise and helpful."),
-                llm_manager.memory.chat_history.messages[-1] # Only include the last message for context to avoid excessive token usage
+                # FIX: Corrected memory usage - directly access messages on memory object
+                llm_manager.memory.messages[-1] # Only include the last message for context to avoid excessive token usage
             ])
             
             chain = prompt | llm_manager.llm
             
             # Get response from LLM for general chat
-            # FIX: Use the synchronous helper to run the async LLM call
             ai_response = run_async_in_sync(chain.invoke({"input": message}))
             
-            # Add AI response to memory
-            llm_manager.memory.chat_history.add_ai_message(ai_response.content)
+            # FIX: Corrected memory usage - directly call add_ai_message on memory object
+            llm_manager.memory.add_ai_message(ai_response.content)
             
             return jsonify({"response": ai_response.content}), 200
 
