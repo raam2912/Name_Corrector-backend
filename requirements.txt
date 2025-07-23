@@ -4,9 +4,11 @@ Flask-Limiter
 Flask-Caching
 psutil
 python-dotenv
-langchain-google-genai
-langchain-community
+
 gunicorn 
-pydantic==1.10.13 
+
 
 reportlab 
+langchain==0.1.16             # Pinning to a known stable version compatible with Pydantic 1.x
+langchain-google-genai==0.0.12 # Pinning to a known stable version compatible with Pydantic 1.x
+pydantic==1.10.13  
