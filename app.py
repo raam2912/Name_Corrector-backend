@@ -838,7 +838,7 @@ def generate_advanced_report(user_message: str) -> tuple:
     try:
         # Parse the message to extract user details
         report_data_match = re.search(
-                   r"My full name is \"(.*?)\" and my birth date is \"(.*?)\"\. My current Name \(Expression\) Number is (\d+) and Life Path Number is (\d+)\. I desire the following positive outcome in my life: \"(.*?)\"\.?",
+             r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
             user_message
         )
         
