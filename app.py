@@ -396,7 +396,8 @@ class MessageParser:
     @staticmethod
     def parse_report_request(message: str) -> Optional[ReportRequest]:
         """Parse GENERATE_ADVANCED_REPORT message format."""
-        pattern = r"My full name is \"(.*?)\" and my birth date is \"(.*?)\"\. My current Name \(Expression\) Number is (\d+) and Life Path Number is (\d+)\. I desire the following positive outcome in my life: \"(.*?)\"\."
+        # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
+        pattern = r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?"
         match = re.search(pattern, message)
         
         if not match:
@@ -837,8 +838,9 @@ def generate_advanced_report(user_message: str) -> tuple:
     """Generate advanced numerology report with comprehensive analysis"""
     try:
         # Parse the message to extract user details
+        # Definitive fix for regex: made spaces/punctuation more flexible and final period optional
         report_data_match = re.search(
-             r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
+            r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
             user_message
         )
         
@@ -938,7 +940,7 @@ def generate_advanced_report(user_message: str) -> tuple:
 """
         
         # Calculate and explain each suggested name
-        for suggested_name in suggested_names[:5]:  # OPTIMIZATION: Reduced to 5 suggestions
+        for suggested_name in suggested_names[:3]:  # OPTIMIZATION: Further reduced to 3 suggestions
             try:
                 calc = AdvancedNumerologyCalculator()
                 new_expression, details = calc.calculate_expression_number(suggested_name)
@@ -966,6 +968,12 @@ def generate_advanced_report(user_message: str) -> tuple:
                 logger.error(f"Error processing name {suggested_name}: {e}")
                 continue
         
+        # Add a note about limited suggestions for free tier
+        if len(suggested_names) > 3:
+            full_report += """
+*Note: Only the top 3 suggestions are detailed here to optimize processing for the free tier. For more personalized options, consider a full consultation.*
+"""
+
         # Add timing recommendations if available
         if 'timing_recommendations' in profile:
             timing = profile['timing_recommendations']
