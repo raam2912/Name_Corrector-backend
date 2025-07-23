@@ -65,14 +65,19 @@ cache = None
 limiter = None
 try:
     cache = Cache(app)
+    # FIX: Removed 'key_func=get_remote_address' from Limiter constructor.
+    # Flask-Limiter automatically uses get_remote_address when initialized with the app instance.
     limiter = Limiter(
-    app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri=os.getenv('REDIS_URL', 'memory://')
-)
+        app,
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri=os.getenv('REDIS_URL', 'memory://')
+    )
+    
     logger.info("Flask-Caching and Flask-Limiter initialized successfully.")
 except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
+    # The conditional decorators (@limiter.limit(...) if limiter else lambda f: f)
+    # already handle the case where 'limiter' might be None, so the app won't crash.
 
 
 # CORS Configuration
@@ -1048,7 +1053,7 @@ def home():
     return "Hello from Flask!"
 
 @app.route('/chat', methods=['POST'])
-@limiter.limit("30 per minute") # Apply rate limit
+@rate_limited("30 per minute") # Apply rate limit using the custom decorator
 @performance_monitor
 async def chat():
     """Handles chat messages and advanced report/validation requests."""
@@ -1214,7 +1219,7 @@ async def chat():
         return jsonify({"error": "An internal server error occurred. Please try again later."}), 500
 
 @app.route('/generate_pdf_report', methods=['POST'])
-@limiter.limit("5 per hour") # Limit PDF generation due to resource intensity
+@rate_limited("5 per hour") # Limit PDF generation due to resource intensity
 @performance_monitor
 def generate_pdf_report_endpoint():
     """Endpoint to generate and return a PDF numerology report."""
@@ -1311,18 +1316,14 @@ def initialize_application():
     logger.info("Application initialized successfully")
     return True
 
-# Initialize before first request
-@app.before_first_request
-def before_first_request():
-    initialize_application()
+# FIX: Call initialization directly when the module is loaded.
+# This ensures it runs once when Gunicorn loads the app.
+initialize_application()
 
 # Development server initialization
 if __name__ == "__main__":
-    # Initialize for development
-    success = initialize_application()
-    if not success:
-        logger.error("Failed to initialize application components")
-        sys.exit(1) # Exit if initialization fails in dev mode
+    # When run directly (e.g., python app.py), initialize_application()
+    # will have already been called once above. So, no need to call it again here.
     
     logger.info("Starting development server...")
     app.run(
