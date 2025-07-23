@@ -4,47 +4,33 @@ import os
 from dotenv import load_dotenv
 import datetime
 import re
+import json
 
-# Langchain imports
+# Langchain imports (mostly for ChatGoogleGenerativeAI, others are less relevant now)
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import Chroma # Not strictly used in this specific flow, but common for LangChain setups
-from langchain_community.document_loaders import TextLoader # Not strictly used in this specific flow
-from langchain.text_splitter import CharacterTextSplitter # Not strictly used in this specific flow
-from langchain_google_genai import GoogleGenerativeAIEmbeddings # Not strictly used in this specific flow
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.agents import AgentExecutor, create_tool_calling_agent, Tool
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 # Load environment variables from .env file (for local testing)
-# On Render, environment variables are set directly in the Render dashboard.
 load_dotenv()
 
 app = Flask(__name__)
 
 # --- CORS Configuration ---
-# IMPORTANT: This allows requests from your React frontend URL.
-# Replace 'https://your-github-pages-username.github.io' with your actual GitHub Pages domain.
-# For local testing, add 'http://localhost:3000' if your React app runs there.
 CORS(app, resources={r"/*": {"origins": [
     "https://namecorrectionsheelaa.netlify.app", # Your Netlify frontend domain
     "http://localhost:3000" # For local development
 ]}})
 
 
-# --- Global Variables for LLM, Vector Store, Memory, and Agent ---
-llm = None
-memory = None
-agent_executor = None # Agent will now only be used for GENERATE_REPORT
-llm_direct = None # New LLM instance for direct calls (e.g., validation interpretation)
+# --- Global Variables for LLM and Memory ---
+llm = None # This LLM will be used for all direct calls
+memory = None # Still useful for maintaining conversation history
 
-# On Render, GOOGLE_API_KEY will be pulled from environment variables.
-# For local testing, it comes from .env.
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# --- Numerology Calculator Tool Implementation ---
-# This is the same logic as in the frontend, but callable by the LLM on the backend.
+# --- Numerology Calculator Core Logic ---
 NUMEROLOGY_MAP = {
     'A': 1, 'J': 1, 'S': 1,
     'B': 2, 'K': 2, 'T': 2,
@@ -57,7 +43,7 @@ NUMEROLOGY_MAP = {
     'I': 9, 'R': 9
 }
 
-# Interpretations for the LLM to use when explaining numbers
+# Comprehensive Interpretations for the LLM to use
 NUMEROLOGY_INTERPRETATIONS = {
     1: "Leadership, independence, new beginnings, drive, and ambition. It empowers you to forge your own path and initiate new ventures with confidence. Number 1 vibrates with pioneering spirit, self-reliance, and the courage to stand alone. It signifies a strong will, determination, and the ability to lead. Individuals with a strong 1 influence are often innovators, driven to achieve and create their own destiny. They thrive in environments where they can take charge and express their individuality.",
     2: "Cooperation, balance, diplomacy, harmony, and partnership. It fosters strong relationships, intuition, and a gentle, supportive nature. Number 2 is the peacemaker, symbolizing duality, grace, and tact. It represents sensitivity, empathy, and the ability to work well with others. Those influenced by 2 are often mediators, seeking equilibrium and understanding. They excel in collaborative efforts and bring a calming presence to any situation.",
@@ -104,335 +90,248 @@ def calculate_life_path_number(birth_date_str: str) -> int:
     total = month + day + year
     return reduce_number(total, True)
 
-def numerology_calculator_tool_func(full_name: str, birth_date: str) -> str:
+# This function is now a direct Python utility
+def get_numerology_details(full_name: str, birth_date: str) -> dict:
     """
-    Calculates the Expression/Destiny Number from a full name and the Life Path Number from a birth date.
-    This tool is useful for understanding a person's core numerological profile.
-    It requires two arguments:
-    - `full_name`: The person's full name (string, e.g., "John Doe Smith").
-    - `birth_date`: The person's birth date in YYYY-MM-DD format (string, e.g., "1990-01-15").
-    The tool will return a string detailing the calculated numerology numbers or an error message.
-    Use this tool when the user asks about their numerology, or asks for a name correction based on numerology.
+    Calculates Expression/Destiny and Life Path Numbers.
+    Returns a dictionary with details or raises ValueError.
     """
-    print(f"\n--- NUMEROLOGY CALCULATION REQUEST ---")
-    print(f"Name: {full_name}")
-    print(f"Birth Date: {birth_date}")
-    print(f"--------------------------------------\n")
-
     if not full_name or not birth_date:
-        return "Please provide both the full name and birth date (YYYY-MM-DD) to calculate numerology."
+        raise ValueError("Both full name and birth date are required.")
+    
+    expression_number = calculate_name_number(full_name)
+    life_path_number = calculate_life_path_number(birth_date)
+    
+    return {
+        "full_name": full_name,
+        "birth_date": birth_date,
+        "expression_number": expression_number,
+        "life_path_number": life_path_number
+    }
 
-    try:
-        expression_number = calculate_name_number(full_name)
-        life_path_number = calculate_life_path_number(birth_date)
-        return (f"For the name '{full_name}', the Expression/Destiny Number is {expression_number}. "
-                f"For the birth date '{birth_date}', the Life Path Number is {life_path_number}.")
-    except ValueError as e:
-        return f"Error calculating numerology: {e}. Please ensure the date is in YYYY-MM-DD format."
-    except Exception as e:
-        return f"An unexpected error occurred during numerology calculation: {e}"
 
-
-# --- Define Langchain Tools ---
-# Tools are defined but will only be passed to the agent_executor, not used directly by llm_direct
-tools = [
-    Tool(
-        name="numerology_calculator",
-        func=numerology_calculator_tool_func, # Use the defined function
-        description="""
-        Calculates the Expression/Destiny Number from a full name and the Life Path Number from a birth date.
-        This tool is useful for understanding a person's core numerological profile.
-        It requires two arguments:
-        - `full_name`: The person's full name (string, e.g., "John Doe Smith").
-        - `birth_date`: The person's birth date in YYYY-MM-DD format (string, e.g., "1990-01-15").
-        The tool will return a string indicating the calculated Expression Number and Life Path Number.
-        Use this tool when the user asks about their numerology, or asks for a name correction based on numerology.
-        """
-    )
-]
-
-# --- Agent Prompt Template ---
-# This prompt is designed to guide the LLM in name correction and validation logic.
-AGENT_PROMPT_TEMPLATE = """
-You are Sheelaa's Elite AI Assistant - a warm, intuitive spiritual guide with 45+ million lives transformed.
-Your primary role is to provide comprehensive numerology name corrections and insightful name validations.
-Respond with genuine warmth, ancient wisdom, and focused clarity.
-
-**YOUR ESSENCE:**
-- **Warmly Intuitive:** You sense deeper meanings, respond with empathy.
-- **Confidently Wise:** You share knowledge from transforming 45+ million lives.
-- **Genuinely Caring:** You ask one thoughtful follow-up that opens deeper discovery.
-- **Encouragingly Authentic:** You celebrate progress, guide gently toward transformation.
-
-**STRICT ADHERENCE TO CONTEXT & TOOLS:**
-Your responses MUST be derived EXCLUSIVELY from the output of the tools you use and the provided context.
-NEVER introduce external information, personal opinions, assumptions, or fabricated details.
-NEVER mention the internal workings of your tools (e.g., "the numerology_calculator tool requires...", "I need access to a functional tool..."). Present a seamless, wise response.
-
-**Chat History:** {chat_history}
-**Agent Scratchpad:**
-{agent_scratchpad} # This is where the agent writes its thoughts and and tool calls
-
-**User Query: {input}**
-
----
-
-**ENHANCED RESPONSE PROTOCOL:**
-
-**1. INTENT RECOGNITION:**
-    - The `User Query` will start with a specific keyword to indicate intent:
-        - `GENERATE_REPORT:` for initial name correction requests.
-        - `VALIDATE_NAME:` for suggested name validation requests.
-
-**2. LEAD WITH WARMTH & UNDERSTANDING:**
-    - Acknowledge the person's situation with genuine care and empathy.
-
-**3. PROVIDE COMPREHENSIVE, CONTEXTUAL ANSWERS:**
-
-    **A) For Name Correction Requests (Query starts with `GENERATE_REPORT:`):**
-        - The `User Query` will contain the full name, birth date, current Expression Number, and Life Path Number, and the desired outcome.
-        - **Step 1: Get Current Numerology.** Acknowledge the user's current numerology.
-        - **Step 2: Interpret Desired Outcome.** Based on the user's "desired outcome" (e.g., "more success", "better relationships", "inner peace"), infer the most suitable target numerology number(s) for their name.
-            - *Guidance for LLM (Numerology Meanings - use these extensively):*
-                - **1 (Leadership, New Beginnings, Drive):** For success, ambition, starting new ventures.
-                - **2 (Cooperation, Balance, Harmony):** For relationships, diplomacy, peace.
-                - **3 (Creativity, Expression, Joy):** For communication, artistic pursuits, optimism.
-                - **4 (Stability, Structure, Hard Work):** For security, building foundations, discipline.
-                - **5 (Freedom, Change, Adventure):** For adaptability, travel, dynamic life.
-                - **6 (Responsibility, Nurturing, Love):** For family, service, community, healing.
-                - **7 (Spirituality, Introspection, Wisdom):** For inner growth, analysis, research.
-                - **8 (Abundance, Power, Material Success):** For financial gain, business acumen, leadership.
-                - **9 (Humanitarianism, Compassion, Completion):** For selfless service, ending cycles, universal love.
-                - **11 (Master Intuition):** For spiritual insight, inspiring others (often for 2-related goals).
-                - **22 (Master Builder):** For large-scale manifestation, practical idealism (often for 4-related goals).
-                - **33 (Master Healer/Teacher):** For compassionate service, universal love (often for 6-related goals).
-        - **Step 3: Brainstorm Sensible Name Variations.** Generate **at least 6, but ideally 8-10,** new, acceptable, and usable full name suggestions (e.g., subtle spelling changes, adding or changing a middle name, or suggesting an entirely new first name if appropriate and common).
-            - **Crucial:** For each brainstormed name, you must internally determine its Expression/Destiny Number by applying the numerology calculation rules. You can simulate calling the `numerology_calculator` tool with the new name to verify its numerology.
-            - **Focus on names that sound natural and are culturally appropriate.** Avoid random letter combinations or nonsensical spellings.
-        - **Step 4: Select and Explain Best Names (MUCH MORE DESCRIPTIVE & MEANINGFUL - aim for ~5000 words equivalent detail for the entire report).** Present the 6-10 best name suggestions. For each suggestion:
-            - State the suggested name clearly.
-            - State its calculated Expression/Destiny Number.
-            - **Provide a rich, detailed, and meaningful explanation (3-5 sentences, or even a small paragraph) of *how* this new number's energy profoundly aligns with the user's desired outcome, drawing deeply from the comprehensive numerological interpretations provided. Elaborate on the positive, transformative impact on various life aspects (e.g., career, relationships, personal growth, spiritual journey, emotional well-being). Connect the numerology directly to their aspirations.**
-            - Explain why it's a beneficial, empowering change in a compelling, encouraging, and wise tone.
-
-        **Format your response clearly, using Markdown.**
-        Start with a warm, empathetic, and expansive opening, acknowledging their unique journey.
-        Then, present the current numerology and its detailed explanation.
-        Follow with a section for "Suggested Name Corrections" with a clear, inspiring heading.
-        Each suggestion should be a bullet point or numbered list item.
-        For each suggestion, use the format:
-        **Suggested Name:** [The new name]
-        **Expression Number:** [Calculated number]
-        **Explanation:** [Detailed, descriptive, and meaningful explanation of alignment with desired outcome and profound impact]
-
-        ... and so on for at least 6-10 suggestions.
-
-        **Finally, conclude your response with this exact sentence:**
-        "For a much detailed report, book your appointment using Sheelaa.com."
-
-    **B) For Suggested Name Validation Requests (Query starts with `VALIDATE_NAME:`):**
-        - The `User Query` will provide: `original_full_name`, `birth_date`, `desired_outcome`, `suggested_name_to_validate`, and `calculated_expression_number` (this will be provided by Python after direct tool call).
-        - **Your task here is ONLY to interpret the provided `calculated_expression_number` for `suggested_name_to_validate` against the `desired_outcome`.**
-        - **NEVER ask for the full name or birth date again.** These are provided in the `User Query`.
-        - **NEVER mention the internal workings of tools or that a calculation was performed by a tool.**
-
-        - **Step 1: Determine Status (Valid/Invalid) and Explanation.**
-            - **Status:** Clearly state if the suggested name is **"Valid for your goals"** or **"Invalid for your goals"**.
-            - **Explanation (Visually Clear & Concise):**
-                - **If Valid:** Provide a concise (1-2 sentences) explanation of *why* it is valid, focusing on the strong alignment of its numerological meaning (using `calculated_expression_number` and `NUMEROLOGY_INTERPRETATIONS`) with the desired outcome. Use positive, affirming language.
-                - **If Invalid:** Provide a concise (1-2 sentences) explanation of *why* it is invalid, focusing on the misalignment or lack of support for the desired outcome. Suggest what kind of energy/number *would* be more supportive without being redundant.
-            - **AVOID:** Repeating phrases or being overly verbose. Get straight to the point of alignment/misalignment.
-
-        **Format your response clearly, using Markdown.**
-        Start with a warm greeting acknowledging their proactive step.
-        Then, present the validation result with clear headings and bolding for status. Use emojis for visual clarity.
-        "**Suggested Name Validation for '[Suggested Name to Validate]':**"
-        "**Expression Number:** [calculated_expression_number]"
-        "**Status:** **[✅ Valid for your goals / ❌ Invalid for your goals]**"
-        "**Explanation:** [Concise, direct explanation of alignment or misalignment with desired outcome.]"
-
-        **Conclude this response with the same booking message:**
-        "For a much detailed report, book your appointment using Sheelaa.com."
-
-**4. ASK MEANINGFUL FOLLOW-UPS (if more info is needed for tool or conversation):**
-    - If any details are missing from the user's initial request for name correction (e.g., full name, birth date, or desired outcome), you MUST ask for them clearly.
-    - If a validation request is incomplete, ask for the missing `suggested_name_to_validate` or other context.
-
-**5. BRAND VOICE - SHEELAA'S WISDOM:**
-    - Speak with the authority of someone who has guided millions.
-    - Use language that reflects spiritual wisdom: "alignment," "harmony," "life path," "divine timing," "vibrational energy," "destiny's blueprint."
-    - Share the confidence that comes from 99% client satisfaction.
-    - Balance ancient wisdom with practical modern guidance.
-
-**6. IMPACT-FOCUSED WRITING:**
-    - Lead with transformation, not process.
-    - Use powerful, decisive language: "reveals," "unlocks," "transforms," "illuminates," "empowers," "manifests," "harmonizes."
-    - Focus on the end result they'll experience.
-    - Be specific about what they'll discover or achieve.
-    - Cut filler words and get straight to the value.
-
-Remember: Create connection and clarity in fewer words. Every sentence should move them closer to transformation.
-"""
-
-# Create a PromptTemplate instance for the agent
-AGENT_PROMPT = PromptTemplate(
-    template=AGENT_PROMPT_TEMPLATE,
-    input_variables=["chat_history", "input", "agent_scratchpad"]
-)
-
-# --- Function to Initialize LLM and Agent ---
-def initialize_llm_and_agent():
-    global llm, memory, agent_executor, llm_direct
+# --- Function to Initialize LLM ---
+def initialize_llm():
+    global llm, memory
 
     if not GOOGLE_API_KEY:
         print("Error: GOOGLE_API_KEY not found in environment variables.")
         return False
 
     try:
-        # LLM for agent (report generation)
         llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
-            temperature=0.8,
+            temperature=0.7, # Balanced for creativity and factual interpretation
             top_p=0.9,
             top_k=40
         )
-        print("LLM (Gemini) for agent initialized successfully.")
+        print("LLM (Gemini) initialized successfully.")
 
-        # LLM for direct calls (validation interpretation)
-        llm_direct = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", # Use the same model
-            google_api_key=GOOGLE_API_KEY,
-            temperature=0.7, # Slightly lower temp for more factual interpretation
-            top_p=0.9,
-            top_k=40
-        )
-        print("LLM (Gemini) for direct calls initialized successfully.")
-
-        # Initialize conversational memory
         memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True, k=5)
         print("Conversational memory initialized.")
-
-        # Define the agent (only for GENERATE_REPORT flow)
-        agent = create_tool_calling_agent(
-            llm=llm,
-            tools=tools,
-            prompt=AGENT_PROMPT
-        )
-
-        # Create the AgentExecutor
-        agent_executor = AgentExecutor(
-            agent=agent,
-            tools=tools,
-            verbose=True,
-            memory=memory,
-            handle_parsing_errors=True
-        )
-        print("Agent Executor initialized successfully.")
 
         return True
 
     except Exception as e:
-        print(f"Error initializing LLM and agent: {e}")
+        print(f"Error initializing LLM: {e}")
         return False
 
-# Initialize LLM and agent on app startup
-if not initialize_llm_and_agent():
-    print("Failed to initialize LLM and agent on startup. API will not function correctly.")
-
-# --- Health Check Endpoint ---
-@app.route("/health", methods=["GET"])
-def health_check():
-    """
-    Endpoint to check the health and status of the backend service.
-    """
-    return jsonify({"status": "ok", "message": "Sheelaa Chatbot Backend is running!"}), 200
+# Initialize LLM on app startup
+if not initialize_llm():
+    print("Failed to initialize LLM on startup. API will not function correctly.")
 
 # --- Chat Endpoint ---
 @app.route("/chat", methods=["POST"])
 def chat():
-    """
-    Endpoint to handle chat messages from the frontend.
-    Receives a message, processes it using the LLM and agent,
-    and returns a response.
-    """
     user_message = request.json.get("message")
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
 
     print(f"Received message: {user_message}")
 
-    if llm_direct is None or agent_executor is None:
-        print("Error: LLM or Agent Executor not initialized.")
+    if llm is None:
+        print("Error: LLM not initialized.")
         return jsonify({"error": "Chatbot not fully initialized. Please check backend logs."}), 500
 
     try:
-        if user_message.startswith("VALIDATE_NAME:"):
-            # --- Handle Name Validation Directly (Bypass Agent for Tool Call) ---
-            # Extract parameters from the user_message string
-            # Using regex for more robust parsing
-            match = re.search(r"Original Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\", Suggested Name to Validate: \"(.*?)\"", user_message)
-            if not match:
+        if user_message.startswith("GENERATE_REPORT:"):
+            # --- Handle Report Generation ---
+            # Parse initial user details
+            report_data_match = re.search(r"My full name is \"(.*?)\" and my birth date is \"(.*?)\"\. My current Name \(Expression\) Number is (\d+) and Life Path Number is (\d+)\. I desire the following positive outcome in my life: \"(.*?)\"\.", user_message)
+            
+            if not report_data_match:
+                return jsonify({"error": "Invalid format for GENERATE_REPORT message."}), 400
+            
+            original_full_name, birth_date, current_exp_num_str, current_life_path_num_str, desired_outcome = report_data_match.groups()
+            current_exp_num = int(current_exp_num_str)
+            current_life_path_num = int(current_life_path_num_str)
+
+            # --- Step 1: Generate Initial Report Introduction ---
+            intro_prompt = f"""
+            You are Sheelaa's Elite AI Assistant.
+            Given the user's details:
+            Full Name: "{original_full_name}"
+            Birth Date: "{birth_date}"
+            Current Expression Number: {current_exp_num}
+            Current Life Path Number: {current_life_path_num}
+            Desired Outcome: "{desired_outcome}"
+
+            Write a warm, empathetic, and expansive opening for their personalized numerology report.
+            Acknowledge their unique journey and current numerological profile.
+            Explain the combined energy of their current Expression ({current_exp_num}) and Life Path ({current_life_path_num}) numbers, drawing from the following comprehensive interpretations:
+            {json.dumps(NUMEROLOGY_INTERPRETATIONS, indent=2)}
+            Conclude this introduction by setting the stage for name corrections to amplify their aspirations.
+            Ensure the tone is professional, wise, and deeply caring. Avoid any mention of tools or calculation processes.
+            Aim for a detailed introduction, equivalent to several paragraphs.
+            """
+            intro_response = llm.invoke(intro_prompt).content
+            full_report_content = intro_response + "\n\n"
+
+            full_report_content += "## ✨ Suggested Name Corrections:\n\n"
+
+            # --- Step 2: Brainstorm Names (LLM structured output) ---
+            # Request 8-10 names from LLM, then calculate their numbers in Python
+            name_brainstorm_prompt = f"""
+            You are Sheelaa's Elite AI Assistant.
+            Given the user's details:
+            Original Full Name: "{original_full_name}"
+            Birth Date: "{birth_date}"
+            Desired Outcome: "{desired_outcome}"
+            Numerology Interpretations: {json.dumps(NUMEROLOGY_INTERPRETATIONS, indent=2)}
+
+            Your task is to brainstorm 8-10 sensible, usable, and culturally appropriate full name suggestions.
+            These should be variations of the original name or new first/middle names that sound natural.
+            Output your suggestions as a JSON array of strings (full names), like this:
+            ```json
+            [
+              "New Name One",
+              "New Name Two",
+              "New Name Three"
+            ]
+            ```
+            Ensure the JSON is valid and complete.
+            """
+            
+            llm_for_names = ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                google_api_key=GOOGLE_API_KEY,
+                temperature=0.9, # Higher temperature for more creative names
+                top_p=0.9,
+                top_k=40
+            )
+
+            name_suggestions_raw = llm_for_names.invoke(name_brainstorm_prompt).content
+            
+            # Extract JSON from potential markdown code block
+            name_suggestions_json_match = re.search(r"```json\n(.*?)```", name_suggestions_raw, re.DOTALL)
+            if name_suggestions_json_match:
+                suggested_names_list = json.loads(name_suggestions_json_match.group(1))
+            else:
+                # Fallback if LLM doesn't wrap in ```json
+                suggested_names_list = json.loads(name_suggestions_raw) 
+
+            # --- Step 3: Calculate Actual Expression Numbers and Generate Explanations ---
+            for suggested_name_full in suggested_names_list:
+                try:
+                    calculated_details = get_numerology_details(suggested_name_full, birth_date)
+                    actual_expression_number = calculated_details["expression_number"]
+                except ValueError as e:
+                    print(f"Error calculating numerology for {suggested_name_full}: {e}")
+                    actual_expression_number = "N/A" # Should not happen with correct input
+
+                explanation_prompt = f"""
+                You are Sheelaa's Elite AI Assistant.
+                User's Original Full Name: "{original_full_name}"
+                User's Birth Date: "{birth_date}"
+                User's Desired Outcome: "{desired_outcome}"
+                Suggested Name: "{suggested_name_full}"
+                Calculated Expression Number for Suggested Name: {actual_expression_number}
+                Comprehensive Numerology Interpretations: {json.dumps(NUMEROLOGY_INTERPRETATIONS, indent=2)}
+
+                Write a rich, detailed, and meaningful explanation (aim for a paragraph of 3-5 sentences) for the suggested name.
+                Explain *how* its calculated Expression Number ({actual_expression_number}) profoundly aligns with the user's desired outcome ("{desired_outcome}").
+                Elaborate on the positive, transformative impact on various life aspects (e.g., career, relationships, personal growth, spiritual journey, emotional well-being) by drawing deeply from the provided interpretations.
+                Explain why it's a beneficial, empowering change in a compelling, encouraging, and wise tone.
+                Ensure the explanation is unique and does not repeat information from other suggestions.
+                Avoid any mention of tools or calculation processes.
+                """
+                
+                explanation_response = llm.invoke(explanation_prompt).content
+                
+                full_report_content += f"""
+**Suggested Name:** {suggested_name_full}
+**Expression Number:** {actual_expression_number}
+**Explanation:** {explanation_response}
+
+"""
+            # Final conclusion for the report
+            full_report_content += "For a much detailed report, book your appointment using Sheelaa.com."
+
+
+            bot_response = full_report_content
+
+        elif user_message.startswith("VALIDATE_NAME:"):
+            # --- Handle Name Validation ---
+            # Robust parsing of the VALIDATE_NAME message
+            validation_data_match = re.search(r"Original Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\", Suggested Name to Validate: \"(.*?)\"", user_message)
+            
+            if not validation_data_match:
                 return jsonify({"error": "Invalid format for VALIDATE_NAME message."}), 400
 
-            original_full_name, birth_date, desired_outcome, suggested_name_to_validate = match.groups()
+            original_full_name, birth_date, desired_outcome, suggested_name_to_validate = validation_data_match.groups()
 
             # Logic to determine the full name for calculation based on suggested_name_to_validate
-            full_name_for_calculation = suggested_name_to_validate
+            full_name_for_calculation = suggested_name_to_validate.strip()
             original_name_parts = original_full_name.split()
 
-            # Check if the suggested name is a single word and original name has multiple parts
-            if len(suggested_name_to_validate.split()) == 1 and len(original_name_parts) > 1:
-                # Assume suggested name replaces the first name
-                full_name_for_calculation = suggested_name_to_validate + " " + " ".join(original_name_parts[1:])
-            elif len(suggested_name_to_validate.split()) == 1 and len(original_name_parts) == 1:
+            # If suggested name is a single word and original name has multiple parts, assume it's a new first name
+            if len(full_name_for_calculation.split()) == 1 and len(original_name_parts) > 1:
+                # Replace the first name with the suggested name, preserving middle/last names
+                full_name_for_calculation = full_name_for_calculation + " " + " ".join(original_name_parts[1:])
+            elif len(full_name_for_calculation.split()) == 1 and len(original_name_parts) == 1:
                 # If original name was single word and suggested is single word, just use suggested
-                full_name_for_calculation = suggested_name_to_validate
+                pass # full_name_for_calculation is already suggested_name_to_validate
             # If suggested_name_to_validate has multiple words, assume it's a full name already
 
             print(f"Validating: '{suggested_name_to_validate}' in context of original full name: '{original_full_name}'")
             print(f"Calculated name for tool: '{full_name_for_calculation}'")
 
-            # Directly call the numerology calculator tool function
-            tool_output_str = numerology_calculator_tool_func(full_name_for_calculation, birth_date)
-            print(f"Tool output for validation: {tool_output_str}")
-
-            # Parse the tool output to get the expression number
-            match_exp_num = re.search(r"Expression/Destiny Number is (\d+)", tool_output_str)
-            calculated_expression_number = None
-            if match_exp_num:
-                calculated_expression_number = int(match_exp_num.group(1))
-            else:
-                return jsonify({"error": f"Failed to extract expression number from tool output for validation: {tool_output_str}"}), 500
+            # Directly call the numerology calculator function
+            try:
+                calculated_details = get_numerology_details(full_name_for_calculation, birth_date)
+                calculated_expression_number = calculated_details["expression_number"]
+            except ValueError as e:
+                print(f"Error calculating numerology for validation: {e}")
+                return jsonify({"error": f"Could not calculate numerology for validation: {e}"}), 500
 
             # Now, pass this pre-calculated result to the LLM for interpretation and formatting
-            validation_prompt = f"""
-            VALIDATE_NAME_RESULT_INTERPRETATION:
+            validation_interpretation_prompt = f"""
+            You are Sheelaa's Elite AI Assistant.
             Original Full Name: "{original_full_name}"
             Birth Date: "{birth_date}"
             Desired Outcome: "{desired_outcome}"
             Suggested Name to Validate: "{suggested_name_to_validate}"
             Calculated Expression Number for '{full_name_for_calculation}': {calculated_expression_number}
+            Comprehensive Numerology Interpretations: {json.dumps(NUMEROLOGY_INTERPRETATIONS, indent=2)}
 
-            Based on this information, provide a validation result for the suggested name.
-            Your task is ONLY to interpret the provided calculated number against the desired outcome.
+            Your task is ONLY to interpret the provided `calculated_expression_number` for `suggested_name_to_validate` against the `desired_outcome`.
             NEVER ask for the full name or birth date again. These are provided in the context.
             NEVER mention internal tools or that a calculation was performed by a tool.
-            Format your response clearly, using Markdown, with bolding for status and emojis:
+            
+            Determine if the suggested name is "Valid for your goals" or "Invalid for your goals".
+            
+            **Format your response clearly, using Markdown, with bolding for status and emojis:**
             "**Suggested Name Validation for '[Suggested Name to Validate]':**"
             "**Expression Number:** {calculated_expression_number}"
             "**Status:** **[✅ Valid for your goals / ❌ Invalid for your goals]**"
-            "**Explanation:** [Concise, direct explanation of alignment or misalignment with desired outcome.]"
+            "**Explanation:** [Concise, direct explanation of alignment or misalignment with desired outcome. If invalid, suggest what kind of energy/number would be more supportive without being redundant.]"
             Conclude with: "For a much detailed report, book your appointment using Sheelaa.com."
             """
-            # Use llm_direct for this simple interpretation
-            llm_response = llm_direct.invoke(validation_prompt)
+            
+            llm_response = llm.invoke(validation_interpretation_prompt)
             bot_response = llm_response.content
 
-        elif user_message.startswith("GENERATE_REPORT:"):
-            # --- Handle Report Generation via Agent ---
-            result = agent_executor.invoke({"input": user_message})
-            bot_response = result.get("output", "I apologize, but I couldn't process your request at this moment. Please try again or rephrase your query.")
         else:
             # Fallback for unexpected messages
             bot_response = "I can either generate a personalized numerology report or validate a suggested name. Please start your query with 'GENERATE_REPORT:' or 'VALIDATE_NAME:' followed by your details."
