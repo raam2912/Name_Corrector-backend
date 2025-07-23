@@ -2,13 +2,10 @@ Flask
 Flask-Cors
 Flask-Limiter
 Flask-Caching
-psutil
 python-dotenv
-
-gunicorn 
-
-
-reportlab 
-langchain==0.1.16             # Pinning to a known stable version compatible with Pydantic 1.x
-langchain-google-genai==0.0.12 # Pinning to a known stable version compatible with Pydantic 1.x
-pydantic==1.10.13  
+langchain==0.1.16             # Keeping this pinned
+langchain-google-genai==0.0.11 # CHANGED: Using 0.0.11 as 0.0.12 is not found
+pydantic==1.10.13             # Keeping this explicit pin
+psutil
+reportlab
+gunicorn   
