@@ -21,13 +21,15 @@ import secrets
 import hmac
 import psutil
 from collections import Counter
+import sys # Import sys for sys.exit()
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from pydantic import BaseModel, Field
+# FIX: Changed import from pydantic.v1 to pydantic for Pydantic 1.x compatibility
+from pydantic import BaseModel, Field 
 from langchain.output_parsers import PydanticOutputParser
 
 # ReportLab imports for PDF generation
@@ -489,7 +491,7 @@ class LLMManager:
         """Initialize multiple LLM instances for different purposes"""
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            logger.error("GOOGLE_API_KEY not found")
+            logger.error("GOOGLE_API_KEY environment variable not found. LLM initialization failed.")
             return False
             
         try:
@@ -526,7 +528,7 @@ class LLMManager:
                 k=10
             )
             
-            logger.info("All LLM instances initialized successfully")
+            logger.info("All LLM instances initialized successfully.")
             return True
             
         except Exception as e:
@@ -927,7 +929,15 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     
     # Custom styles for better readability
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20))
-    styles.add(ParagraphStyle(name='Heading1', fontSize=18, leading=22, spaceBefore=12, spaceAfter=6, fontName='Helvetica-Bold'))
+    
+    # FIX: Modify existing Heading1 style instead of adding a new one with the same name.
+    # Or, if you want a completely new style, give it a unique name like 'CustomHeading1'.
+    styles['Heading1'].fontSize = 18
+    styles['Heading1'].leading = 22
+    styles['Heading1'].spaceBefore = 12
+    styles['Heading1'].spaceAfter = 6
+    styles['Heading1'].fontName = 'Helvetica-Bold'
+
     styles.add(ParagraphStyle(name='Heading2', fontSize=14, leading=18, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold'))
     styles.add(ParagraphStyle(name='BodyText', fontSize=10, leading=14, spaceAfter=6))
     styles.add(ParagraphStyle(name='Bullet', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3))
@@ -947,701 +957,326 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Spacer(1, 0.2 * inch))
 
     # Current Numerological Profile
-    Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1']))
+    Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) # Use the modified Heading1
     Story.append(Paragraph(f"<b>Expression Number {report_data.get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     Story.append(Paragraph(f"<b>Life Path Number {report_data.get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
     
     if report_data.get('soul_urge_number'):
-        Story.append(Paragraph(f"<b>Soul Urge Number {report_data['soul_urge_number']}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data['soul_urge_number'], {}).get('core', 'Universal energy')}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Soul Urge Number {report_data.get('soul_urge_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('soul_urge_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     if report_data.get('personality_number'):
-        Story.append(Paragraph(f"<b>Personality Number {report_data['personality_number']}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data['personality_number'], {}).get('core', 'Universal energy')}", styles['BodyText']))
-    if report_data.get('expression_details', {}).get('karmic_debt'):
-        Story.append(Paragraph(f"<b>Karmic Debt (Expression):</b> Yes (Number {report_data['expression_details']['karmic_debt']}) - This indicates a specific lesson related to past actions.", styles['BodyText']))
-    if report_data.get('life_path_details', {}).get('karmic_debt_numbers'):
-        Story.append(Paragraph(f"<b>Karmic Debt (Life Path):</b> Yes (Numbers {', '.join(map(str, report_data['life_path_details']['karmic_debt_numbers']))}) - These are areas for growth and balance.", styles['BodyText']))
-    
-    Story.append(Spacer(1, 0.2 * inch))
+        Story.append(Paragraph(f"<b>Personality Number {report_data.get('personality_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('personality_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
 
-    # Suggested Name Corrections
-    Story.append(Paragraph("🎯 Suggested Name Corrections", styles['Heading1']))
-    if report_data.get('suggested_names_details'):
-        for suggestion in report_data['suggested_names_details']:
-            Story.append(Paragraph(f"<b>Suggested Name:</b> {suggestion.get('name')}", styles['BoldBodyText']))
-            Story.append(Paragraph(f"<b>Expression Number:</b> {suggestion.get('expression_number')}", styles['BodyText']))
-            # Replace **bold** markdown with <b>bold</b> HTML for ReportLab
-            explanation_html = suggestion.get('benefits', 'No benefits explanation.').replace('\n', '<br/>')
-            explanation_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', explanation_html)
-            Story.append(Paragraph(f"<b>Benefits:</b> {explanation_html}", styles['BodyText']))
-            Story.append(Spacer(1, 0.1 * inch))
-    else:
-        Story.append(Paragraph("No name suggestions available.", styles['BodyText']))
     Story.append(Spacer(1, 0.2 * inch))
-
-    # Optimal Timing
-    if report_data.get('timing_recommendations'):
-        timing = report_data['timing_recommendations']
-        Story.append(Paragraph("⏰ Optimal Timing for Name Change", styles['Heading1']))
-        Story.append(Paragraph(f"<b>Current Personal Year:</b> {timing.get('current_personal_year')}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Recommended Activities:</b> {', '.join(timing.get('optimal_activities', []))}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Best Implementation Months:</b> {', '.join(map(str, timing.get('best_months_for_action', [])))}", styles['BodyText']))
-        Story.append(Paragraph(timing.get('energy_description', ''), styles['BodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
 
     # Karmic Lessons
     if report_data.get('karmic_lessons', {}).get('lessons'):
-        karmic = report_data['karmic_lessons']
-        Story.append(Paragraph("🔮 Karmic Lessons & Growth Areas", styles['Heading1']))
-        Story.append(Paragraph(f"<b>Areas for Development:</b> {', '.join(karmic.get('lessons', []))}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Priority Focus:</b> {karmic.get('priority_lesson', '')}", styles['BodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
-
-    # Advanced Insights
-    if report_data.get('insights'):
-        insights = report_data['insights']
-        Story.append(Paragraph("📊 Advanced Insights for Your Journey", styles['Heading1']))
-        
-        Story.append(Paragraph(f"<b>Uniqueness of Your Profile:</b> {insights.get('uniqueness_score', {}).get('interpretation', '')} (Score: {insights.get('uniqueness_score', {}).get('score', 0):.2f})", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Factors:</i> {', '.join(insights.get('uniqueness_score', {}).get('rarity_factors', []))}", styles['BodyText']))
+        Story.append(Paragraph("🔮 Karmic Lessons to Address", styles['Heading2']))
+        for lesson in report_data['karmic_lessons']['lessons']:
+            Story.append(Paragraph(f"• {lesson}", styles['Bullet']))
         Story.append(Spacer(1, 0.1 * inch))
 
-        Story.append(Paragraph(f"<b>Predicted Success Areas:</b> {', '.join(insights.get('success_prediction', {}).get('combined_strengths', []))}", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Confidence:</i> {insights.get('success_prediction', {}).get('confidence_level', '')}", styles['BodyText']))
+    # Timing Recommendations
+    if report_data.get('timing_recommendations'):
+        timing = report_data['timing_recommendations']
+        Story.append(Paragraph("⏰ Optimal Timing & Energy", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Current Personal Year ({timing['current_personal_year']})</b>: {timing['energy_description']}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Optimal Activities</b>: {', '.join(timing['optimal_activities'])}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Best Months for Action</b>: {', '.join(map(str, timing['best_months_for_action']))}", styles['BodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
-        Story.append(Paragraph(f"<b>Potential Challenges:</b> {', '.join(insights.get('challenge_analysis', {}).get('potential_challenges', []))}", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Strategies:</i> {', '.join(insights.get('challenge_analysis', {}).get('mitigation_strategies', []))}", styles['BodyText']))
+    # Potential Challenges
+    if report_data.get('potential_challenges', {}).get('potential_challenges'):
+        challenges = report_data['potential_challenges']
+        Story.append(Paragraph("🚧 Potential Challenges & Growth Areas", styles['Heading2']))
+        Story.append(Paragraph("<b>Challenges</b>:", styles['BoldBodyText']))
+        for challenge in challenges['potential_challenges']:
+            Story.append(Paragraph(f"• {challenge}", styles['Bullet']))
+        Story.append(Paragraph("<b>Mitigation Strategies</b>:", styles['BoldBodyText']))
+        for strategy in challenges['mitigation_strategies']:
+            Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
+        Story.append(Paragraph("<b>Growth Opportunities</b>:", styles['BoldBodyText']))
+        for opportunity in challenges['growth_opportunities']:
+            Story.append(Paragraph(f"• {opportunity}", styles['Bullet']))
         Story.append(Spacer(1, 0.1 * inch))
 
-        Story.append(Paragraph("<b>Development Recommendations:</b>", styles['BoldBodyText']))
-        Story.append(Paragraph(f"<i>Immediate Focus:</i> {insights.get('development_recommendations', {}).get('immediate_focus', '')}", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Long-Term Goal:</i> {insights.get('development_recommendations', {}).get('long_term_goal', '')}", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Karmic Work:</i> {', '.join(insights.get('development_recommendations', {}).get('karmic_work', []))}", styles['BodyText']))
-        Story.append(Paragraph(f"<i>Monthly Practices:</i> {', '.join(insights.get('development_recommendations', {}).get('monthly_practices', []))}", styles['BodyText']))
+    # Development Recommendations
+    if report_data.get('development_recommendations'):
+        dev_recs = report_data['development_recommendations']
+        Story.append(Paragraph("🌱 Personalized Development Recommendations", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Immediate Focus</b>: {dev_recs['immediate_focus']}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Long-Term Goal</b>: {dev_recs['long_term_goal']}", styles['BodyText']))
+        if dev_recs['karmic_work']:
+            Story.append(Paragraph(f"<b>Karmic Work</b>: {', '.join(dev_recs['karmic_work'])}", styles['BodyText']))
+        Story.append(Paragraph("<b>Monthly Practices</b>:", styles['BoldBodyText']))
+        for practice in dev_recs['monthly_practices']:
+            Story.append(Paragraph(f"• {practice}", styles['Bullet']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+    # Yearly Forecast
+    if report_data.get('yearly_forecast'):
+        Story.append(Paragraph("🗓️ Yearly Forecast (Next 3 Years)", styles['Heading1']))
+        for year, forecast_data in report_data['yearly_forecast'].items():
+            Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>: {forecast_data['theme']}", styles['Heading2']))
+            Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['BodyText']))
+            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']))
+            Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['BodyText']))
+            Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
 
-        # Yearly Forecast
-        Story.append(Paragraph("🗓️ Your 3-Year Numerological Forecast", styles['Heading2']))
-        if insights.get('yearly_forecast'):
-            for year, data in insights['yearly_forecast'].items():
-                Story.append(Paragraph(f"<b>{year} (Personal Year {data.get('personal_year')}):</b>", styles['BoldBodyText']))
-                Story.append(Paragraph(f"<i>Theme:</i> {data.get('theme', '')}", styles['BodyText']))
-                Story.append(Paragraph(f"<i>Focus:</i> {data.get('focus_areas', '')}", styles['BodyText']))
-                Story.append(Paragraph(f"<i>Optimal Months:</i> {', '.join(map(str, data.get('optimal_months', [])))}", styles['BodyText']))
-                Story.append(Paragraph(f"<i>Energy Level:</i> {data.get('energy_level', '')}", styles['BodyText']))
-                Story.append(Spacer(1, 0.1 * inch))
-        Story.append(Spacer(1, 0.2 * inch))
+    # Uniqueness Score
+    if report_data.get('uniqueness_score'):
+        uniqueness = report_data['uniqueness_score']
+        Story.append(Paragraph("✨ Uniqueness of Your Profile", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['BodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
 
-    # Footer
-    Story.append(Paragraph("---", styles['BodyText']))
-    Story.append(Paragraph("<i>For a detailed consultation and personalized guidance, book your appointment at Sheelaa.com</i>", styles['BodyText']))
+    # Final Note
+    Story.append(PageBreak()) # Start final note on a new page if content is long
+    Story.append(Paragraph("Thank you for using Sheelaa's Elite AI Numerology Assistant!", styles['TitleStyle']))
+    Story.append(Spacer(1, 0.2 * inch))
+    Story.append(Paragraph("Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.", styles['BodyText']))
 
     doc.build(Story)
     buffer.seek(0)
     return buffer.getvalue()
 
-# --- API Endpoints ---
-@app.route("/health", methods=["GET"])
-def health_check():
-    """Enhanced health check endpoint"""
-    try:
-        system_metrics = {
-            "cpu_percent": psutil.cpu_percent(interval=0.1),
-            "memory_percent": psutil.virtual_memory().percent,
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-    except Exception as e:
-        system_metrics = {"status": f"metrics unavailable: {e}"}
-    
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.datetime.now().isoformat(),
-        "llm_initialized": llm_manager.llm is not None,
-        "cache_available": cache is not None,
-        "rate_limiter_available": limiter is not None,
-        "system_metrics": system_metrics
-    }), 200
+# --- Flask Routes ---
+@app.route('/')
+def home():
+    """Basic home route for health check."""
+    return "Hello from Flask!"
 
-@app.route("/profile", methods=["POST"])
-@rate_limited("10 per minute")
+@app.route('/chat', methods=['POST'])
+@limiter.limit("30 per minute") # Apply rate limit
 @performance_monitor
-def get_numerology_profile_endpoint():
-    """Get comprehensive numerology profile"""
-    data = request.get_json()
-    
-    if not data or not data.get("full_name") or not data.get("birth_date"):
-        return jsonify({"error": "Both full_name and birth_date are required"}), 400
-    
-    # Security validation
-    full_name = SecurityManager.sanitize_name_input(data["full_name"])
-    birth_date = data["birth_date"]
-    
-    if not SecurityManager.validate_input_security(full_name + birth_date):
-        return jsonify({"error": "Invalid input detected"}), 400
-    
-    try:
-        profile = get_comprehensive_numerology_profile(full_name, birth_date)
-        timing_recommendations = generate_timing_recommendations(profile)
-        profile["timing_recommendations"] = timing_recommendations
-        
-        return jsonify(profile), 200
-        
-    except Exception as e:
-        logger.error(f"Error generating profile: {e}")
-        return jsonify({"error": "Failed to generate numerology profile"}), 500
+async def chat():
+    """Handles chat messages and advanced report/validation requests."""
+    data = request.json
+    message = data.get('message')
 
-@app.route("/chat", methods=["POST"])
-@rate_limited("30 per minute")
-@performance_monitor 
-def enhanced_chat():
-    """Enhanced chat endpoint with advanced features"""
-    user_message = request.json.get("message")
-    if not user_message:
+    if not message:
         return jsonify({"error": "No message provided"}), 400
 
-    logger.info(f"Received message: {user_message[:100]}...")
+    if not SecurityManager.validate_input_security(message):
+        logger.warning(f"Security alert: Malicious input detected: {message}")
+        return jsonify({"error": "Invalid input. Potential security threat detected."}), 400
 
-    if not llm_manager.llm:
-        return jsonify({"error": "Chatbot not initialized"}), 500
+    logger.info(f"Received message: {message}")
 
-    # Security validation
-    if not SecurityManager.validate_input_security(user_message):
-        return jsonify({"error": "Invalid input detected"}), 400
+    # Check for specific commands
+    report_request = MessageParser.parse_report_request(message)
+    validation_request = MessageParser.parse_validation_request(message)
 
     try:
-        if user_message.startswith("GENERATE_ADVANCED_REPORT:"):
-            return generate_advanced_report(user_message)
-        elif user_message.startswith("VALIDATE_NAME_ADVANCED:"):
-            return validate_name_advanced(user_message)
-        elif user_message.startswith("GET_NAME_SUGGESTIONS:"):
-            return generate_name_suggestions(user_message)
+        if report_request:
+            logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {message}")
+            # Generate comprehensive profile
+            profile = get_comprehensive_numerology_profile(report_request.full_name, report_request.birth_date)
+            
+            # Generate additional insights
+            timing_recommendations = generate_timing_recommendations(profile)
+            uniqueness_score = calculate_uniqueness_score(profile)
+            potential_challenges = identify_potential_challenges(profile)
+            development_recommendations = get_development_recommendations(profile)
+            yearly_forecast = generate_yearly_forecast(profile)
+
+            # Prepare data for LLM
+            llm_input_data = {
+                "full_name": report_request.full_name,
+                "birth_date": report_request.birth_date,
+                "desired_outcome": report_request.desired_outcome,
+                "current_expression_number": report_request.current_expression_number,
+                "current_life_path_number": report_request.current_life_path_number,
+                "profile_details": profile,
+                "timing_recommendations": timing_recommendations,
+                "uniqueness_score": uniqueness_score,
+                "potential_challenges": potential_challenges,
+                "development_recommendations": development_recommendations,
+                "yearly_forecast": yearly_forecast
+            }
+            
+            # LLM prompt for advanced report
+            system_message = SystemMessage(
+                content=(
+                    "You are Sheelaa's Elite AI Numerology Assistant. Your task is to provide a comprehensive, "
+                    "personalized numerology report based on the user's full name, birth date, desired outcome, "
+                    "and calculated numerology numbers. Structure the report as follows:\n\n"
+                    "**1. Introduction:** A welcoming and personalized opening, acknowledging their name, birth date, and desired outcome.\n"
+                    "**2. Core Numerological Insights:** Explain their Expression (Name) Number and Life Path Number, "
+                    "drawing from the provided interpretations. Discuss their compatibility.\n"
+                    "**3. Deeper Insights (Soul Urge & Personality):** Explain their Soul Urge and Personality Numbers.\n"
+                    "**4. Karmic Lessons:** Detail any karmic lessons identified from their name.\n"
+                    "**5. Optimal Timing & Energy:** Provide insights into their current personal year and optimal activities.\n"
+                    "**6. Potential Challenges & Growth Areas:** Outline potential challenges and suggest mitigation strategies and growth opportunities.\n"
+                    "**7. Personalized Development Recommendations:** Offer actionable recommendations for immediate focus, long-term goals, and monthly practices.\n"
+                    "**8. Yearly Forecast:** Provide a brief 3-year forecast based on personal year cycles.\n"
+                    "**9. Uniqueness of Your Profile:** Comment on the uniqueness of their numerological blueprint.\n"
+                    "**10. Conclusion:** A positive and empowering closing statement. \n\n"
+                    "Use clear, encouraging language. Format the report using Markdown for headings, bold text, and bullet points. "
+                    "Do NOT include any disclaimers about AI generation in the report content itself. "
+                    "Do NOT include any API keys or sensitive information. "
+                    "Ensure the report is detailed, insightful, and directly addresses the user's desired outcome."
+                )
+            )
+            
+            human_message = HumanMessage(
+                content=f"Generate a comprehensive numerology report for the following data:\n{json.dumps(llm_input_data, indent=2)}"
+            )
+            
+            messages = [system_message, human_message]
+            
+            # Get response from creative LLM for the report
+            loop = asyncio.get_event_loop()
+            report_response = await loop.run_in_executor(llm_manager.executor, llm_manager.creative_llm.invoke, messages)
+            
+            # Store the full report data, including the LLM's response, for PDF generation
+            full_report_data = {
+                **llm_input_data, # Include all calculated profile data
+                "intro_response": report_response.content # This is the LLM generated Markdown report
+            }
+            # This is where you might cache full_report_data if needed for PDF endpoint
+            # For now, we'll rely on the frontend sending it back for PDF generation.
+
+            return jsonify({"response": report_response.content}), 200
+
+        elif validation_request:
+            logger.info(f"Attempting to parse VALIDATE_NAME_ADVANCED message: {message}")
+            # Generate comprehensive profile for original name
+            original_profile = get_comprehensive_numerology_profile(validation_request.original_full_name, validation_request.birth_date)
+            
+            # Resolve the full name for calculation based on suggested part
+            full_name_for_validation = NameSuggestionEngine.resolve_full_name_for_calculation(
+                validation_request.original_full_name,
+                validation_request.suggested_name
+            )
+            
+            # Calculate numerology for suggested name
+            suggested_expression_num, suggested_expression_details = AdvancedNumerologyCalculator.calculate_expression_number(full_name_for_validation)
+
+            # LLM prompt for name validation
+            system_message = SystemMessage(
+                content=(
+                    "You are Sheelaa's Elite AI Numerology Assistant. Your task is to validate a suggested name "
+                    "based on the user's original profile, desired outcome, and the numerology of the suggested name. "
+                    "Provide a detailed analysis, including:\n\n"
+                    "**1. Suggested Name Analysis:** The numerology of the suggested name (Expression Number) and its core interpretation.\n"
+                    "**2. Alignment with Desired Outcome:** How well the suggested name's energy aligns with the user's desired outcome.\n"
+                    "**3. Compatibility with Life Path:** How the suggested name's Expression Number interacts with the user's Life Path Number.\n"
+                    "**4. Overall Recommendation:** A clear recommendation (e.g., 'Excellent Fit', 'Good Fit, with considerations', 'Not Recommended') and a concise rationale.\n\n"
+                    "Use Markdown for formatting. Be encouraging and insightful. Do NOT include any disclaimers about AI generation."
+                )
+            )
+            
+            human_message = HumanMessage(
+                content=f"Original Full Name: {validation_request.original_full_name}\n"
+                        f"Birth Date: {validation_request.birth_date}\n"
+                        f"Desired Outcome: {validation_request.desired_outcome}\n"
+                        f"Suggested Name to Validate: {validation_request.suggested_name} (Calculated Expression Number: {suggested_expression_num})\n"
+                        f"Original Expression Number: {original_profile['expression_number']}\n"
+                        f"Original Life Path Number: {original_profile['life_path_number']}\n"
+                        f"Suggested Name's Core Interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A')}"
+            )
+            
+            messages = [system_message, human_message]
+            
+            # Get response from analytical LLM for validation
+            loop = asyncio.get_event_loop()
+            validation_response = await loop.run_in_executor(llm_manager.executor, llm_manager.analytical_llm.invoke, messages)
+            
+            return jsonify({"response": validation_response.content}), 200
+
         else:
-            # Standard chat processing with enhanced context
-            system_prompt = """You are Sheelaa's Elite AI Numerology Assistant. You are warm, wise, and deeply knowledgeable about numerology. 
-            Provide insightful, practical guidance while maintaining a professional yet caring tone. 
-            Always focus on empowering the user and helping them understand their numerological profile."""
+            # Fallback for general chat messages
+            logger.info(f"Processing general chat message: {message}")
             
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_message)
-            ]
+            # Add user message to memory
+            llm_manager.memory.chat_history.add_user_message(message)
             
-            response = llm_manager.llm.invoke(messages)
-            return jsonify({"response": response.content}), 200
+            # Define a simple prompt for general chat
+            prompt = ChatPromptTemplate.from_messages([
+                SystemMessage(content="You are Sheelaa's Elite AI Numerology Assistant. You provide general information and guidance about numerology. Do not attempt to calculate numbers or provide personalized reports unless explicitly asked with specific details (full name, birth date). Keep responses concise and helpful."),
+                llm_manager.memory.chat_history.messages[-1] # Only include the last message for context to avoid excessive token usage
+            ])
+            
+            chain = prompt | llm_manager.llm
+            
+            loop = asyncio.get_event_loop()
+            ai_response = await loop.run_in_executor(llm_manager.executor, chain.invoke, {"input": message})
+            
+            # Add AI response to memory
+            llm_manager.memory.chat_history.add_ai_message(ai_response.content)
+            
+            return jsonify({"response": ai_response.content}), 200
 
     except Exception as e:
-        logger.error(f"Error processing chat: {e}")
-        return jsonify({"error": "Processing failed"}), 500
+        logger.error(f"Error in chat endpoint: {e}", exc_info=True)
+        return jsonify({"error": "An internal server error occurred. Please try again later."}), 500
 
-@app.route("/generate_pdf_report", methods=["POST"])
-@rate_limited("5 per minute") # Rate limit PDF generation as it's resource-intensive
+@app.route('/generate_pdf_report', methods=['POST'])
+@limiter.limit("5 per hour") # Limit PDF generation due to resource intensity
 @performance_monitor
 def generate_pdf_report_endpoint():
-    """
-    Generates a PDF numerology report and returns it as a file.
-    """
-    data = request.get_json()
+    """Endpoint to generate and return a PDF numerology report."""
+    data = request.json
     
-    if not data or not data.get("full_name") or not data.get("birth_date") or not data.get("desired_outcome") or \
-       data.get("current_expression_number") is None or data.get("current_life_path_number") is None:
-        return jsonify({"error": "Missing required data for PDF report generation."}), 400
+    # Extract necessary data from the request body
+    full_name = data.get('full_name')
+    birth_date = data.get('birth_date')
+    desired_outcome = data.get('desired_outcome')
+    current_expression_number = data.get('current_expression_number')
+    current_life_path_number = data.get('current_life_path_number')
+    intro_response = data.get('intro_response') # The LLM-generated Markdown report
 
-    full_name = SecurityManager.sanitize_name_input(data["full_name"])
-    birth_date = data["birth_date"]
-    desired_outcome = data["desired_outcome"]
-    current_exp_num = data["current_expression_number"]
-    current_life_path_num = data["current_life_path_number"]
-
-    if not SecurityManager.validate_input_security(full_name + birth_date + desired_outcome):
-        return jsonify({"error": "Invalid input detected"}), 400
+    if not all([full_name, birth_date, desired_outcome, current_expression_number, current_life_path_number, intro_response]):
+        return jsonify({"error": "Missing required data for PDF generation."}), 400
 
     try:
-        # Get comprehensive profile
+        # Re-calculate comprehensive profile to ensure all data for PDF is fresh and complete
+        # This avoids relying on frontend-only data for complex PDF details
         profile = get_comprehensive_numerology_profile(full_name, birth_date)
         
-        # Generate introduction using LLM
-        intro_prompt = f"""
-        You are Sheelaa's Elite AI Assistant. Create a warm, comprehensive introduction for a personalized numerology report.
-        
-        User Details:
-        Full Name: "{full_name}"
-        Birth Date: "{birth_date}"
-        Expression Number: {current_exp_num}
-        Life Path Number: {current_life_path_num}
-        Desired Outcome: "{desired_outcome}"
-        
-        Using these interpretations:
-        Expression {current_exp_num}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_exp_num, {}).get('core', 'Universal energy')}
-        Life Path {current_life_path_num}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_life_path_num, {}).get('core', 'Universal energy')}
-        
-        Write a detailed, empathetic introduction that:
-        1. Acknowledges their unique numerological signature. Use **strong bolding** for key numbers and concepts.
-        2. Explains how their current numbers work together, highlighting their strengths.
-        3. Connects their profile to their desired outcome, emphasizing potential for transformation.
-        4. Sets the stage for the insightful name corrections and advanced insights that follow.
-        
-        Be warm, wise, and encouraging. Use Markdown to structure and emphasize key points. Aim for 3-4 paragraphs.
-        """
-        intro_response = llm_manager.analytical_llm.invoke(intro_prompt).content
+        # Generate additional insights required for the PDF
+        timing_recommendations = generate_timing_recommendations(profile)
+        uniqueness_score = calculate_uniqueness_score(profile)
+        potential_challenges = identify_potential_challenges(profile)
+        development_recommendations = get_development_recommendations(profile)
+        yearly_forecast = generate_yearly_forecast(profile)
 
-        # Generate name suggestions using creative LLM
-        name_suggestions_prompt = f"""
-        As Sheelaa's Elite AI Assistant, generate 8-10 sophisticated name suggestions for someone seeking: "{desired_outcome}"
-        
-        Original Name: "{full_name}"
-        Current Expression: {current_exp_num}
-        Life Path: {current_life_path_num}
-        
-        Guidelines:
-        - Maintain connection to original identity
-        - Ensure cultural appropriateness
-        - Focus on names that numerologically support the desired outcome
-        - Include variations (new first names, middle names, full name changes)
-        - Consider professional usability
-        
-        Format as a simple list of names, one per line.
-        """
-        suggestions_response = llm_manager.creative_llm.invoke(name_suggestions_prompt).content
-        suggested_names_raw = [name.strip('- ').strip() for name in suggestions_response.split('\n') if name.strip()]
-        
-        # Prepare suggested names with benefits for PDF
-        suggested_names_details = []
-        for suggested_name in suggested_names_raw:
-            try:
-                calc = AdvancedNumerologyCalculator()
-                new_expression, _ = calc.calculate_expression_number(suggested_name)
-                explanation_prompt = f"""
-                Explain how the name "{suggested_name}" (Expression Number {new_expression}) supports the goal: "{desired_outcome}"
-                
-                Original name: "{full_name}" (Expression {current_exp_num})
-                New Expression interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
-                
-                Write a concise 1-2 sentence explanation of why this name change would be beneficial.
-                **Strongly emphasize the new Expression Number and its core benefits** using bold Markdown.
-                Focus on practical benefits and energy alignment.
-                """
-                explanation = llm_manager.analytical_llm.invoke(explanation_prompt).content
-                suggested_names_details.append({
-                    "name": suggested_name,
-                    "expression_number": new_expression,
-                    "benefits": explanation
-                })
-            except Exception as e:
-                logger.error(f"Error processing name {suggested_name} for PDF: {e}")
-                continue
-
-        # Generate analytics and insights
-        insights = {
-            "uniqueness_score": calculate_uniqueness_score(profile),
-            "success_prediction": predict_success_areas(profile),
-            "challenge_analysis": identify_potential_challenges(profile),
-            "development_recommendations": get_development_recommendations(profile),
-            "yearly_forecast": generate_yearly_forecast(profile, 3)
-        }
-
-        # Combine all data into a single dictionary for PDF generation
         pdf_report_data = {
             "full_name": full_name,
             "birth_date": birth_date,
-            "expression_number": current_exp_num,
-            "life_path_number": current_life_path_num,
             "desired_outcome": desired_outcome,
-            "intro_response": intro_response,
-            "suggested_names_details": suggested_names_details,
-            "timing_recommendations": generate_timing_recommendations(profile),
-            "karmic_lessons": analyze_karmic_lessons(full_name),
-            "insights": insights,
-            **profile # Include other profile details
+            "expression_number": profile['expression_number'],
+            "life_path_number": profile['life_path_number'],
+            "soul_urge_number": profile['soul_urge_number'],
+            "personality_number": profile['personality_number'],
+            "compatibility_insights": profile['compatibility_insights'],
+            "karmic_lessons": profile['karmic_lessons'],
+            "timing_recommendations": timing_recommendations,
+            "uniqueness_score": uniqueness_score,
+            "potential_challenges": potential_challenges,
+            "development_recommendations": development_recommendations,
+            "yearly_forecast": yearly_forecast,
+            "intro_response": intro_response # Pass the LLM-generated Markdown report
         }
-        
+
         pdf_bytes = create_numerology_pdf(pdf_report_data)
+        
+        # Determine filename
+        filename = f"Numerology_Report_{full_name.replace(' ', '_')}.pdf"
         
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
             as_attachment=True,
-            download_name=f"Numerology_Report_{full_name.replace(' ', '_')}.pdf"
+            download_name=filename # Use download_name for Flask 2.x and newer
         )
-        
+
     except Exception as e:
-        logger.error(f"Error generating PDF report: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": "Failed to generate PDF report"}), 500
-
-def generate_advanced_report(user_message: str) -> tuple:
-    """Generate advanced numerology report with comprehensive analysis (Markdown output)"""
-    try:
-        logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {user_message}")
-
-        report_data_match = re.search(
-            r"My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*\.?",
-            user_message
-        )
-        
-        if not report_data_match:
-            logger.error(f"Failed to match GENERATE_ADVANCED_REPORT regex for message: {user_message}")
-            return jsonify({"error": "Invalid format for GENERATE_ADVANCED_REPORT message."}), 400
-        
-        original_full_name, birth_date, current_exp_num_str, current_life_path_num_str, desired_outcome = report_data_match.groups()
-        current_exp_num = int(current_exp_num_str)
-        current_life_path_num = int(current_life_path_num_str)
-
-        profile = get_comprehensive_numerology_profile(original_full_name, birth_date)
-        
-        intro_prompt = f"""
-        You are Sheelaa's Elite AI Assistant. Create a warm, comprehensive introduction for a personalized numerology report.
-        
-        User Details:
-        Full Name: "{original_full_name}"
-        Birth Date: "{birth_date}"
-        Expression Number: {current_exp_num}
-        Life Path Number: {current_life_path_num}
-        Desired Outcome: "{desired_outcome}"
-        
-        Using these interpretations:
-        Expression {current_exp_num}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_exp_num, {}).get('core', 'Universal energy')}
-        Life Path {current_life_path_num}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_life_path_num, {}).get('core', 'Universal energy')}
-        
-        Write a detailed, empathetic introduction that:
-        1. Acknowledges their unique numerological signature. Use **strong bolding** for key numbers and concepts.
-        2. Explains how their current numbers work together, highlighting their strengths.
-        3. Connects their profile to their desired outcome, emphasizing potential for transformation.
-        4. Sets the stage for the insightful name corrections and advanced insights that follow.
-        
-        Be warm, wise, and encouraging. Use Markdown to structure and emphasize key points. Aim for 3-4 paragraphs.
-        """
-        
-        intro_response = llm_manager.analytical_llm.invoke(intro_prompt).content
-        
-        name_suggestions_prompt = f"""
-        As Sheelaa's Elite AI Assistant, generate 8-10 sophisticated name suggestions for someone seeking: "{desired_outcome}"
-        
-        Original Name: "{original_full_name}"
-        Current Expression: {current_exp_num}
-        Life Path: {current_life_path_num}
-        
-        Guidelines:
-        - Maintain connection to original identity
-        - Ensure cultural appropriateness
-        - Focus on names that numerologically support the desired outcome
-        - Include variations (new first names, middle names, full name changes)
-        - Consider professional usability
-        
-        Format as a simple list of names, one per line.
-        """
-        
-        suggestions_response = llm_manager.creative_llm.invoke(name_suggestions_prompt).content
-        suggested_names = [name.strip('- ').strip() for name in suggestions_response.split('\n') if name.strip()]
-        
-        full_report = f"""# 🌟 Your Personalized Numerology Report
-
-{intro_response}
-
-## ✨ Your Current Numerological Profile
-
-**Expression Number {current_exp_num}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_exp_num, {}).get('core', 'Universal energy')}
-
-**Life Path Number {current_life_path_num}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(current_life_path_num, {}).get('core', 'Universal energy')}
-
-**Compatibility Analysis**: {profile.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}
-
-"""
-        if profile.get('soul_urge_number'):
-            full_report += f"""
-**Soul Urge Number {profile['soul_urge_number']}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile['soul_urge_number'], {}).get('core', 'Universal energy')}
-"""
-        if profile.get('personality_number'):
-            full_report += f"""
-**Personality Number {profile['personality_number']}**: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile['personality_number'], {}).get('core', 'Universal energy')}
-"""
-        if profile.get('expression_details', {}).get('karmic_debt'):
-            full_report += f"""
-**Karmic Debt (Expression):** Yes (Number {profile['expression_details']['karmic_debt']}) - This indicates a specific lesson related to past actions.
-"""
-        if profile.get('life_path_details', {}).get('karmic_debt_numbers'):
-            full_report += f"""
-**Karmic Debt (Life Path):** Yes (Numbers {', '.join(map(str, profile['life_path_details']['karmic_debt_numbers']))}) - These are areas for growth and balance.
-"""
-
-
-        full_report += """
-## 🎯 Suggested Name Corrections
-
-"""
-        
-        for suggested_name in suggested_names:
-            try:
-                calc = AdvancedNumerologyCalculator()
-                new_expression, details = calc.calculate_expression_number(suggested_name)
-                
-                explanation_prompt = f"""
-                Explain how the name "{suggested_name}" (Expression Number {new_expression}) supports the goal: "{desired_outcome}"
-                
-                Original name: "{original_full_name}" (Expression {current_exp_num})
-                New Expression interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
-                
-                Write a concise 1-2 sentence explanation of why this name change would be beneficial.
-                **Strongly emphasize the new Expression Number and its core benefits** using bold Markdown.
-                Focus on practical benefits and energy alignment.
-                """
-                
-                explanation = llm_manager.analytical_llm.invoke(explanation_prompt).content
-                
-                full_report += f"""
-**Suggested Name:** {suggested_name}
-**Expression Number:** {new_expression}
-**Benefits:** {explanation}
-
-"""
-            except Exception as e:
-                logger.error(f"Error processing name {suggested_name}: {e}")
-                continue
-        
-        if 'timing_recommendations' in profile:
-            timing = profile['timing_recommendations']
-            full_report += f"""
-## ⏰ Optimal Timing for Name Change
-
-**Current Personal Year:** {timing['current_personal_year']}
-**Recommended Activities:** {', '.join(timing['optimal_activities'])}
-**Best Implementation Months:** {', '.join(map(str, timing['best_months_for_action']))}
-
-{timing['energy_description']}
-
-"""
-        
-        if profile.get('karmic_lessons', {}).get('lessons'):
-            full_report += f"""
-## 🔮 Karmic Lessons & Growth Areas
-
-**Areas for Development:** {', '.join(profile['karmic_lessons']['lessons'])}
-**Priority Focus:** {profile['karmic_lessons']['priority_lesson']}
-
-"""
-        insights = {
-            "uniqueness_score": calculate_uniqueness_score(profile),
-            "success_prediction": predict_success_areas(profile),
-            "challenge_analysis": identify_potential_challenges(profile),
-            "development_recommendations": get_development_recommendations(profile),
-            "yearly_forecast": generate_yearly_forecast(profile, 3)
-        }
-
-        full_report += f"""
-## 📊 Advanced Insights for Your Journey
-
-**Uniqueness of Your Profile:** {insights['uniqueness_score']['interpretation']} (Score: {insights['uniqueness_score']['score']:.2f})
-*Factors:* {', '.join(insights['uniqueness_score']['rarity_factors'])}
-
-**Predicted Success Areas:** {', '.join(insights['success_prediction']['combined_strengths'])}
-*Confidence:* {insights['success_prediction']['confidence_level']}
-
-**Potential Challenges:** {', '.join(insights['challenge_analysis']['potential_challenges'])}
-*Strategies:* {', '.join(insights['challenge_analysis']['mitigation_strategies'])}
-
-**Development Recommendations:**
-*Immediate Focus:* {insights['development_recommendations']['immediate_focus']}
-*Long-Term Goal:* {insights['development_recommendations']['long_term_goal']}
-*Karmic Work:* {', '.join(insights['development_recommendations']['karmic_work'])}
-*Monthly Practices:* {', '.join(insights['development_recommendations']['monthly_practices'])}
-
-"""
-        
-        full_report += """
-### 🗓️ Your 3-Year Numerological Forecast
-"""
-        for year, data in insights['yearly_forecast'].items():
-            full_report += f"""
-**{year} (Personal Year {data['personal_year']}):**
-*Theme:* {data['theme']}
-*Focus:* {data['focus_areas']}
-*Optimal Months:* {', '.join(map(str, data['optimal_months']))}
-*Energy Level:* {data['energy_level']}
-"""
-
-        full_report += "\n---\n*For a detailed consultation and personalized guidance, book your appointment at Sheelaa.com*"
-        
-        return jsonify({"response": full_report}), 200
-        
-    except Exception as e:
-        logger.error(f"Error generating advanced report: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": "Failed to generate advanced report"}), 500
-
-def validate_name_advanced(user_message: str) -> tuple:
-    """Advanced name validation with comprehensive analysis"""
-    try:
-        validation_match = re.search(
-            r"Original Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\", Suggested Name to Validate: \"(.*?)\"",
-            user_message
-        )
-        
-        if not validation_match:
-            return jsonify({"error": "Invalid format for VALIDATE_NAME_ADVANCED message."}), 400
-
-        original_full_name, birth_date, desired_outcome, suggested_name = validation_match.groups()
-        
-        full_name_for_calculation = NameSuggestionEngine.resolve_full_name_for_calculation(
-            original_full_name,
-            suggested_name
-        )
-        
-        calc = AdvancedNumerologyCalculator()
-        new_expression, expression_details = calc.calculate_expression_number(full_name_for_calculation)
-        original_expression, _ = calc.calculate_expression_number(original_full_name)
-        life_path, _ = calc.calculate_life_path_number(birth_date)
-        
-        compatibility = calculate_number_compatibility(new_expression, life_path)
-        
-        is_valid = compatibility['compatibility_score'] >= 0.7
-        status_emoji = "✅" if is_valid else "❌"
-        status_text = "Valid for your goals" if is_valid else "Needs optimization"
-        
-        explanation_prompt = f"""
-        As Sheelaa's Elite AI Assistant, provide a detailed validation analysis:
-        
-        Original Name: "{original_full_name}" (Expression {original_expression})
-        Suggested Name: "{suggested_name}" → Full Name: "{full_name_for_calculation}" (Expression {new_expression})
-        Life Path: {life_path}
-        Desired Outcome: "{desired_outcome}"
-        Compatibility Score: {compatibility['compatibility_score']:.2f}
-        
-        Interpretations:
-        Original Expression {original_expression}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(original_expression, {}).get('core', 'Universal energy')}
-        New Expression {new_expression}: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')}
-        
-        Explain:
-        1. How well the **new expression number ({new_expression})** supports the desired outcome.
-        2. The **energetic shift** from original to new name.
-        3. **Compatibility** with life path number.
-        4. Practical considerations for this name change.
-        5. If invalid, suggest what type of energy/number would be better (e.g., "Consider names aligning with 8 or 1 for greater success.").
-        
-        Use **bold Markdown** for key numbers, concepts, and status indicators. Use bullet points for lists where appropriate.
-        Be specific, encouraging, and practical. Write 2-3 concise sentences, clearly structured.
-        """
-        
-        detailed_explanation = llm_manager.analytical_llm.invoke(explanation_prompt).content
-        
-        validation_response = f"""**Suggested Name Validation for '{suggested_name}':**
-
-**Full Name Analyzed:** {full_name_for_calculation}
-**Expression Number:** {new_expression}
-**Compatibility Score:** {compatibility['compatibility_score']:.2f}/1.0
-**Status:** **{status_emoji} {status_text}**
-
-**Detailed Analysis:**
-{detailed_explanation}
-
-**Compatibility Insights:** {compatibility['description']}
-**Synergy Areas:** {', '.join(compatibility['synergy_areas'])}
-
-**Energy Shift:** Moving from Expression {original_expression} to {new_expression} represents a shift from {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(original_expression, {}).get('psychological', 'current energy')} to {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('psychological', 'new energy')}.
-
----
-*For a much detailed report, book your appointment using Sheelaa.com.*"""
-        
-        return jsonify({"response": validation_response}), 200
-        
-    except Exception as e:
-        logger.error(f"Error in advanced name validation: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": "Failed to validate name"}), 500
-
-def generate_name_suggestions(user_message: str) -> tuple:
-    """Generate structured name suggestions with rationales"""
-    try:
-        suggestion_match = re.search(
-            r"Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\"",
-            user_message
-        )
-        
-        if not suggestion_match:
-            return jsonify({"error": "Invalid format for GET_NAME_SUGGESTIONS message."}), 400
-
-        full_name, birth_date, desired_outcome = suggestion_match.groups()
-        
-        profile = get_comprehensive_numerology_profile(full_name, birth_date)
-        current_expression = profile['expression_number']
-        life_path = profile['life_path_number']
-        
-        parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
-        
-        suggestion_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""You are Sheelaa's Elite AI Assistant, expert in numerology-based name corrections. 
-            Generate culturally appropriate, professionally viable name suggestions that numerologically align with the user's goals."""),
-            
-            HumanMessage(content=f"""
-            Generate 8-10 sophisticated name suggestions for:
-            
-            Original Name: {full_name}
-            Current Expression: {current_expression}
-            Life Path: {life_path}
-            
-            Consider:
-            1. Cultural appropriateness and respect
-            2. Professional usability in modern contexts
-            3. Numerological alignment with desired outcomes
-            4. Maintaining connection to original identity
-            5. Phonetic harmony and memorability
-            
-            {parser.get_format_instructions()}
-            """)
-        ])
-        
-        try:
-            chain = suggestion_prompt | llm_manager.creative_llm | parser
-            structured_suggestions = chain.invoke({})
-            
-            response = f"""# 🎯 Personalized Name Suggestions for {full_name}
-
-**Current Profile:**
-- Expression Number: {current_expression}
-- Life Path Number: {life_path}
-- Desired Outcome: {desired_outcome}
-
-**Strategic Reasoning:** {structured_suggestions.reasoning}
-
-## ✨ Recommended Name Corrections:
-
-"""
-            
-            for i, suggestion in enumerate(structured_suggestions.suggestions, 1):
-                try:
-                    calc = AdvancedNumerologyCalculator()
-                    new_expression, _ = calc.calculate_expression_number(suggestion.name)
-                    
-                    response += f"""
-**{i}. {suggestion.name}**
-- Expression Number: {new_expression}
-- Cultural Appropriateness: {suggestion.cultural_score:.1f}/1.0
-- Rationale: {suggestion.rationale}
-- Numerological Benefit: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(new_expression, {}).get('core', 'Universal energy')[:100]}...
-
-"""
-                except Exception as e:
-                    logger.error(f"Error calculating for suggestion {suggestion.name}: {e}")
-                    continue
-            
-            response += "\n---\n*For detailed analysis of any suggestion, use the name validation feature.*"
-            
-            return jsonify({"response": response}), 200
-            
-        except Exception as e:
-            logger.error(f"Error with structured output: {e}")
-            fallback_prompt = f"""
-            Generate 8 sophisticated name suggestions for {full_name} (Expression {current_expression}, Life Path {life_path}) 
-            seeking: {desired_outcome}. Format as a numbered list with brief explanations.
-            """
-            
-            fallback_response = llm_manager.creative_llm.invoke(fallback_prompt).content
-            return jsonify({"response": fallback_response}), 200
-        
-    except Exception as e:
-        logger.error(f"Error generating name suggestions: {e}")
-        return jsonify({"error": "Failed to generate name suggestions"}), 500
+        logger.error(f"Error generating PDF report: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to generate PDF report: {e}"}), 500
 
 # --- Error Handlers ---
 @app.errorhandler(429)
@@ -1657,7 +1292,7 @@ def bad_request_handler(e):
 
 @app.errorhandler(500)
 def internal_error_handler(e):
-    logger.error(f"Internal server error: {e}")
+    logger.error(f"Internal server error: {e}", exc_info=True) # Log full traceback
     return jsonify({"error": "Internal server error. Please try again later."}), 500
 
 @app.errorhandler(404)
@@ -1671,20 +1306,28 @@ def initialize_application():
     
     # Initialize LLM Manager
     if not llm_manager.initialize():
-        logger.error("Failed to initialize LLM manager")
-        return False
+        logger.error("Failed to initialize LLM manager. Exiting application.")
+        sys.exit(1) # Exit if LLM manager fails to initialize
     
     logger.info("Application initialized successfully")
     return True
 
-# Call initialization directly when the module is loaded by Gunicorn
-initialize_application()
+# Initialize before first request
+@app.before_first_request
+def before_first_request():
+    initialize_application()
 
 # Development server initialization
 if __name__ == "__main__":
+    # Initialize for development
+    success = initialize_application()
+    if not success:
+        logger.error("Failed to initialize application components")
+        sys.exit(1) # Exit if initialization fails in dev mode
+    
     logger.info("Starting development server...")
     app.run(
         host="0.0.0.0", 
-        port=int(os.getenv("PORT", 5000)),
-        debug=os.getenv("FLASK_ENV") == "development"
+        port=int(os.getenv("PORT", 5000)), 
+        debug=os.getenv("FLASK_DEBUG", "False").lower() == "true"
     )
