@@ -7,27 +7,26 @@ import re
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import Chroma # Not strictly used in this specific flow, but common for LangChain setups
+from langchain_community.vectorstores import Chroma 
 from langchain_community.document_loaders import TextLoader # Not strictly used in this specific flow
 from langchain.text_splitter import CharacterTextSplitter # Not strictly used in this specific flow
-from langchain_google_genai import GoogleGenerativeAIEmbeddings # Not strictly used in this specific flow
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain.agents import AgentExecutor, create_tool_calling_agent, Tool
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-# Load environment variables from .env file (for local testing)
-# On Render, environment variables are set directly in the Render dashboard.
+
 load_dotenv()
 
 app = Flask(__name__)
 
-# --- CORS Configuration ---
-# IMPORTANT: This allows requests from your React frontend URL.
-# Replace 'https://your-github-pages-username.github.io' with your actual GitHub Pages domain.
-# For local testing, add 'http://localhost:3000' if your React app runs there.
-CORS(app, resources={r"/*": {"origins": ["https://namecorrectionsheelaa.netlify.app","https://your-github-pages-username.github.io", "http://localhost:3000"]}})
+
+CORS(app, resources={r"/*": {"origins": [
+    "https://namecorrectionsheelaa.netlify.app", 
+    "http://localhost:3000"
+]}})
 
 
 # --- Global Variables for LLM, Vector Store, Memory, and Agent ---
