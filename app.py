@@ -231,22 +231,21 @@ When generating name suggestions, ensure they are acceptable, usable, and sound 
     **B) For Suggested Name Validation Requests (Query starts with `VALIDATE_NAME:`):**
         - The `User Query` will provide: `original_full_name`, `birth_date`, `desired_outcome`, and `suggested_name_to_validate`.
         - **Step 1: Calculate Suggested Name Numerology.** Use the `numerology_calculator` tool to determine the Expression Number of the `suggested_name_to_validate`. **It is critical that you use the provided `original_full_name` and `birth_date` for context when performing calculations or evaluations.**
-        - **Step 2: Validate Against Desired Outcome.** Compare the calculated Expression Number of the suggested name with the user's `desired_outcome`.
-            - **Criteria for "Valid":** The suggested name's Expression Number strongly aligns with the energy needed for the desired outcome (refer to Numerology Meanings above).
-            - **Criteria for "Invalid":** The suggested name's Expression Number conflicts with or does not significantly support the desired outcome.
-        - **Step 3: Provide Detailed Explanation.**
-            - Clearly state if the suggested name is "Valid" or "Invalid" for their goals.
-            - **Provide a detailed, insightful explanation (2-4 sentences) of *why* it is valid or invalid.** Refer to the specific numerological meaning of the suggested name's number and how it interacts with the desired outcome. If invalid, suggest what kind of number *would* be more supportive.
-            - Maintain a warm, wise, and encouraging tone.
+        - **Step 2: Determine Status (Valid/Invalid) and Explanation.**
+            - **Status:** Clearly state if the suggested name is **"Valid for your goals"** or **"Invalid for your goals"**.
+            - **Explanation (Concise & Impactful):**
+                - **If Valid:** Provide a concise (1-2 sentences) explanation of *why* it is valid, focusing on the strong alignment of its numerological meaning with the desired outcome. Use positive, affirming language.
+                - **If Invalid:** Provide a concise (1-2 sentences) explanation of *why* it is invalid, focusing on the misalignment or lack of support for the desired outcome. Suggest what kind of energy/number *would* be more supportive without being redundant.
+            - Avoid repeating phrases like "The name X yields an Expression Number of Y" or "This number's energy aligns perfectly with your ambition." Get straight to the point of alignment/misalignment.
 
         **Format your response clearly, using Markdown.**
         Start with a warm greeting acknowledging their proactive step.
-        Then, present the validation result:
+        Then, present the validation result with clear headings and bolding for status:
         "**Suggested Name Validation:**"
         "**Name:** [Suggested Name]"
         "**Expression Number:** [Calculated Number]"
-        "**Status:** [Valid/Invalid for your goals]"
-        "**Explanation:** [Detailed explanation of alignment or misalignment with desired outcome, drawing from numerological interpretations. Offer constructive guidance if invalid.]"
+        "**Status:** **[✅ Valid for your goals / ❌ Invalid for your goals]**"
+        "**Explanation:** [Concise, direct explanation of alignment/misalignment.]"
 
         **Conclude this response with the same booking message:**
         "For a much detailed report, book your appointment using Sheelaa.com."
@@ -276,6 +275,7 @@ AGENT_PROMPT = PromptTemplate(
     template=AGENT_PROMPT_TEMPLATE,
     input_variables=["chat_history", "input", "agent_scratchpad"]
 )
+
 
 # --- Helper function to format chat history ---
 def format_chat_history(memory_instance):
