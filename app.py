@@ -66,11 +66,10 @@ limiter = None
 try:
     cache = Cache(app)
     limiter = Limiter(
-        app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.getenv('REDIS_URL', 'memory://')
-    )
+    app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri=os.getenv('REDIS_URL', 'memory://')
+)
     logger.info("Flask-Caching and Flask-Limiter initialized successfully.")
 except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
