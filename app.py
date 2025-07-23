@@ -27,7 +27,7 @@ app = Flask(__name__)
 # IMPORTANT: This allows requests from your React frontend URL.
 # Replace 'https://your-github-pages-username.github.io' with your actual GitHub Pages domain.
 # For local testing, add 'http://localhost:3000' if your React app runs there.
-CORS(app, resources={r"/*": {"origins": ["https://your-github-pages-username.github.io", "http://localhost:3000"]}})
+CORS(app, resources={r"/*": {"origins": ["https://namecorrectionsheelaa.netlify.app","https://your-github-pages-username.github.io", "http://localhost:3000"]}})
 
 
 # --- Global Variables for LLM, Vector Store, Memory, and Agent ---
