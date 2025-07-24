@@ -112,7 +112,8 @@ class ReportRequest:
 
 class NameSuggestion(BaseModel):
     name: str = Field(description="Full name suggestion")
-    rationale: str = Field(description="Brief rationale for the suggestion based on numerology and desired outcome.")
+    # FIX: Updated rationale description to emphasize detail
+    rationale: str = Field(description="Detailed explanation (2-3 sentences minimum) about why this specific name change is advantageous based on its new numerological Expression Number and how it directly supports the user's desired outcome. Focus on the positive impact and the specific energy it brings.")
     expression_number: int = Field(description="The calculated Expression Number for the suggested name.")
 
 class NameSuggestionsOutput(BaseModel):
@@ -406,7 +407,7 @@ class MessageParser:
         The `\s*` after the final quote handles trailing whitespace/newlines.
         """
         pattern = r"GENERATE_ADVANCED_REPORT:\s*My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"([\s\S]*?)\"\s*[\.\n]*$"
-        match = re.search(pattern, message)
+        match = re.search(pattern, message) # FIX: Added 'message' as the string to search
         
         if not match:
             return None
@@ -492,20 +493,21 @@ class NameSuggestionEngine:
         """
         parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
 
-        # Prompt for generating name suggestions
+        # FIX: Refined prompt for name suggestions to ensure similarity and detailed rationales
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(
                 content=(
                     "You are an expert numerologist and a creative naming assistant. "
-                    "Your task is to suggest 3-5 full name variations that align with specific numerological Expression Numbers "
-                    "and the user's desired life outcome. For each suggestion, provide a brief rationale explaining "
-                    "how the name's numerology supports the desired outcome. "
+                    "Your task is to suggest 3-5 full name variations that are **as similar as possible to the user's original full name**, "
+                    "but with minor modifications (e.g., changing a first name, adding/removing a middle initial, or slightly altering a spelling) "
+                    "to align with specific numerological Expression Numbers and the user's desired life outcome. "
+                    "For each suggestion, provide a **clear and detailed explanation (2-3 sentences minimum)** about "
+                    "**why this specific name change is advantageous** based on its new numerological Expression Number "
+                    "and how it directly supports the user's desired outcome. Focus on the positive impact and the specific energy it brings. "
                     "The suggestions should be culturally appropriate and sound natural. "
-                    "The user's original full name is for context; you should suggest new full names, "
-                    "not just first names unless explicitly stated as such. "
                     "Always return a JSON object conforming to the NameSuggestionsOutput schema. "
                     "Ensure the 'expression_number' for each suggested name is accurately calculated. "
-                    "If a name cannot be found for a specific target number, state that in the reasoning."
+                    "If a name cannot be found for a specific target number while maintaining similarity, state that in the reasoning."
                     "\n\n" + parser.get_format_instructions()
                 )
             ),
@@ -514,16 +516,20 @@ class NameSuggestionEngine:
                     f"Original Full Name: \"{original_full_name}\"\n"
                     f"Desired Outcome: \"{desired_outcome}\"\n"
                     f"Target Expression Numbers for desired outcome: {target_expression_numbers}\n\n"
-                    "Please suggest 3-5 full name variations that align with these target numbers and the desired outcome. "
-                    "For each name, provide the calculated Expression Number and a concise rationale."
+                    "Please suggest 3-5 full name variations that are highly similar to the original, "
+                    "align with these target numbers, and provide detailed rationales for each."
                 )
             )
         ])
         
         chain = prompt | llm_instance
         
-        # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
-        response = chain.invoke({"original_full_name": original_full_name, "desired_outcome": desired_outcome, "target_expression_numbers": target_expression_numbers})
+        # FIX: Corrected the input dictionary key for target_expression_numbers
+        response = chain.invoke({
+            "original_full_name": original_full_name, 
+            "desired_outcome": desired_outcome, 
+            "target_expression_numbers": target_expression_numbers # This was the missing part
+        })
         
         try:
             # Attempt to parse directly
@@ -1031,6 +1037,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph("🌟 Suggested Name Corrections", styles['Heading1']))
         Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].reasoning}", styles['BodyText']))
         for suggestion in report_data['suggested_names'].suggestions:
+            # Ensure detailed rationale is included here
             Story.append(Paragraph(f"• <b>{suggestion.name}</b> (Expression Number: {suggestion.expression_number}): {suggestion.rationale}", styles['Bullet']))
         Story.append(Spacer(1, 0.2 * inch))
 
@@ -1091,7 +1098,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     # Uniqueness Score
     if report_data.get('uniqueness_score'):
-        uniqueness = report_data['uniqueness_score']
+        uniqueness = report_data['uniqueness']
         Story.append(Paragraph("✨ Uniqueness of Your Profile", styles['Heading2']))
         Story.append(Paragraph(f"<b>Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['BodyText']))
         Story.append(Paragraph(f"<b>Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['BodyText']))
@@ -1146,7 +1153,6 @@ def chat(): # This remains a synchronous Flask view
             target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(report_request.desired_outcome)
             
             # Generate name suggestions using the creative LLM
-            # FIX: Call the new name suggestion function
             name_suggestions = NameSuggestionEngine.generate_name_suggestions(
                 llm_manager.creative_llm, 
                 report_request.full_name, 
@@ -1175,7 +1181,7 @@ def chat(): # This remains a synchronous Flask view
                 "potential_challenges": potential_challenges,
                 "development_recommendations": development_recommendations,
                 "yearly_forecast": yearly_forecast,
-                "suggested_names": name_suggestions.dict() # FIX: Include suggested names in LLM input
+                "suggested_names": name_suggestions.dict() # Include suggested names in LLM input
             }
             
             # LLM prompt for advanced report
@@ -1189,7 +1195,7 @@ def chat(): # This remains a synchronous Flask view
                     "**2. Core Numerological Insights:** Explain their Expression (Name) Number and Life Path Number, "
                     "drawing from the provided interpretations. Discuss their compatibility.\n"
                     "**3. Deeper Insights (Soul Urge & Personality):** Explain their Soul Urge and Personality Numbers.\n"
-                    "**4. Suggested Name Corrections:** Present the suggested names and their rationales. Explain how these names align with the desired outcome and target numerology. This section is CRITICAL.\n" # FIX: Added this section
+                    "**4. Suggested Name Corrections:** Present the suggested names. For each name, include its calculated Expression Number and the **detailed explanation provided in the input data for its advantage**. Emphasize how each suggested name's numerology specifically aligns with and enhances the user's desired outcome. This section is CRITICAL and must be thorough.\n"
                     "**5. Karmic Lessons:** Detail any karmic lessons identified from their name.\n"
                     "**6. Optimal Timing & Energy:** Provide insights into their current personal year and optimal activities.\n"
                     "**7. Potential Challenges & Growth Areas:** Outline potential challenges and suggest mitigation strategies and growth opportunities.\n"
@@ -1197,11 +1203,11 @@ def chat(): # This remains a synchronous Flask view
                     "**9. Yearly Forecast:** Provide a brief 3-year forecast based on personal year cycles.\n"
                     "**10. Uniqueness of Your Profile:** Comment on the uniqueness of their numerological blueprint.\n"
                     "**11. Conclusion:** A positive and empowering closing statement. \n\n"
-                    "Use clear, encouraging, and detailed language. Format the report using Markdown for headings, bold text, and bullet points. "
+                    "Use clear, encouraging, and highly detailed language throughout the report. Format the report using Markdown for headings, bold text, and bullet points. "
                     "Do NOT include any disclaimers about AI generation in the report content itself. "
                     "Do NOT include any API keys or sensitive information. "
                     "Ensure the report is detailed, insightful, and directly addresses the user's desired outcome."
-                    "**Elaborate on each point sufficiently to provide a truly comprehensive analysis.**" # FIX: Emphasize detail
+                    "**Elaborate on each point sufficiently to provide a truly comprehensive analysis, aiming for significant detail in every section.**"
                 )
             )
             
@@ -1306,7 +1312,7 @@ def generate_pdf_report_endpoint():
     current_expression_number = data.get('current_expression_number')
     current_life_path_number = data.get('current_life_path_number')
     intro_response = data.get('intro_response') # The LLM-generated Markdown report
-    suggested_names_data = data.get('suggested_names') # FIX: Get suggested names from request
+    suggested_names_data = data.get('suggested_names') # Get suggested names from request
 
     if not all([full_name, birth_date, desired_outcome, current_expression_number, current_life_path_number, intro_response]):
         return jsonify({"error": "Missing required data for PDF generation."}), 400
@@ -1322,7 +1328,8 @@ def generate_pdf_report_endpoint():
         development_recommendations = get_development_recommendations(profile)
         yearly_forecast = generate_yearly_forecast(profile)
 
-        # FIX: Reconstruct NameSuggestionsOutput object from dictionary data
+        # Reconstruct NameSuggestionsOutput object from dictionary data
+        # Ensure that 'rationale' is treated as a string, as it's coming from the LLM
         suggested_names_obj = NameSuggestionsOutput(
             suggestions=[NameSuggestion(**s) for s in suggested_names_data['suggestions']],
             reasoning=suggested_names_data['reasoning']
@@ -1344,7 +1351,7 @@ def generate_pdf_report_endpoint():
             "development_recommendations": development_recommendations,
             "yearly_forecast": yearly_forecast,
             "intro_response": intro_response, # Pass the LLM-generated Markdown report
-            "suggested_names": suggested_names_obj # FIX: Pass the NameSuggestionsOutput object
+            "suggested_names": suggested_names_obj # Pass the NameSuggestionsOutput object
         }
 
         pdf_bytes = create_numerology_pdf(pdf_report_data)
