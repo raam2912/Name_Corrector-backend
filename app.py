@@ -27,7 +27,6 @@ import sys
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
-# FIX: Ensure HumanMessage and AIMessage are imported for memory operations
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field 
 from langchain.output_parsers import PydanticOutputParser
@@ -498,30 +497,36 @@ class LLMManager:
             
         try:
             # Standard LLM for general responses
+            # FIX: Added convert_system_message_to_human=True
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash",
                 google_api_key=api_key,
                 temperature=0.7,
                 top_p=0.9,
-                top_k=40
+                top_k=40,
+                convert_system_message_to_human=True 
             )
             
             # Creative LLM for name generation
+            # FIX: Added convert_system_message_to_human=True
             self.creative_llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash", 
                 google_api_key=api_key,
                 temperature=0.9,
                 top_p=0.95,
-                top_k=60
+                top_k=60,
+                convert_system_message_to_human=True 
             )
             
             # Analytical LLM for interpretations
+            # FIX: Added convert_system_message_to_human=True
             self.analytical_llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash",
                 google_api_key=api_key,
                 temperature=0.3,
                 top_p=0.8,
-                top_k=20
+                top_k=20,
+                convert_system_message_to_human=True 
             )
             
             self.memory = ConversationBufferWindowMemory(
