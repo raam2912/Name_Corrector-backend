@@ -84,6 +84,25 @@ CORS(app, resources={r"/*": {"origins": [
 
 logger.info("CORS configured for the Flask app.") # Log CORS configuration
 
+# # REFINED PROMPTS FOR NUMEROLOGY APPLICATION
+# # These prompts replace the existing ones in your Flask app
+
+# 1. REFINED NAME SUGGESTION PROMPT (replaces the prompt in generate_name_suggestions)
+NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.## YOUR MISSION:Generate 3-5 strategically crafted full name variations that:- Maintain maximum similarity to the original name (90%+ resemblance)- Align precisely with target Expression Numbers- Directly support the user's specific desired outcome- Sound natural and culturally appropriate## MODIFICATION GUIDELINES:- **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals- **Preserve Core Identity**: Keep the essence and pronunciation as close as possible- **Cultural Sensitivity**: Ensure variations respect the original name's cultural context## RATIONALE REQUIREMENTS:For each suggestion, provide a comprehensive 2-3 sentence explanation that:1. **Specifies the exact numerological advantage** of the new Expression Number2. **Directly connects** this advantage to the user's desired outcome3. **Explains the energetic transformation** this change creates4. **Emphasizes positive impact** and specific benefits## OUTPUT FORMAT:Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.## QUALITY STANDARDS:- Each rationale must be substantive, specific, and compelling- Avoid generic explanations - make each one unique and targeted- If a target number cannot be achieved while maintaining similarity, acknowledge this in reasoning""" + "{parser_instructions}"
+NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST****Original Name:** "{original_full_name}"**Desired Life Outcome:** "{desired_outcome}"**Target Expression Numbers:** {target_expression_numbers}**TASK:** Create 3-5 name variations that are nearly identical to the original but numerologically optimized for the desired outcome. Each suggestion must include a detailed, specific rationale explaining its advantages.**REQUIREMENTS:**- Maintain 90%+ similarity to original name- Target the specified Expression Numbers- Provide compelling, detailed explanations for each suggestion- Ensure cultural appropriateness and natural sound"""
+
+# 2. REFINED ADVANCED REPORT PROMPT (replaces the system message in chat endpoint)
+ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding.## REPORT STRUCTURE (Follow Exactly):### 1. **Introduction** (Warm & Personal)- Acknowledge their name, birth date, and desired outcome personally- Create immediate connection and establish trust- Set positive, empowering tone for the entire report### 2. **Core Numerological Blueprint** (Detailed Analysis)- **Expression Number Deep Dive**: Core traits, psychological patterns, natural abilities- **Life Path Number Analysis**: Life purpose, karmic direction, soul mission- **Compatibility Synthesis**: How these numbers work together or challenge each other- Draw from provided interpretations but add unique insights### 3. **Soul Architecture** (Soul Urge & Personality)- **Soul Urge Number**: Inner motivations, heart's desires, what fulfills them- **Personality Number**: How others perceive them, outer persona, first impressions- **Integration Dynamics**: How inner and outer selves align or conflict### 4. **🌟 STRATEGIC NAME CORRECTIONS** (CRITICAL SECTION)- Present each suggested name with its Expression Number- **Use the exact detailed rationales provided in the input data**- Explain how each suggestion specifically enhances their desired outcome- Compare energetic shifts from current to suggested numbers- Provide implementation guidance and timing recommendations### 5. **Karmic Lessons & Soul Work** (Transformational)- Detail missing numbers and their significance- Explain how addressing these lessons accelerates growth- Connect lessons to their desired outcome### 6. **Temporal Numerology** (Timing & Cycles)- Current Personal Year energy and optimal activities- Best months for implementing changes- Energy forecasts and strategic timing### 7. **Shadow Work & Growth Edge** (Honest Assessment)- Potential challenges specific to their numbers- Practical mitigation strategies- Transform challenges into growth opportunities### 8. **Personalized Development Blueprint** (Actionable)- Immediate focus areas with specific actions- Long-term vision aligned with their numbers- Monthly practices for sustained growth### 9. **Future Cycles Forecast** (3-Year Vision)- Year-by-year energy themes and focus areas- Strategic planning for optimal outcomes- Timeline for major life decisions### 10. **Numerical Uniqueness Profile** (Special Recognition)- Highlight rare combinations or master numbers- Explain their unique gifts and cosmic significance### 11. **Empowerment Conclusion** (Inspiring Close)- Synthesize key insights- Reinforce their power to shape destiny- Leave them feeling inspired and capable## WRITING STANDARDS:- **Depth Over Breadth**: Elaborate significantly on each section- **Personal Touch**: Use their name throughout, make it feel custom-crafted- **Markdown Formatting**: Use headers, bold text, bullet points for readability- **Empowering Tone**: Inspiring, supportive, never fatalistic- **Specific Details**: Avoid generalities, provide concrete insights- **Professional Quality**: No AI disclaimers, no sensitive information## SUCCESS METRICS:The report should feel like a personal consultation worth hundreds of dollars, providing actionable insights that directly address their desired outcome while honoring the sacred wisdom of numerology."""
+ADVANCED_REPORT_HUMAN_PROMPT = """**COMPREHENSIVE NUMEROLOGY REPORT REQUEST**Please generate a detailed, transformational numerology report using this complete profile data:```json{llm_input_data}```**REQUIREMENTS:**- Follow the exact 11-section structure outlined in your instructions- Elaborate extensively on each section - aim for comprehensive analysis- Use the provided detailed rationales for name suggestions verbatim- Directly address how everything connects to their desired outcome- Create a report that feels personally crafted and professionally valuable"""
+
+# 3. REFINED NAME VALIDATION PROMPT (replaces the system message in validation)
+NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance.## VALIDATION FRAMEWORK:### **Analysis Structure:**#### 1. **Suggested Name Numerological Profile**- Expression Number and its core energetic signature- Psychological traits and natural tendencies- Career and relationship implications- Spiritual significance and growth potential#### 2. **Outcome Alignment Assessment** (Critical)- **Direct Correlation**: How the suggested name's energy specifically supports their desired outcome- **Energy Shift Analysis**: Compare current vs. suggested name's energetic influence- **Manifestation Potential**: Rate the name's power to attract their desired results- **Obstacle Clearing**: How this name helps overcome current limitations#### 3. **Life Path Compatibility Matrix**- **Synergy Score**: How well the new Expression Number harmonizes with their Life Path- **Challenge Areas**: Potential friction points and how to navigate them- **Amplification Effects**: Ways the combination enhances their natural gifts- **Balance Dynamics**: How this pairing creates equilibrium or tension#### 4. **Strategic Recommendation** (Clear Verdict)- **Rating Scale**: "Exceptional Fit" | "Strong Alignment" | "Moderate Benefit" | "Requires Consideration" | "Not Recommended"- **Confidence Level**: High/Medium/Low with reasoning- **Implementation Timeline**: When and how to make the change- **Expected Outcomes**: Realistic timeline for seeing results## EVALUATION CRITERIA:- **Numerical Harmony**: Mathematical compatibility between numbers- **Energetic Resonance**: How well the vibrations support their goals- **Practical Viability**: Real-world considerations for name change- **Timing Considerations**: Current life cycles and optimal implementation## OUTPUT STANDARDS:- **Markdown Formatting**: Clear headers and structured presentation- **Specific Evidence**: Reference exact numerical relationships- **Balanced Perspective**: Honest assessment including any concerns- **Actionable Guidance**: Concrete next steps and recommendations- **Encouraging Tone**: Supportive while being truthfully analytical"""
+NAME_VALIDATION_HUMAN_PROMPT = """**NAME VALIDATION REQUEST****Original Profile:**- Full Name: {original_full_name}- Birth Date: {birth_date}- Current Expression Number: {original_expression_number}- Life Path Number: {original_life_path_number}**Validation Target:**- Suggested Name: {suggested_name}- Calculated Expression Number: {suggested_expression_num}- Core Interpretation: {suggested_core_interpretation}**Desired Outcome:** {desired_outcome}**TASK:** Provide comprehensive validation analysis following your 4-section framework. Give clear recommendation with confidence level and implementation guidance."""
+
+# 4. REFINED GENERAL CHAT PROMPT (replaces the system message in general chat)
+GENERAL_CHAT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant - a wise, knowledgeable, and approachable guide in the sacred science of numbers.## YOUR ROLE:- **Numerology Expert**: Provide accurate information about numerological principles- **Supportive Guide**: Offer gentle, encouraging guidance without being prescriptive- **Educational Resource**: Explain concepts clearly for all knowledge levels- **Boundary Keeper**: Redirect for personalized calculations requiring specific data## RESPONSE GUIDELINES:- **Concise & Helpful**: Keep responses focused and valuable- **Warm Personality**: Maintain Sheelaa's caring, intuitive energy- **Educational Focus**: Teach numerological principles and concepts- **Ethical Boundaries**: No specific predictions, only guidance and insights## WHAT YOU CAN HELP WITH:- General numerology education and principles- Explaining number meanings and significance- Discussing numerological concepts and history- Providing general guidance about name energy- Answering questions about numerological practices## WHAT REQUIRES SPECIALIZED SERVICE:- Personal number calculations (need full name + birth date)- Specific name suggestions or validations- Comprehensive reports or detailed analysis- PDF generation or advanced consultations## COMMUNICATION STYLE:- Professional yet warm and accessible- Encouraging and empowering- Clear explanations without overwhelming detail- Respectful of numerological traditionsWhen users need personalized services, guide them toward providing complete information for proper analysis."""
+
+
 # --- Data Models ---
 class NumberType(Enum):
     EXPRESSION = "expression"
@@ -496,32 +515,16 @@ class NameSuggestionEngine:
         """
         parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
 
+        # IMPLEMENTATION: Use the new NAME_SUGGESTION_SYSTEM_PROMPT and NAME_SUGGESTION_HUMAN_PROMPT
         prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(
-                content=(
-                    "You are an expert numerologist and a creative naming assistant. "
-                    "Your task is to suggest 3-5 full name variations that are **as similar as possible to the user's original full name**, "
-                    "but with minor modifications (e.g., changing a first name, adding/removing a middle initial, or slightly altering a spelling) "
-                    "to align with specific numerological Expression Numbers and the user's desired life outcome. "
-                    "For each suggestion, provide a **clear and detailed explanation (2-3 sentences minimum)** about "
-                    "**why this specific name change is advantageous** based on its new numerological Expression Number "
-                    "and how it directly supports the user's desired outcome. Focus on the positive impact and the specific energy it brings. "
-                    "The suggestions should be culturally appropriate and sound natural. "
-                    "Always return a JSON object conforming to the NameSuggestionsOutput schema. "
-                    "Ensure the 'expression_number' for each suggested name is accurately calculated. "
-                    "If a name cannot be found for a specific target number while maintaining similarity, state that in the reasoning."
-                    "\n\n" + parser.get_format_instructions()
-                )
-            ),
-            HumanMessage(
-                content=(
-                    f"Original Full Name: \"{original_full_name}\"\n"
-                    f"Desired Outcome: \"{desired_outcome}\"\n"
-                    f"Target Expression Numbers for desired outcome: {target_expression_numbers}\n\n"
-                    "Please suggest 3-5 full name variations that are highly similar to the original, "
-                    "align with these target numbers, and provide detailed rationales for each."
-                )
-            )
+            SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(
+                parser_instructions=parser.get_format_instructions()
+            )),
+            HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
+                original_full_name=original_full_name,
+                desired_outcome=desired_outcome,
+                target_expression_numbers=target_expression_numbers
+            ))
         ])
         
         chain = prompt | llm_instance
@@ -1011,7 +1014,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles['Heading2'].spaceAfter = 4
     styles['Heading2'].fontName = 'Helvetica-Bold'
 
-    # FIX: Modify existing BodyText and Bullet styles directly instead of adding new ones
+    # Modify existing BodyText and Bullet styles directly instead of adding new ones
     styles['BodyText'].fontSize = 10
     styles['BodyText'].leading = 14
     styles['BodyText'].spaceAfter = 6
@@ -1197,35 +1200,13 @@ def chat(): # This remains a synchronous Flask view
                 "suggested_names": name_suggestions.dict() # Include suggested names in LLM input
             }
             
-            # LLM prompt for advanced report
-            system_message = SystemMessage(
-                content=(
-                    "You are Sheelaa's Elite AI Numerology Assistant. Your task is to provide a comprehensive, "
-                    "personalized numerology report based on the user's full name, birth date, desired outcome, "
-                    "calculated numerology numbers, and **suggested name corrections**. "
-                    "Structure the report as follows, ensuring each section is detailed and insightful:\n\n"
-                    "**1. Introduction:** A welcoming and personalized opening, acknowledging their name, birth date, and desired outcome.\n"
-                    "**2. Core Numerological Insights:** Explain their Expression (Name) Number and Life Path Number, "
-                    "drawing from the provided interpretations. Discuss their compatibility.\n"
-                    "**3. Deeper Insights (Soul Urge & Personality):** Explain their Soul Urge and Personality Numbers.\n"
-                    "**4. Suggested Name Corrections:** Present the suggested names. For each name, include its calculated Expression Number and the **detailed explanation provided in the input data for its advantage**. Emphasize how each suggested name's numerology specifically aligns with and enhances the user's desired outcome. This section is CRITICAL and must be thorough.\n"
-                    "**5. Karmic Lessons:** Detail any karmic lessons identified from their name.\n"
-                    "**6. Optimal Timing & Energy:** Provide insights into their current personal year and optimal activities.\n"
-                    "**7. Potential Challenges & Growth Areas:** Outline potential challenges and suggest mitigation strategies and growth opportunities.\n"
-                    "**8. Personalized Development Recommendations:** Offer actionable recommendations for immediate focus, long-term goals, and monthly practices.\n"
-                    "**9. Yearly Forecast:** Provide a brief 3-year forecast based on personal year cycles.\n"
-                    "**10. Uniqueness of Your Profile:** Comment on the uniqueness of their numerological blueprint.\n"
-                    "**11. Conclusion:** A positive and empowering closing statement. \n\n"
-                    "Use clear, encouraging, and highly detailed language throughout the report. Format the report using Markdown for headings, bold text, and bullet points. "
-                    "Do NOT include any disclaimers about AI generation in the report content itself. "
-                    "Do NOT include any API keys or sensitive information. "
-                    "Ensure the report is detailed, insightful, and directly addresses the user's desired outcome."
-                    "**Elaborate on each point sufficiently to provide a truly comprehensive analysis, aiming for significant detail in every section.**"
-                )
-            )
+            # IMPLEMENTATION: Use the new ADVANCED_REPORT_SYSTEM_PROMPT and ADVANCED_REPORT_HUMAN_PROMPT
+            system_message = SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT)
             
             human_message = HumanMessage(
-                content=f"Generate a comprehensive numerology report for the following data:\n{json.dumps(llm_input_data, indent=2)}"
+                content=ADVANCED_REPORT_HUMAN_PROMPT.format(
+                    llm_input_data=json.dumps(llm_input_data, indent=2)
+                )
             )
             
             messages = [system_message, human_message]
@@ -1255,28 +1236,22 @@ def chat(): # This remains a synchronous Flask view
             # Calculate numerology for suggested name
             suggested_expression_num, suggested_expression_details = AdvancedNumerologyCalculator.calculate_expression_number(full_name_for_validation)
 
-            # LLM prompt for name validation
-            system_message = SystemMessage(
-                content=(
-                    "You are Sheelaa's Elite AI Numerology Assistant. Your task is to validate a suggested name "
-                    "based on the user's original profile, desired outcome, and the numerology of the suggested name. "
-                    "Provide a detailed analysis, including:\n\n"
-                    "**1. Suggested Name Analysis:** The numerology of the suggested name (Expression Number) and its core interpretation.\n"
-                    "**2. Alignment with Desired Outcome:** How well the suggested name's energy aligns with the user's desired outcome.\n"
-                    "**3. Compatibility with Life Path:** How the suggested name's Expression Number interacts with the user's Life Path Number.\n"
-                    "**4. Overall Recommendation:** A clear recommendation (e.g., 'Excellent Fit', 'Good Fit, with considerations', 'Not Recommended') and a concise rationale.\n\n"
-                    "Use Markdown for formatting. Be encouraging and insightful. Do NOT include any disclaimers about AI generation."
-                )
-            )
+            # IMPLEMENTATION: Use the new NAME_VALIDATION_SYSTEM_PROMPT and NAME_VALIDATION_HUMAN_PROMPT
+            system_message = SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT)
             
             human_message = HumanMessage(
-                content=f"Original Full Name: {validation_request.original_full_name}\n"
-                        f"Birth Date: {validation_request.birth_date}\n"
-                        f"Desired Outcome: {validation_request.desired_outcome}\n"
-                        f"Suggested Name to Validate: {validation_request.suggested_name} (Calculated Expression Number: {suggested_expression_num})\n"
-                        f"Original Expression Number: {original_profile['expression_number']}\n"
-                        f"Original Life Path Number: {original_profile['life_path_number']}\n"
-                        f"Suggested Name's Core Interpretation: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A')}"
+                content=NAME_VALIDATION_HUMAN_PROMPT.format(
+                    original_full_name=validation_request.original_full_name,
+                    birth_date=validation_request.birth_date,
+                    original_expression_number=original_profile['expression_number'],
+                    original_life_path_number=original_profile['life_path_number'],
+                    suggested_name=validation_request.suggested_name,
+                    suggested_expression_num=suggested_expression_num,
+                    suggested_core_interpretation=AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(
+                        suggested_expression_num, {}
+                    ).get('core', 'N/A'),
+                    desired_outcome=validation_request.desired_outcome
+                )
             )
             
             messages = [system_message, human_message]
@@ -1292,9 +1267,9 @@ def chat(): # This remains a synchronous Flask view
             
             llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
             
-            # Define a simple prompt for general chat
+            # IMPLEMENTATION: Use the new GENERAL_CHAT_SYSTEM_PROMPT
             prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content="You are Sheelaa's Elite AI Numerology Assistant. You provide general information and guidance about numerology. Do not attempt to calculate numbers or provide personalized reports unless explicitly asked with specific details (full name, birth date). Keep responses concise and helpful."),
+                SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT),
                 llm_manager.memory.chat_memory.messages[-1] 
             ])
             
