@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import datetime
 import re
 import json
-import asyncio # Still needed for LLMManager.executor, but not for direct invoke calls
+import asyncio 
 import logging
 from functools import wraps
 from typing import Dict, List, Optional, Tuple
@@ -21,7 +21,7 @@ import secrets
 import hmac
 import psutil
 from collections import Counter
-import sys # Import sys for sys.stdout
+import sys 
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -44,17 +44,18 @@ load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, # Reverted to INFO for production
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        logging.StreamHandler(sys.stdout) # FIX: Wrap sys.stdout in StreamHandler
+        logging.StreamHandler(sys.stdout) # Correctly directs logs to stdout
     ]
 )
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
+logger.info("Flask app instance created.") # Log app creation
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
 app.config['CACHE_TYPE'] = 'simple'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 300
@@ -74,10 +75,14 @@ except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
 
 # CORS Configuration
+# Ensure the origins are correctly specified and match your frontend's URL
 CORS(app, resources={r"/*": {"origins": [
     "https://namecorrectionsheelaa.netlify.app",
-    "http://localhost:3000"
-]}})
+    "http://localhost:3000",
+    "https://*.netlify.app" # Added wildcard for Netlify subdomains, if any
+], "supports_credentials": True}}) # Added supports_credentials for potential future use
+
+logger.info("CORS configured for the Flask app.") # Log CORS configuration
 
 # --- Data Models ---
 class NumberType(Enum):
