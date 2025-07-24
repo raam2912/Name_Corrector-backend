@@ -29,7 +29,7 @@ from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field 
-from langchain.output_parsers import PydanticOutputParser
+from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
 
 # ReportLab imports for PDF generation
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
@@ -112,12 +112,12 @@ class ReportRequest:
 
 class NameSuggestion(BaseModel):
     name: str = Field(description="Full name suggestion")
-    rationale: str = Field(description="Brief rationale for the suggestion")
-    cultural_score: float = Field(description="Cultural appropriateness score 0-1")
+    rationale: str = Field(description="Brief rationale for the suggestion based on numerology and desired outcome.")
+    expression_number: int = Field(description="The calculated Expression Number for the suggested name.")
 
 class NameSuggestionsOutput(BaseModel):
-    suggestions: List[NameSuggestion] = Field(description="List of name suggestions")
-    reasoning: str = Field(description="Overall reasoning for suggestions")
+    suggestions: List[NameSuggestion] = Field(description="List of name suggestions with their rationales and expression numbers.")
+    reasoning: str = Field(description="Overall reasoning for the types of names suggested.")
 
 # --- Advanced Numerology Calculator ---
 class AdvancedNumerologyCalculator:
@@ -479,6 +479,69 @@ class NameSuggestionEngine:
         else:
             return [1, 3, 6, 8] # General positive numbers
 
+    @staticmethod
+    def generate_name_suggestions(
+        llm_instance: ChatGoogleGenerativeAI, 
+        original_full_name: str, 
+        desired_outcome: str, 
+        target_expression_numbers: List[int]
+    ) -> NameSuggestionsOutput:
+        """
+        Generates name suggestions based on desired outcome and target numerology numbers.
+        Uses PydanticOutputParser for structured output.
+        """
+        parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
+
+        # Prompt for generating name suggestions
+        prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(
+                content=(
+                    "You are an expert numerologist and a creative naming assistant. "
+                    "Your task is to suggest 3-5 full name variations that align with specific numerological Expression Numbers "
+                    "and the user's desired life outcome. For each suggestion, provide a brief rationale explaining "
+                    "how the name's numerology supports the desired outcome. "
+                    "The suggestions should be culturally appropriate and sound natural. "
+                    "The user's original full name is for context; you should suggest new full names, "
+                    "not just first names unless explicitly stated as such. "
+                    "Always return a JSON object conforming to the NameSuggestionsOutput schema. "
+                    "Ensure the 'expression_number' for each suggested name is accurately calculated. "
+                    "If a name cannot be found for a specific target number, state that in the reasoning."
+                    "\n\n" + parser.get_format_instructions()
+                )
+            ),
+            HumanMessage(
+                content=(
+                    f"Original Full Name: \"{original_full_name}\"\n"
+                    f"Desired Outcome: \"{desired_outcome}\"\n"
+                    f"Target Expression Numbers for desired outcome: {target_expression_numbers}\n\n"
+                    "Please suggest 3-5 full name variations that align with these target numbers and the desired outcome. "
+                    "For each name, provide the calculated Expression Number and a concise rationale."
+                )
+            )
+        ])
+        
+        chain = prompt | llm_instance
+        
+        # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+        response = chain.invoke({"original_full_name": original_full_name, "desired_outcome": desired_outcome, "target_expression_numbers": target_expression_numbers})
+        
+        try:
+            # Attempt to parse directly
+            parsed_output = parser.parse(response.content)
+            return parsed_output
+        except Exception as e:
+            # If parsing fails, try OutputFixingParser
+            logger.warning(f"Failed to parse LLM output directly: {e}. Attempting to fix with OutputFixingParser.")
+            fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=llm_instance)
+            try:
+                fixed_output = fixing_parser.parse(response.content)
+                return fixed_output
+            except Exception as fix_e:
+                logger.error(f"Failed to fix LLM output even with OutputFixingParser: {fix_e}")
+                # Return an empty/default structure if all parsing fails
+                return NameSuggestionsOutput(suggestions=[], reasoning="Could not generate name suggestions due to parsing error.")
+
+
 # --- LLM Manager ---
 class LLMManager:
     def __init__(self):
@@ -497,7 +560,6 @@ class LLMManager:
             
         try:
             # Standard LLM for general responses
-            # FIX: Added convert_system_message_to_human=True
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash",
                 google_api_key=api_key,
@@ -507,23 +569,21 @@ class LLMManager:
                 convert_system_message_to_human=True 
             )
             
-            # Creative LLM for name generation
-            # FIX: Added convert_system_message_to_human=True
+            # Creative LLM for name generation and comprehensive reports
             self.creative_llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash", 
                 google_api_key=api_key,
-                temperature=0.9,
+                temperature=0.9, # Higher temperature for creativity in name generation
                 top_p=0.95,
                 top_k=60,
                 convert_system_message_to_human=True 
             )
             
-            # Analytical LLM for interpretations
-            # FIX: Added convert_system_message_to_human=True
+            # Analytical LLM for interpretations and validation
             self.analytical_llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash",
                 google_api_key=api_key,
-                temperature=0.3,
+                temperature=0.3, # Lower temperature for factual/analytical responses
                 top_p=0.8,
                 top_k=20,
                 convert_system_message_to_human=True 
@@ -929,8 +989,6 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     # Custom styles for better readability
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20))
     
-    # FIX: Modify existing Heading1 style instead of adding a new one with the same name.
-    # Or, if you want a completely new style, give it a unique name like 'CustomHeading1'.
     styles['Heading1'].fontSize = 18
     styles['Heading1'].leading = 22
     styles['Heading1'].spaceBefore = 12
@@ -956,7 +1014,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Spacer(1, 0.2 * inch))
 
     # Current Numerological Profile
-    Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) # Use the modified Heading1
+    Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) 
     Story.append(Paragraph(f"<b>Expression Number {report_data.get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     Story.append(Paragraph(f"<b>Life Path Number {report_data.get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
@@ -967,6 +1025,14 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph(f"<b>Personality Number {report_data.get('personality_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('personality_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
 
     Story.append(Spacer(1, 0.2 * inch))
+
+    # Suggested Name Corrections
+    if report_data.get('suggested_names') and report_data['suggested_names'].suggestions:
+        Story.append(Paragraph("🌟 Suggested Name Corrections", styles['Heading1']))
+        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].reasoning}", styles['BodyText']))
+        for suggestion in report_data['suggested_names'].suggestions:
+            Story.append(Paragraph(f"• <b>{suggestion.name}</b> (Expression Number: {suggestion.expression_number}): {suggestion.rationale}", styles['Bullet']))
+        Story.append(Spacer(1, 0.2 * inch))
 
     # Karmic Lessons
     if report_data.get('karmic_lessons', {}).get('lessons'):
@@ -1076,6 +1142,19 @@ def chat(): # This remains a synchronous Flask view
             # Generate comprehensive profile
             profile = get_comprehensive_numerology_profile(report_request.full_name, report_request.birth_date)
             
+            # Determine target numbers for name suggestions
+            target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(report_request.desired_outcome)
+            
+            # Generate name suggestions using the creative LLM
+            # FIX: Call the new name suggestion function
+            name_suggestions = NameSuggestionEngine.generate_name_suggestions(
+                llm_manager.creative_llm, 
+                report_request.full_name, 
+                report_request.desired_outcome, 
+                target_numbers
+            )
+            logger.info(f"Generated Name Suggestions: {name_suggestions.json()}")
+
             # Generate additional insights
             timing_recommendations = generate_timing_recommendations(profile)
             uniqueness_score = calculate_uniqueness_score(profile)
@@ -1095,7 +1174,8 @@ def chat(): # This remains a synchronous Flask view
                 "uniqueness_score": uniqueness_score,
                 "potential_challenges": potential_challenges,
                 "development_recommendations": development_recommendations,
-                "yearly_forecast": yearly_forecast
+                "yearly_forecast": yearly_forecast,
+                "suggested_names": name_suggestions.dict() # FIX: Include suggested names in LLM input
             }
             
             # LLM prompt for advanced report
@@ -1103,22 +1183,25 @@ def chat(): # This remains a synchronous Flask view
                 content=(
                     "You are Sheelaa's Elite AI Numerology Assistant. Your task is to provide a comprehensive, "
                     "personalized numerology report based on the user's full name, birth date, desired outcome, "
-                    "and calculated numerology numbers. Structure the report as follows:\n\n"
+                    "calculated numerology numbers, and **suggested name corrections**. "
+                    "Structure the report as follows, ensuring each section is detailed and insightful:\n\n"
                     "**1. Introduction:** A welcoming and personalized opening, acknowledging their name, birth date, and desired outcome.\n"
                     "**2. Core Numerological Insights:** Explain their Expression (Name) Number and Life Path Number, "
                     "drawing from the provided interpretations. Discuss their compatibility.\n"
                     "**3. Deeper Insights (Soul Urge & Personality):** Explain their Soul Urge and Personality Numbers.\n"
-                    "**4. Karmic Lessons:** Detail any karmic lessons identified from their name.\n"
-                    "**5. Optimal Timing & Energy:** Provide insights into their current personal year and optimal activities.\n"
-                    "**6. Potential Challenges & Growth Areas:** Outline potential challenges and suggest mitigation strategies and growth opportunities.\n"
-                    "**7. Personalized Development Recommendations:** Offer actionable recommendations for immediate focus, long-term goals, and monthly practices.\n"
-                    "**8. Yearly Forecast:** Provide a brief 3-year forecast based on personal year cycles.\n"
-                    "**9. Uniqueness of Your Profile:** Comment on the uniqueness of their numerological blueprint.\n"
-                    "**10. Conclusion:** A positive and empowering closing statement. \n\n"
-                    "Use clear, encouraging language. Format the report using Markdown for headings, bold text, and bullet points. "
+                    "**4. Suggested Name Corrections:** Present the suggested names and their rationales. Explain how these names align with the desired outcome and target numerology. This section is CRITICAL.\n" # FIX: Added this section
+                    "**5. Karmic Lessons:** Detail any karmic lessons identified from their name.\n"
+                    "**6. Optimal Timing & Energy:** Provide insights into their current personal year and optimal activities.\n"
+                    "**7. Potential Challenges & Growth Areas:** Outline potential challenges and suggest mitigation strategies and growth opportunities.\n"
+                    "**8. Personalized Development Recommendations:** Offer actionable recommendations for immediate focus, long-term goals, and monthly practices.\n"
+                    "**9. Yearly Forecast:** Provide a brief 3-year forecast based on personal year cycles.\n"
+                    "**10. Uniqueness of Your Profile:** Comment on the uniqueness of their numerological blueprint.\n"
+                    "**11. Conclusion:** A positive and empowering closing statement. \n\n"
+                    "Use clear, encouraging, and detailed language. Format the report using Markdown for headings, bold text, and bullet points. "
                     "Do NOT include any disclaimers about AI generation in the report content itself. "
                     "Do NOT include any API keys or sensitive information. "
                     "Ensure the report is detailed, insightful, and directly addresses the user's desired outcome."
+                    "**Elaborate on each point sufficiently to provide a truly comprehensive analysis.**" # FIX: Emphasize detail
                 )
             )
             
@@ -1128,7 +1211,7 @@ def chat(): # This remains a synchronous Flask view
             
             messages = [system_message, human_message]
             
-            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            # Direct synchronous invocation of the LLM.
             report_response = llm_manager.creative_llm.invoke(messages)
             
             # Store the full report data, including the LLM's response, for PDF generation
@@ -1179,7 +1262,7 @@ def chat(): # This remains a synchronous Flask view
             
             messages = [system_message, human_message]
             
-            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            # Direct synchronous invocation of the LLM.
             validation_response = llm_manager.analytical_llm.invoke(messages)
             
             return jsonify({"response": validation_response.content}), 200
@@ -1198,7 +1281,7 @@ def chat(): # This remains a synchronous Flask view
             
             chain = prompt | llm_manager.llm
             
-            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            # Direct synchronous invocation of the LLM.
             ai_response = chain.invoke({"input": message})
             
             llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
@@ -1223,13 +1306,13 @@ def generate_pdf_report_endpoint():
     current_expression_number = data.get('current_expression_number')
     current_life_path_number = data.get('current_life_path_number')
     intro_response = data.get('intro_response') # The LLM-generated Markdown report
+    suggested_names_data = data.get('suggested_names') # FIX: Get suggested names from request
 
     if not all([full_name, birth_date, desired_outcome, current_expression_number, current_life_path_number, intro_response]):
         return jsonify({"error": "Missing required data for PDF generation."}), 400
 
     try:
         # Re-calculate comprehensive profile to ensure all data for PDF is fresh and complete
-        # This avoids relying on frontend-only data for complex PDF details
         profile = get_comprehensive_numerology_profile(full_name, birth_date)
         
         # Generate additional insights required for the PDF
@@ -1238,6 +1321,12 @@ def generate_pdf_report_endpoint():
         potential_challenges = identify_potential_challenges(profile)
         development_recommendations = get_development_recommendations(profile)
         yearly_forecast = generate_yearly_forecast(profile)
+
+        # FIX: Reconstruct NameSuggestionsOutput object from dictionary data
+        suggested_names_obj = NameSuggestionsOutput(
+            suggestions=[NameSuggestion(**s) for s in suggested_names_data['suggestions']],
+            reasoning=suggested_names_data['reasoning']
+        ) if suggested_names_data else NameSuggestionsOutput(suggestions=[], reasoning="No name suggestions provided.")
 
         pdf_report_data = {
             "full_name": full_name,
@@ -1254,7 +1343,8 @@ def generate_pdf_report_endpoint():
             "potential_challenges": potential_challenges,
             "development_recommendations": development_recommendations,
             "yearly_forecast": yearly_forecast,
-            "intro_response": intro_response # Pass the LLM-generated Markdown report
+            "intro_response": intro_response, # Pass the LLM-generated Markdown report
+            "suggested_names": suggested_names_obj # FIX: Pass the NameSuggestionsOutput object
         }
 
         pdf_bytes = create_numerology_pdf(pdf_report_data)
