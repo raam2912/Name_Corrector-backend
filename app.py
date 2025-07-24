@@ -48,7 +48,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        logging.StreamHandler()
+        sys.stdout # Ensure logs go to stdout for Render
     ]
 )
 logger = logging.getLogger(__name__)
@@ -112,7 +112,6 @@ class ReportRequest:
 
 class NameSuggestion(BaseModel):
     name: str = Field(description="Full name suggestion")
-    # FIX: Updated rationale description to emphasize detail
     rationale: str = Field(description="Detailed explanation (2-3 sentences minimum) about why this specific name change is advantageous based on its new numerological Expression Number and how it directly supports the user's desired outcome. Focus on the positive impact and the specific energy it brings.")
     expression_number: int = Field(description="The calculated Expression Number for the suggested name.")
 
@@ -990,24 +989,33 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles = getSampleStyleSheet()
     
     # Custom styles for better readability
+    # For styles that are NOT part of getSampleStyleSheet(), use styles.add()
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20))
-    
+    styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
+
+    # For styles that ARE part of getSampleStyleSheet(), modify them directly
     styles['Heading1'].fontSize = 18
     styles['Heading1'].leading = 22
     styles['Heading1'].spaceBefore = 12
     styles['Heading1'].spaceAfter = 6
     styles['Heading1'].fontName = 'Helvetica-Bold'
 
-    # FIX: Modify the existing 'Heading2' style instead of trying to add a new one with the same name.
     styles['Heading2'].fontSize = 14
     styles['Heading2'].leading = 18
     styles['Heading2'].spaceBefore = 10
     styles['Heading2'].spaceAfter = 4
     styles['Heading2'].fontName = 'Helvetica-Bold'
 
-    styles.add(ParagraphStyle(name='BodyText', fontSize=10, leading=14, spaceAfter=6))
-    styles.add(ParagraphStyle(name='Bullet', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3))
-    styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
+    # FIX: Modify existing BodyText and Bullet styles directly
+    styles['BodyText'].fontSize = 10
+    styles['BodyText'].leading = 14
+    styles['BodyText'].spaceAfter = 6
+
+    styles['Bullet'].fontSize = 10
+    styles['Bullet'].leading = 14
+    styles['Bullet'].leftIndent = 36
+    styles['Bullet'].bulletIndent = 18
+    styles['Bullet'].spaceAfter = 3
 
     Story = []
 
@@ -1040,7 +1048,6 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph("🌟 Suggested Name Corrections", styles['Heading1']))
         Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].reasoning}", styles['BodyText']))
         for suggestion in report_data['suggested_names'].suggestions:
-            # Ensure detailed rationale is included here
             Story.append(Paragraph(f"• <b>{suggestion.name}</b> (Expression Number: {suggestion.expression_number}): {suggestion.rationale}", styles['Bullet']))
         Story.append(Spacer(1, 0.2 * inch))
 
@@ -1122,8 +1129,6 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
-
-# Removed the run_async_in_sync helper function entirely as it's not needed for LLM.invoke()
 
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute") # Apply rate limit using the custom decorator
