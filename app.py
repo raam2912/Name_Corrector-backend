@@ -402,12 +402,11 @@ class MessageParser:
     def parse_report_request(message: str) -> Optional[ReportRequest]:
         """
         Parse GENERATE_ADVANCED_REPORT message format.
-        FIX: Adjusted regex to correctly match the prefix and handle potential newlines.
         The `[\s\S]*?` allows matching across newlines non-greedily.
         The `\s*` after the final quote handles trailing whitespace/newlines.
         """
         pattern = r"GENERATE_ADVANCED_REPORT:\s*My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"([\s\S]*?)\"\s*[\.\n]*$"
-        match = re.search(pattern, message) # FIX: Added 'message' as the string to search
+        match = re.search(pattern, message) 
         
         if not match:
             return None
@@ -493,7 +492,6 @@ class NameSuggestionEngine:
         """
         parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
 
-        # FIX: Refined prompt for name suggestions to ensure similarity and detailed rationales
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(
                 content=(
@@ -524,11 +522,10 @@ class NameSuggestionEngine:
         
         chain = prompt | llm_instance
         
-        # FIX: Corrected the input dictionary key for target_expression_numbers
         response = chain.invoke({
             "original_full_name": original_full_name, 
             "desired_outcome": desired_outcome, 
-            "target_expression_numbers": target_expression_numbers # This was the missing part
+            "target_expression_numbers": target_expression_numbers 
         })
         
         try:
@@ -1001,7 +998,13 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles['Heading1'].spaceAfter = 6
     styles['Heading1'].fontName = 'Helvetica-Bold'
 
-    styles.add(ParagraphStyle(name='Heading2', fontSize=14, leading=18, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold'))
+    # FIX: Modify the existing 'Heading2' style instead of trying to add a new one with the same name.
+    styles['Heading2'].fontSize = 14
+    styles['Heading2'].leading = 18
+    styles['Heading2'].spaceBefore = 10
+    styles['Heading2'].spaceAfter = 4
+    styles['Heading2'].fontName = 'Helvetica-Bold'
+
     styles.add(ParagraphStyle(name='BodyText', fontSize=10, leading=14, spaceAfter=6))
     styles.add(ParagraphStyle(name='Bullet', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3))
     styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
@@ -1098,7 +1101,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     # Uniqueness Score
     if report_data.get('uniqueness_score'):
-        uniqueness = report_data['uniqueness']
+        uniqueness = report_data['uniqueness_score'] 
         Story.append(Paragraph("✨ Uniqueness of Your Profile", styles['Heading2']))
         Story.append(Paragraph(f"<b>Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['BodyText']))
         Story.append(Paragraph(f"<b>Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['BodyText']))
@@ -1346,7 +1349,7 @@ def generate_pdf_report_endpoint():
             "compatibility_insights": profile['compatibility_insights'],
             "karmic_lessons": profile['karmic_lessons'],
             "timing_recommendations": timing_recommendations,
-            "uniqueness_score": uniqueness_score,
+            "uniqueness_score": uniqueness_score, 
             "potential_challenges": potential_challenges,
             "development_recommendations": development_recommendations,
             "yearly_forecast": yearly_forecast,
@@ -1356,6 +1359,9 @@ def generate_pdf_report_endpoint():
 
         pdf_bytes = create_numerology_pdf(pdf_report_data)
         
+        # Log the size of the generated PDF bytes
+        logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
+
         # Determine filename
         filename = f"Numerology_Report_{full_name.replace(' ', '_')}.pdf"
         
