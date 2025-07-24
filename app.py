@@ -21,7 +21,7 @@ import secrets
 import hmac
 import psutil
 from collections import Counter
-import sys
+import sys # Import sys for sys.stdout
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -48,7 +48,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        sys.stdout # Ensure logs go to stdout for Render
+        logging.StreamHandler(sys.stdout) # FIX: Wrap sys.stdout in StreamHandler
     ]
 )
 logger = logging.getLogger(__name__)
@@ -909,7 +909,7 @@ def identify_potential_challenges(profile: Dict) -> Dict:
         9: ["Emotional volatility", "Disappointment", "Burnout"],
         11: ["Nervous tension", "Unrealistic expectations", "Hypersensitivity"],
         22: ["Overwhelming pressure", "Perfectionism", "Burnout risk"],
-        33: ["Emotional overwhelm", "Boundary issues", "Self-sacrifice"]
+        33: ["Emotional overwhelm, taking on others' pain, and tendency toward self-sacrifice"]
     }
     
     return {
@@ -1006,7 +1006,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles['Heading2'].spaceAfter = 4
     styles['Heading2'].fontName = 'Helvetica-Bold'
 
-    # FIX: Modify existing BodyText and Bullet styles directly
+    # FIX: Modify existing BodyText and Bullet styles directly instead of adding new ones
     styles['BodyText'].fontSize = 10
     styles['BodyText'].leading = 14
     styles['BodyText'].spaceAfter = 6
@@ -1337,7 +1337,6 @@ def generate_pdf_report_endpoint():
         yearly_forecast = generate_yearly_forecast(profile)
 
         # Reconstruct NameSuggestionsOutput object from dictionary data
-        # Ensure that 'rationale' is treated as a string, as it's coming from the LLM
         suggested_names_obj = NameSuggestionsOutput(
             suggestions=[NameSuggestion(**s) for s in suggested_names_data['suggestions']],
             reasoning=suggested_names_data['reasoning']
