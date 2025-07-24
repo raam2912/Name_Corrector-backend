@@ -27,6 +27,7 @@ import sys
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate
+# FIX: Ensure HumanMessage and AIMessage are imported for memory operations
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field 
 from langchain.output_parsers import PydanticOutputParser
@@ -402,8 +403,10 @@ class MessageParser:
         """
         Parse GENERATE_ADVANCED_REPORT message format.
         FIX: Adjusted regex to correctly match the prefix and handle potential newlines.
+        The `[\s\S]*?` allows matching across newlines non-greedily.
+        The `\s*` after the final quote handles trailing whitespace/newlines.
         """
-        pattern = r"GENERATE_ADVANCED_REPORT:\s*My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"(.*?)\"\s*[\.\n]?"
+        pattern = r"GENERATE_ADVANCED_REPORT:\s*My full name is \"(.*?)\"\s*and my birth date is \"(.*?)\"\.\s*My current Name \(Expression\) Number is (\d+)\s*and Life Path Number is (\d+)\.\s*I desire the following positive outcome in my life:\s*\"([\s\S]*?)\"\s*[\.\n]*$"
         match = re.search(pattern, message)
         
         if not match:
@@ -412,7 +415,7 @@ class MessageParser:
         return ReportRequest(
             full_name=match.group(1),
             birth_date=match.group(2),
-            desired_outcome=match.group(5), # Desired outcome is the 5th group
+            desired_outcome=match.group(5).strip(), # Strip whitespace from desired outcome
             current_expression_number=int(match.group(3)),
             current_life_path_number=int(match.group(4))
         )
@@ -698,11 +701,6 @@ def analyze_karmic_lessons(name: str) -> Dict:
 def generate_timing_recommendations(profile: Dict) -> Dict:
     """Generate optimal timing recommendations"""
     current_year = datetime.datetime.now().year
-    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
-    
-    # To calculate current personal year accurately:
-    # Reduce current month, day, and current year to single digits (or master numbers)
-    # Then sum them and reduce again.
     
     today = datetime.date.today()
     personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today.month, True)
@@ -726,9 +724,6 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
         33: ["Compassionate service", "Healing", "Teaching universal love"]
     }
     
-    # Best months can be complex, often related to the personal year number itself.
-    # For simplicity, let's suggest months whose numerological value aligns or are traditionally favorable.
-    # This is a placeholder; real numerology timing is more nuanced.
     best_months_map = {
         1: [1, 10], 2: [2, 11], 3: [3, 12], 4: [4], 5: [5], 6: [6], 7: [7], 8: [8], 9: [9],
         11: [2, 11], 22: [4], 33: [6]
@@ -748,23 +743,21 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
 def get_mitigation_strategies(expression: int) -> List[str]:
     """Get strategies to mitigate challenges"""
     strategies = {
-        1: ["Impatience", "Domination tendency", "Isolation"], # These were challenges, not strategies. Corrected below.
-        2: ["Build confidence", "Practice decision-making", "Set boundaries"],
-        3: ["Focus on priorities", "Develop discipline", "Deepen relationships"],
-        4: ["Embrace flexibility", "Take breaks", "Express creativity"],
-        5: ["Practice commitment", "Develop grounding habits", "Plan ahead"],
-        6: ["Over-responsibility", "Interference", "Martyrdom"], # These were challenges, not strategies. Corrected below.
-        7: ["Engage socially", "Express emotions", "Apply knowledge practically"],
-        8: ["Balance work-life", "Nurture relationships", "Practice generosity"],
-        9: ["Set realistic expectations", "Practice self-compassion", "Take breaks"],
-        11: ["Grounding exercises", "Manage nervous energy", "Set realistic goals"],
-        22: ["Delegate tasks", "Prioritize self-care", "Break down large goals"],
-        33: ["Establish strong boundaries", "Practice self-love", "Seek support"]
+        1: ["Practice patience and listening", "Delegate tasks effectively", "Cultivate empathy and understanding"],
+        2: ["Build self-confidence and assertiveness", "Practice decisive action", "Establish clear personal boundaries"],
+        3: ["Focus and prioritize energy", "Develop discipline in creative pursuits", "Cultivate deeper, more meaningful relationships"],
+        4: ["Embrace flexibility and adaptability", "Take regular breaks to avoid burnout", "Express creativity outside of work"],
+        5: ["Practice commitment and follow-through", "Develop grounding habits like meditation", "Plan ahead to manage impulses"],
+        6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
+        7: ["Actively engage in social activities", "Practice expressing emotions openly", "Apply knowledge practically in daily life"],
+        8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy"],
+        9: ["Set realistic expectations for self and others", "Practice self-compassion and forgiveness", "Take breaks to prevent emotional burnout"],
+        11: ["Practice grounding exercises (e.g., walking in nature)", "Manage nervous energy through mindfulness", "Set realistic and achievable goals"],
+        22: ["Delegate tasks effectively to avoid overwhelm", "Prioritize self-care and rest", "Break down large goals into smaller, manageable steps"],
+        33: ["Establish strong energetic and emotional boundaries", "Practice self-love and self-nurturing", "Seek support from trusted friends or professionals"]
     }
-    # Corrected strategies
-    strategies[1] = ["Practice patience and listening", "Delegate tasks", "Cultivate empathy"]
-    strategies[6] = ["Set healthy boundaries", "Prioritize self-care", "Avoid over-commitment"]
     return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
+
 
 def get_growth_opportunities(expression: int) -> List[str]:
     """Get growth opportunities based on expression number"""
@@ -879,7 +872,6 @@ def get_development_recommendations(profile: Dict) -> Dict:
 def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     """Generate multi-year numerological forecast"""
     current_year = datetime.datetime.now().year
-    # birth_year = int(profile["birth_date"].split("-")[0]) # Not directly used for personal year calc here
     
     forecast = {}
     
@@ -948,7 +940,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story = []
 
     # Title
-    Story.append(Paragraph("🌟 Your Personalized Numerology Report �", styles['TitleStyle']))
+    Story.append(Paragraph("🌟 Your Personalized Numerology Report 🌟", styles['TitleStyle']))
     Story.append(Spacer(1, 0.2 * inch))
 
     # Introduction (parsed from report_data.get('intro_response'))
@@ -1218,14 +1210,14 @@ def chat(): # Removed 'async' keyword here
             # Fallback for general chat messages
             logger.info(f"Processing general chat message: {message}")
             
-            # FIX: Corrected memory usage - directly call add_user_message on memory object
-            llm_manager.memory.add_user_message(message)
+            # FIX: Corrected memory usage - directly call add_user_message on chat_memory object
+            llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
             
             # Define a simple prompt for general chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content="You are Sheelaa's Elite AI Numerology Assistant. You provide general information and guidance about numerology. Do not attempt to calculate numbers or provide personalized reports unless explicitly asked with specific details (full name, birth date). Keep responses concise and helpful."),
-                # FIX: Corrected memory usage - directly access messages on memory object
-                llm_manager.memory.messages[-1] # Only include the last message for context to avoid excessive token usage
+                # FIX: Corrected memory usage - directly access messages on chat_memory object
+                llm_manager.memory.chat_memory.messages[-1] # Only include the last message for context to avoid excessive token usage
             ])
             
             chain = prompt | llm_manager.llm
@@ -1233,8 +1225,8 @@ def chat(): # Removed 'async' keyword here
             # Get response from LLM for general chat
             ai_response = run_async_in_sync(chain.invoke({"input": message}))
             
-            # FIX: Corrected memory usage - directly call add_ai_message on memory object
-            llm_manager.memory.add_ai_message(ai_response.content)
+            # FIX: Corrected memory usage - directly call add_ai_message on chat_memory object
+            llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
             
             return jsonify({"response": ai_response.content}), 200
 
