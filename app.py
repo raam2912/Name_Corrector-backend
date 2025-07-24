@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import datetime
 import re
 import json
-import asyncio
+import asyncio # Still needed for LLMManager.executor, but not for direct invoke calls
 import logging
 from functools import wraps
 from typing import Dict, List, Optional, Tuple
@@ -1047,39 +1047,12 @@ def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
 
-# Helper to run async functions in a synchronous Flask context
-def run_async_in_sync(coroutine):
-    """
-    Runs an async coroutine in a new, isolated event loop.
-    This is necessary when calling async functions from a synchronous Flask view
-    running under a WSGI server like Gunicorn.
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError: # No running loop
-        loop = None
-
-    if loop and loop.is_running():
-        # If a loop is already running (e.g., in a different thread of Gunicorn worker),
-        # create a new loop for this specific task.
-        new_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(new_loop)
-        try:
-            return new_loop.run_until_complete(coroutine)
-        finally:
-            new_loop.close()
-            # It's good practice to restore the previous loop if it existed
-            if loop:
-                asyncio.set_event_loop(loop)
-    else:
-        # No running loop, safe to use asyncio.run
-        return asyncio.run(coroutine)
-
+# Removed the run_async_in_sync helper function entirely as it's not needed for LLM.invoke()
 
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute") # Apply rate limit using the custom decorator
 @performance_monitor
-def chat(): # Removed 'async' keyword here
+def chat(): # This remains a synchronous Flask view
     """Handles chat messages and advanced report/validation requests."""
     data = request.json
     message = data.get('message')
@@ -1155,8 +1128,8 @@ def chat(): # Removed 'async' keyword here
             
             messages = [system_message, human_message]
             
-            # Get response from creative LLM for the report
-            report_response = run_async_in_sync(llm_manager.creative_llm.invoke(messages))
+            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            report_response = llm_manager.creative_llm.invoke(messages)
             
             # Store the full report data, including the LLM's response, for PDF generation
             full_report_data = {
@@ -1206,8 +1179,8 @@ def chat(): # Removed 'async' keyword here
             
             messages = [system_message, human_message]
             
-            # Get response from analytical LLM for validation
-            validation_response = run_async_in_sync(llm_manager.analytical_llm.invoke(messages))
+            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            validation_response = llm_manager.analytical_llm.invoke(messages)
             
             return jsonify({"response": validation_response.content}), 200
 
@@ -1215,22 +1188,19 @@ def chat(): # Removed 'async' keyword here
             # Fallback for general chat messages
             logger.info(f"Processing general chat message: {message}")
             
-            # FIX: Corrected memory usage - directly call add_user_message on chat_memory object
             llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
             
             # Define a simple prompt for general chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content="You are Sheelaa's Elite AI Numerology Assistant. You provide general information and guidance about numerology. Do not attempt to calculate numbers or provide personalized reports unless explicitly asked with specific details (full name, birth date). Keep responses concise and helpful."),
-                # FIX: Corrected memory usage - directly access messages on chat_memory object
-                llm_manager.memory.chat_memory.messages[-1] # Only include the last message for context to avoid excessive token usage
+                llm_manager.memory.chat_memory.messages[-1] 
             ])
             
             chain = prompt | llm_manager.llm
             
-            # Get response from LLM for general chat
-            ai_response = run_async_in_sync(chain.invoke({"input": message}))
+            # FIX: Direct synchronous invocation of the LLM. No run_async_in_sync needed.
+            ai_response = chain.invoke({"input": message})
             
-            # FIX: Corrected memory usage - directly call add_ai_message on chat_memory object
             llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
             
             return jsonify({"response": ai_response.content}), 200
