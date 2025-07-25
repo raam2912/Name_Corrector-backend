@@ -37,7 +37,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.lib.colors import HexColor # For custom colors
 import io
 
 # Load environment variables
@@ -104,7 +105,7 @@ Generate 3-5 strategically crafted full name variations that:
 ## RATIONALE REQUIREMENTS:
 For each suggestion, provide a comprehensive 2-3 sentence explanation that:
 1. **Specifies the exact numerological advantage** of the new Expression Number
-2. **Directly connects** this advantage to the user's desired outcome
+2. **Directly connects** this advantage to the user's specific desired outcome
 3. **Explains the energetic transformation** this change creates
 4. **Emphasizes positive impact** and specific benefits
 
@@ -138,78 +139,106 @@ NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST**
 ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding, **integrating Chaldean Numerology, Lo Shu Grid analysis, Astro-Numerology principles (based on provided data), and Phonology considerations.**
 
 ## REPORT STRUCTURE (Follow Exactly):
-### 1. **Introduction** (Warm & Personal)
-- Acknowledge their name, birth date, and desired outcome personally
-- Create immediate connection and establish trust
-- Set positive, empowering tone for the entire report
+### 1. **Executive Summary** (Concise & Impactful)
+- Provide a high-level overview of the client's core numerological blueprint.
+- Summarize the primary insights and the most impactful name correction.
+- Highlight the key benefits of adopting the new name in relation to their desired outcome.
+- This section should be concise but powerful, setting the stage for the detailed report.
 
-### 2. **Core Numerological Blueprint** (Detailed Analysis)
-- **Expression Number Deep Dive**: Core traits, psychological patterns, natural abilities, **and its Chaldean planetary association.**
-- **Life Path Number Analysis**: Life purpose, karmic direction, soul mission.
-- **Birth Day Number Significance**: Explain the day of birth's influence.
-- **Compatibility Synthesis**: How these numbers work together or challenge each other.
-- Draw from provided interpretations but add unique insights.
+### 2. **Introduction** (Warm & Personal)
+- Acknowledge their name, birth date, and desired outcome personally, reinforcing the sacred journey.
+- Create immediate connection and establish trust, emphasizing the report's transformative potential.
+- Set a positive, empowering tone for the entire report.
+- Explain the holistic approach, integrating various numerological and conceptual astrological systems.
 
-### 3. **Soul Architecture** (Soul Urge & Personality)
-- **Soul Urge Number**: Inner motivations, heart's desires, what fulfills them.
-- **Personality Number**: How others perceive them, outer persona, first impressions.
-- **Integration Dynamics**: How inner and outer selves align or conflict.
+### 3. **Core Numerological Blueprint: A Deep Dive** (Extensive Analysis)
+- **Expression Number Deep Dive**:
+    - Provide a multi-paragraph analysis of its core traits, psychological patterns, natural abilities, and its Chaldean planetary association.
+    - Discuss how this number shapes their public persona and life's work.
+    - Include specific examples of how this energy might manifest in daily life and career.
+- **Life Path Number Analysis**:
+    - Offer a multi-paragraph exploration of their life purpose, karmic direction, and soul mission.
+    - Detail the overarching themes and lessons they are destined to encounter.
+    - Connect this to their inherent strengths and challenges.
+- **Birth Day Number Significance**:
+    - Explain in detail the day of birth's influence on their personality and immediate characteristics.
+    - Discuss how it complements or contrasts with their Expression and Life Path numbers.
+- **Compatibility Synthesis**:
+    - Provide a thorough analysis of how these core numbers (Expression, Life Path, Birth Day) work together or create dynamic challenges.
+    - Offer insights into areas of natural synergy and areas requiring conscious integration.
+    - Draw from provided interpretations but add unique, personalized insights.
 
-### 4. **🌟 STRATEGIC NAME CORRECTIONS** (CRITICAL SECTION)
+### 4. **Soul Architecture: Inner & Outer Selves** (Detailed Exploration)
+- **Soul Urge Number**:
+    - Delve into their inner motivations, heart's desires, and what truly fulfills them on a soul level.
+    - Explain how this internal drive influences their choices and aspirations.
+- **Personality Number**:
+    - Describe in detail how others perceive them, their outer persona, and the first impressions they make.
+    - Discuss how this external presentation can be leveraged for their desired outcome.
+- **Integration Dynamics**:
+    - Analyze the alignment or potential conflict between their inner (Soul Urge) and outer (Personality) selves.
+    - Provide guidance on harmonizing these aspects for greater authenticity and impact.
+
+### 5. **🌟 STRATEGIC NAME CORRECTIONS: Your Path to Transformation** (CRITICAL, Highly Detailed)
 - Present each suggested name with its Expression Number.
-- **Use the exact detailed rationales provided in the input data.**
-- Explain how each suggestion specifically enhances their desired outcome.
-- Compare energetic shifts from current to suggested numbers.
-- Provide implementation guidance and timing recommendations.
-- **Crucially, discuss how each suggested name addresses specific numerological or astrological imbalances identified in the client's profile (e.g., balancing missing Lo Shu numbers, harmonizing with planetary influences).**
+- **Use the exact detailed rationales provided in the input data, expanding on them with further insights.**
+- Explain in multiple paragraphs how each suggestion specifically enhances their desired outcome, providing concrete scenarios.
+- Compare energetic shifts from current to suggested numbers with rich descriptive language.
+- Provide comprehensive implementation guidance, including psychological preparation and practical steps for adopting the new name.
+- Offer detailed timing recommendations for name adoption, linking to their personal year cycles.
+- **Crucially, discuss in depth how each suggested name addresses specific numerological or astrological imbalances identified in the client's profile (e.g., balancing missing Lo Shu numbers, harmonizing with planetary influences, mitigating karmic debts). Provide specific examples related to their profile.**
 
-### 5. **Karmic Lessons & Soul Work** (Transformational)
-- Detail missing numbers from their **Lo Shu Grid** and their significance.
-- Explain how addressing these lessons accelerates growth.
-- Connect lessons to their desired outcome.
-- **Specifically mention any karmic debt numbers identified in their birth date or original name.**
+### 6. **Karmic Lessons & Soul Work: Unlocking Growth** (In-depth Analysis)
+- Detail **all** missing numbers from their **Lo Shu Grid** and their profound significance, providing multiple paragraphs of interpretation for each.
+- Explain how consciously addressing these lessons accelerates personal and spiritual growth, linking directly to their desired outcome.
+- **Specifically mention any karmic debt numbers identified in their birth date or original name, explaining their origin and the specific lessons they present.**
+- Offer practical exercises or mindset shifts for integrating these lessons.
 
-### 6. **Temporal Numerology** (Timing & Cycles)
-- Current Personal Year energy and optimal activities.
-- Best months for implementing changes (e.g., name changes, new ventures).
-- Energy forecasts and strategic timing.
+### 7. **Temporal Numerology: Navigating Your Cycles** (Comprehensive Timing)
+- Provide an extensive analysis of their Current Personal Year energy, including detailed optimal activities and potential challenges.
+- Explain the significance of the best months for implementing changes (e.g., name changes, new ventures), providing the numerological reasoning behind these periods.
+- Offer a broader energy forecast for the current and upcoming periods, guiding strategic planning.
 
-### 7. **Shadow Work & Growth Edge** (Honest Assessment)
-- Potential challenges specific to their numbers, **including any identified edge cases (e.g., Expression 8/Life Path 1 conflict, Master Number challenges).**
-- Practical mitigation strategies.
-- Transform challenges into growth opportunities.
+### 8. **Shadow Work & Growth Edge: Embracing Wholeness** (Honest & Empowering Assessment)
+- Detail potential challenges specific to their numbers, **including all identified edge cases (e.g., Expression 8/Life Path 1 conflict, Master Number challenges), providing in-depth explanations of their manifestations.**
+- Offer multiple, practical, and actionable mitigation strategies for each identified challenge.
+- Reframe challenges as profound growth opportunities, guiding them towards transformation.
 
-### 8. **Personalized Development Blueprint** (Actionable)
-- Immediate focus areas with specific actions.
-- Long-term vision aligned with their numbers.
-- Monthly practices for sustained growth.
-- **Suggest actions that help integrate energies from their Lo Shu Grid or align with beneficial planetary influences.**
+### 9. **Personalized Development Blueprint: Actionable Steps** (Highly Practical)
+- Outline immediate focus areas with specific, actionable steps for daily integration.
+- Detail a long-term vision aligned with their numbers and desired outcome, providing a roadmap.
+- Suggest comprehensive monthly practices for sustained growth and energetic alignment.
+- **Provide specific actions that help integrate energies from their Lo Shu Grid or align with beneficial planetary influences, offering concrete examples.**
 
-### 9. **Future Cycles Forecast** (3-Year Vision)
-- Year-by-year energy themes and focus areas.
-- Strategic planning for optimal outcomes.
-- Timeline for major life decisions.
+### 10. **Future Cycles Forecast: Your 3-Year Vision** (Detailed Predictive Insights)
+- Provide a year-by-year energy theme and focus areas for the next three years, with detailed interpretations for each year.
+- Offer strategic planning advice for optimal outcomes in each year.
+- Suggest a timeline for major life decisions within these cycles.
 
-### 10. **Numerical Uniqueness Profile** (Special Recognition)
-- Highlight rare combinations or master numbers.
-- Explain their unique gifts and cosmic significance.
-- **Discuss how their unique numerical blueprint interacts with their conceptual astrological parameters (Ascendant/Lagna, Moon Sign).**
+### 11. **Numerical Uniqueness Profile: Your Cosmic Signature** (Special Recognition)
+- Highlight all rare combinations or master numbers in their profile, explaining their unique gifts and cosmic significance in multiple paragraphs.
+- **Discuss in detail how their unique numerical blueprint interacts with their conceptual astrological parameters (Ascendant/Lagna, Moon Sign, Planetary Lords), providing a rich tapestry of interwoven influences.**
 
-### 11. **Empowerment Conclusion** (Inspiring Close)
-- Synthesize key insights.
-- Reinforce their power to shape destiny.
-- Leave them feeling inspired and capable.
+### 12. **Empowerment Conclusion** (Inspiring & Action-Oriented Close)
+- Synthesize all key insights from the report, reinforcing their inherent power.
+- Reiterate their capacity to shape destiny through conscious alignment.
+- Leave them feeling profoundly inspired, capable, and equipped with actionable wisdom.
 
 ## WRITING STANDARDS:
-- **Depth Over Breadth**: Elaborate significantly on each section, providing rich, nuanced insights.
-- **Personal Touch**: Use their name throughout, make it feel custom-crafted.
-- **Markdown Formatting**: Use headers, bold text, bullet points for readability.
-- **Empowering Tone**: Inspiring, supportive, never fatalistic.
-- **Specific Details**: Avoid generalities, provide concrete insights, **referencing specific numbers, grid positions, or planetary influences where relevant.**
-- **Professional Quality**: No AI disclaimers, no sensitive information.
-
-## SUCCESS METRICS:
-The report should feel like a personal consultation worth hundreds of dollars, providing actionable insights that directly address their desired outcome while honoring the sacred wisdom of numerology."""
+- **Depth & Breadth**: Generate *extensive* content for each section and sub-section. Aim for 4-5 substantial paragraphs per major point, with rich examples, scenarios, and detailed explanations. The goal is a truly comprehensive, almost book-like report.
+- **Professional & Authoritative Tone**: Maintain the voice of a master numerologist – wise, insightful, and empowering. Avoid casual language.
+- **Personal Touch**: Use their name throughout, make it feel custom-crafted and deeply personal.
+- **Markdown Formatting**: Use headers (`#`, `##`, `###`), bold text (`**text**`), italic text (`*text*`), and bullet points (`* item`).
+- **Highlighting for Readability**:
+    - **Crucial Takeaway**: For key insights or critical advice, start a paragraph with "<b>Crucial Takeaway:</b> " followed by the insight.
+    - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation.
+    - **Important Note**: For cautionary or vital information, start a paragraph with "<b>Important Note:</b> " followed by the note.
+    - Use `**bold**` for all numerological terms (e.g., **Expression Number**, **Life Path Number**) and key concepts.
+- **Specific Details**: Avoid generalities. Provide concrete insights, **referencing specific numbers, grid positions, planetary influences, and real-world implications where relevant.**
+- **No AI Disclaimers.**
+- **Ensure the content flows logically and is highly coherent, even with its extensive detail.**
+- **Assume the reader is a practitioner who appreciates deep, academic-level numerological analysis.**
+"""
 
 ADVANCED_REPORT_HUMAN_PROMPT = """**COMPREHENSIVE NUMEROLOGY REPORT REQUEST**
 Please generate a detailed, transformational numerology report using this complete profile data:
@@ -217,11 +246,11 @@ Please generate a detailed, transformational numerology report using this comple
 {llm_input_data}
 ```
 **REQUIREMENTS:**
-- Follow the exact 11-section structure outlined in your instructions
-- Elaborate extensively on each section - aim for comprehensive analysis
-- Use the provided detailed rationales for name suggestions verbatim
-- Directly address how everything connects to their desired outcome
-- Create a report that feels personally crafted and professionally valuable"""
+- Follow the exact 12-section structure outlined in your instructions.
+- Elaborate extensively on each section and sub-section - aim for truly comprehensive analysis, providing multiple paragraphs and examples for each point.
+- Use the provided detailed rationales for name suggestions verbatim and expand upon them.
+- Directly address how everything connects to their desired outcome.
+- Create a report that feels personally crafted, professionally valuable, and profoundly insightful."""
 
 NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance through a conversational interface. Your goal is to help practitioners thoroughly evaluate potential names by asking clarifying questions and providing iterative insights.
 
@@ -1577,7 +1606,7 @@ class LLMManager:
             self.creative_llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash", 
                 google_api_key=api_key,
-                temperature=0.9,
+                temperature=0.9, # Increased for more creative/detailed report generation
                 top_p=0.95,
                 top_k=60,
                 convert_system_message_to_human=True 
@@ -2134,7 +2163,8 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
 def create_numerology_pdf(report_data: Dict) -> bytes:
     """
     Generates a PDF numerology report using ReportLab.
-    This function now expects ALL data to be pre-processed and sent from the frontend.
+    This function now expects the full, potentially modified/validated report data
+    directly from the frontend.
     It structures the PDF content based on the 11 sections and additional details.
     """
     buffer = io.BytesIO()
@@ -2145,13 +2175,32 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     
     # Custom styles for better readability and structure
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='SubHeadingStyle', fontSize=16, leading=20, spaceBefore=15, spaceAfter=8, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='SectionHeadingStyle', fontSize=14, leading=18, spaceBefore=12, spaceAfter=6, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='SubSectionHeadingStyle', fontSize=12, leading=16, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='SubHeadingStyle', fontSize=18, leading=22, spaceBefore=20, spaceAfter=10, alignment=TA_CENTER, fontName='Helvetica-Bold')) # Main section titles
+    styles.add(ParagraphStyle(name='SectionHeadingStyle', fontSize=14, leading=18, spaceBefore=15, spaceAfter=8, fontName='Helvetica-Bold')) # Sub-section titles
+    styles.add(ParagraphStyle(name='SubSectionHeadingStyle', fontSize=12, leading=16, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold')) # Sub-sub-section titles
     styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='NormalBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica'))
+    styles.add(ParagraphStyle(name='NormalBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica', alignment=TA_JUSTIFY)) # Justified body text
     styles.add(ParagraphStyle(name='BulletStyle', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3, fontName='Helvetica'))
-    styles.add(ParagraphStyle(name='ItalicBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Oblique'))
+    styles.add(ParagraphStyle(name='ItalicBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY))
+    
+    # New styles for highlighting and aesthetics
+    styles.add(ParagraphStyle(name='ExecutiveSummaryStyle', fontSize=11, leading=16, spaceBefore=10, spaceAfter=12, fontName='Helvetica', alignment=TA_JUSTIFY,
+                                backColor=HexColor('#F0F8FF'), # AliceBlue
+                                borderPadding=6, borderWidth=0.5, borderColor=HexColor('#ADD8E6'), # LightBlue
+                                borderRadius=5))
+    styles.add(ParagraphStyle(name='KeyInsightStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
+                                backColor=HexColor('#FFFACD'), # LemonChiffon
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#DAA520'), # Goldenrod
+                                borderRadius=3))
+    styles.add(ParagraphStyle(name='CrucialTakeawayStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
+                                backColor=HexColor('#FFDAB9'), # PeachPuff
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFA07A'), # LightSalmon
+                                borderRadius=3))
+    styles.add(ParagraphStyle(name='ImportantNoteStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY,
+                                backColor=HexColor('#E0FFFF'), # LightCyan
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#AFEEEE'), # PaleTurquoise
+                                borderRadius=3))
+    styles.add(ParagraphStyle(name='QuoteStyle', fontSize=10, leading=14, spaceBefore=10, spaceAfter=10, leftIndent=20, rightIndent=20, fontName='Helvetica-Oblique', textColor=HexColor('#555555')))
 
     # Ensure standard styles are also configured for consistency
     styles['Heading1'].fontSize = 18
@@ -2169,6 +2218,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles['BodyText'].fontSize = 10
     styles['BodyText'].leading = 14
     styles['BodyText'].spaceAfter = 6
+    styles['BodyText'].alignment = TA_JUSTIFY
+
 
     styles['Bullet'].fontSize = 10
     styles['Bullet'].leading = 14
@@ -2189,43 +2240,53 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     if report_data.get('birth_place'):
         # Corrected: Added missing </b> to close the bold tag for the value
         Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
-    Story.append(Paragraph(f"Desired Outcome: <b>{report_data.get('desired_outcome', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
     Story.append(PageBreak())
 
-    # 1. Introduction (from editable_main_report_content)
-    # This section is the initial AI-generated report content, which the practitioner can edit.
-    # It should contain all 11 sections as generated by the LLM.
-    intro_content = report_data.get('intro_response', 'No introduction available.')
+    # Main Report Content (from intro_response)
+    # This section contains the LLM-generated 12 sections.
+    main_report_content = report_data.get('intro_response', 'No report content available.')
     
     # Process Markdown content line by line to apply correct ReportLab styles
-    lines = intro_content.split('\n')
+    lines = main_report_content.split('\n')
     for line in lines:
         line = line.strip()
         if not line:
             Story.append(Spacer(1, 0.1 * inch)) # Add a small space for empty lines
             continue
 
-        if line.startswith('### '):
-            # SubSectionHeadingStyle for H3
+        # Check for special highlighting patterns first
+        if line.startswith('<b>Crucial Takeaway:</b>'):
+            clean_line = line.replace('<b>Crucial Takeaway:</b>', '').strip()
+            Story.append(Paragraph(f"<b>Crucial Takeaway:</b> {clean_line}", styles['CrucialTakeawayStyle']))
+        elif line.startswith('<b>Key Insight:</b>'):
+            clean_line = line.replace('<b>Key Insight:</b>', '').strip()
+            Story.append(Paragraph(f"<b>Key Insight:</b> {clean_line}", styles['KeyInsightStyle']))
+        elif line.startswith('<b>Important Note:</b>'):
+            clean_line = line.replace('<b>Important Note:</b>', '').strip()
+            Story.append(Paragraph(f"<b>Important Note:</b> {clean_line}", styles['ImportantNoteStyle']))
+        elif line.startswith('### '):
+            # SubSubSectionHeadingStyle for H3
             clean_line = line[4:].strip()
-            # Convert bold/italic within the header using ReportLab's markup
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
-            Story.append(Paragraph(clean_line, styles['SubSectionHeadingStyle']))
+            Story.append(Paragraph(clean_line, styles['SubSectionHeadingStyle'])) # Using SubSectionHeadingStyle for H3
         elif line.startswith('## '):
             # SectionHeadingStyle for H2
             clean_line = line[3:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
-            Story.append(Paragraph(clean_line, styles['SectionHeadingStyle']))
+            Story.append(Paragraph(clean_line, styles['SectionHeadingStyle'])) # Using SectionHeadingStyle for H2
         elif line.startswith('# '):
             # SubHeadingStyle for H1
             clean_line = line[2:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
-            Story.append(Paragraph(clean_line, styles['SubHeadingStyle']))
+            Story.append(Paragraph(clean_line, styles['SubHeadingStyle'])) # Using SubHeadingStyle for H1
+            Story.append(Spacer(1, 0.2 * inch)) # Add extra space after main section headers
+            if "Executive Summary" not in clean_line and "Introduction" not in clean_line: # Don't page break after first two sections
+                 Story.append(PageBreak()) # Start new major sections on a new page
         elif line.startswith('* '): # Handle bullet points
             clean_line = line[2:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
@@ -2238,41 +2299,48 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
             Story.append(Paragraph(clean_line, styles['NormalBodyText']))
     
-    Story.append(PageBreak())
+    Story.append(PageBreak()) # Final page break after main report content
 
     profile_details = report_data.get('profile_details', {})
 
-    # 4. Strategic Name Corrections (from final_suggested_names_list)
-    if report_data.get('suggested_names') and report_data['suggested_names'].get('suggestions'):
-        Story.append(Paragraph("🌟 Strategic Name Corrections (Validated)", styles['Heading1']))
-        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'Based on a comprehensive numerological analysis and practitioner validation.')}", styles['NormalBodyText']))
-        for suggestion in report_data['suggested_names']['suggestions']:
-            Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['BulletStyle']))
-        Story.append(Spacer(1, 0.2 * inch))
+    # 4. Strategic Name Corrections (from final_suggested_names_list) - This section is now part of the main LLM output
+    # This block is commented out as its content should be integrated into the LLM's generated report.
+    # if report_data.get('suggested_names') and report_data['suggested_names'].get('suggestions'):
+    #     Story.append(Paragraph("🌟 Strategic Name Corrections (Validated)", styles['Heading1']))
+    #     Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'Based on a comprehensive numerological analysis and practitioner validation.')}", styles['NormalBodyText']))
+    #     for suggestion in report_data['suggested_names']['suggestions']:
+    #         Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['BulletStyle']))
+    #     Story.append(Spacer(1, 0.2 * inch))
 
     # NEW: Validation Chat Summary (Optional, if frontend provides)
     if report_data.get('validation_summary'):
-        Story.append(Paragraph("✅ Validation Chat Summary & Practitioner's Conclusion", styles['Heading1']))
+        Story.append(Paragraph("✅ Validation Chat Summary & Practitioner's Conclusion", styles['SubHeadingStyle']))
         validation_html = report_data['validation_summary'].replace('\n', '<br/>')
         validation_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', validation_html)
         Story.append(Paragraph(validation_html, styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
     # NEW: Practitioner's Tailored Notes (Optional, if frontend provides)
     if report_data.get('practitioner_notes'):
-        Story.append(Paragraph("✍️ Practitioner's Private Notes", styles['Heading1']))
+        Story.append(Paragraph("✍️ Practitioner's Private Notes", styles['SubHeadingStyle']))
         notes_html = report_data['practitioner_notes'].replace('\n', '<br/>')
         notes_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', notes_html)
         Story.append(Paragraph(notes_html, styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
     # --- Append other detailed sections from `profile_details` for clarity in PDF
     # These sections are generated by the backend's numerology calculations and
     # are passed to the LLM for the main report. Including them explicitly here
     # ensures they are always present in the PDF, regardless of how the LLM phrases them.
+    # These are now supplementary details, as the LLM is expected to elaborate on them in the main report.
 
     # Core Numerological Blueprint (Detailed Analysis)
-    Story.append(Paragraph("📊 Core Numerological Blueprint", styles['Heading1']))
+    Story.append(Paragraph("📊 Core Numerological Blueprint (Raw Data)", styles['SubHeadingStyle']))
+    Story.append(Paragraph("This section provides the raw calculated data for your core numerological blueprint, which forms the foundation of the detailed interpretations found earlier in the report.", styles['NormalBodyText']))
+    Story.append(Spacer(1, 0.1 * inch))
+
     Story.append(Paragraph(f"<b>Full Name:</b> {profile_details.get('full_name', 'N/A')}", styles['NormalBodyText']))
     Story.append(Paragraph(f"<b>Birth Date:</b> {profile_details.get('birth_date', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_time'):
@@ -2282,68 +2350,55 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"Your Expression Number is <b>{profile_details.get('expression_number', 'N/A')}</b> (ruled by {profile_details.get('expression_details', {}).get('planetary_ruler', 'N/A')}). This number reveals your natural talents, abilities, and the path you are destined to express in the world.", styles['NormalBodyText']))
-    Story.append(Paragraph(f"<i>Core Interpretation:</i> {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile_details.get('expression_number'), {}).get('core', 'N/A')}", styles['ItalicBodyText']))
+    Story.append(Paragraph(f"Value: {profile_details.get('expression_number', 'N/A')} (Ruled by {profile_details.get('expression_details', {}).get('planetary_ruler', 'N/A')})", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Total before reduction: {profile_details.get('expression_details', {}).get('total_before_reduction', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Letter Breakdown: {json.dumps(profile_details.get('expression_details', {}).get('letter_breakdown', {}))}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Life Path Number:</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"Your Life Path Number is <b>{profile_details.get('life_path_number', 'N/A')}</b>. This is your destiny number, outlining the major lessons, opportunities, and challenges you will encounter throughout your life's journey.", styles['NormalBodyText']))
-    Story.append(Paragraph(f"<i>Core Interpretation:</i> {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile_details.get('life_path_number'), {}).get('core', 'N/A')}", styles['ItalicBodyText']))
+    Story.append(Paragraph(f"Value: {profile_details.get('life_path_number', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Details: Month {profile_details.get('life_path_details', {}).get('month_reduced', 'N/A')}, Day {profile_details.get('life_path_details', {}).get('day_reduced', 'N/A')}, Year {profile_details.get('life_path_details', {}).get('year_reduced', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Birth Day Number:</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"Your Birth Day Number is <b>{profile_details.get('birth_day_number', 'N/A')}</b>. This number reflects specific talents and traits you possess that influence your daily characteristics and how you approach life.", styles['NormalBodyText']))
-    Story.append(Paragraph(f"<i>Core Interpretation:</i> {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(profile_details.get('birth_day_number'), {}).get('core', 'N/A')}", styles['ItalicBodyText']))
+    Story.append(Paragraph(f"Value: {profile_details.get('birth_day_number', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Soul Urge Number:</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"Your Soul Urge Number is <b>{profile_details.get('soul_urge_number', 'N/A')}</b>. This reveals your deepest desires, motivations, and what truly fulfills your heart.", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Value: {profile_details.get('soul_urge_number', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Personality Number:</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"Your Personality Number is <b>{profile_details.get('personality_number', 'N/A')}</b>. This represents how others perceive you and the aspects of your personality you show to the world.", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Value: {profile_details.get('personality_number', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.2 * inch))
+    Story.append(PageBreak())
 
-    # Compatibility Synthesis
-    comp_insights = profile_details.get('compatibility_insights', {})
-    Story.append(Paragraph("<b>Compatibility Synthesis (Expression & Life Path):</b>", styles['BoldBodyText']))
-    Story.append(Paragraph(f"{comp_insights.get('description', 'N/A')}", styles['NormalBodyText']))
-    if comp_insights.get('synergy_areas'):
-        Story.append(Paragraph("Synergy Areas:", styles['BoldBodyText']))
-        for area in comp_insights['synergy_areas']:
-            Story.append(Paragraph(f"• {area}", styles['BulletStyle']))
-    Story.append(Spacer(1, 0.2 * inch))
 
-    # Karmic Lessons & Soul Work
-    karmic_lessons_data = profile_details.get('karmic_lessons', {})
-    if karmic_lessons_data.get('lessons_summary'):
-        Story.append(Paragraph("🔮 Karmic Lessons & Soul Work", styles['Heading1']))
-        Story.append(Paragraph("The following numbers are missing from your name's Chaldean values or your birth date's digits, indicating specific karmic lessons or areas for soul growth:", styles['NormalBodyText']))
-        for lesson_item in karmic_lessons_data['lessons_summary']:
-            Story.append(Paragraph(f"• <b>Number {lesson_item['number']}</b>: {lesson_item['lesson']}", styles['BulletStyle']))
-        Story.append(Spacer(1, 0.2 * inch))
-
-    # Lo Shu Grid Analysis
+    # Lo Shu Grid Analysis (Raw Data)
     if profile_details.get('lo_shu_grid'):
         lo_shu = profile_details['lo_shu_grid']
-        Story.append(Paragraph("🗺️ Lo Shu Grid Analysis", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Digits in Birth Date</b>: {lo_shu.get('grid_counts')}", styles['NormalBodyText']))
+        Story.append(Paragraph("🗺️ Lo Shu Grid Analysis (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section presents the raw digit counts from your birth date, forming your unique Lo Shu Grid pattern.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+        Story.append(Paragraph(f"<b>Digits in Birth Date</b>: {json.dumps(lo_shu.get('grid_counts'))}", styles['NormalBodyText']))
         if lo_shu.get('missing_numbers'):
-            Story.append(Paragraph("<b>Missing Numbers & Their Impact</b>:", styles['BoldBodyText']))
-            for lesson in lo_shu['missing_lessons']:
-                Story.append(Paragraph(f"• {lesson['number']}: {lesson['impact']}", styles['BulletStyle']))
+            Story.append(Paragraph("<b>Missing Numbers</b>:", styles['BoldBodyText']))
+            for num in lo_shu['missing_numbers']:
+                Story.append(Paragraph(f"• {num}", styles['BulletStyle']))
         else:
-            Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
+            Story.append(Paragraph("All numbers 1-9 are present in your birth date.", styles['NormalBodyText']))
         
         if lo_shu.get('grid_updated_by_name'):
-             Story.append(Paragraph(f"<i>Note: This Lo Shu Grid has been conceptually updated to include the influence of the suggested name's Expression Number.</i>", styles['ItalicBodyText']))
+             Story.append(Paragraph(f"<i>Note: This grid includes the conceptual influence of the suggested name's Expression Number.</i>", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Astrological Integration (Conceptual) - Enhanced to show compatibility flags and degrees
+    # Astrological Integration (Conceptual Raw Data)
     if profile_details.get('ascendant_info') or profile_details.get('moon_sign_info') or profile_details.get('planetary_lords'):
         astro = profile_details
-        Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual)", styles['Heading1']))
-        Story.append(Paragraph("This section provides conceptual astrological insights integrated with your numerological profile, based on your provided birth time and place. Please note, these are simplified interpretations and not precise astrological chart readings.", styles['NormalBodyText']))
+        Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section provides the conceptual astrological data used for integrated analysis. These are simplified representations for numerological context, not a full astrological chart.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Ascendant/Lagna (Rising Sign)</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Conceptual Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
@@ -2364,18 +2419,21 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
         if astro.get('planetary_compatibility', {}).get('compatibility_flags'):
-            Story.append(Paragraph("<b>Planetary Compatibility Notes for Suggested Name (Expression Number)</b>:", styles['BoldBodyText']))
+            Story.append(Paragraph("<b>Planetary Compatibility Flags for Suggested Name (Expression Number)</b>:", styles['BoldBodyText']))
             for flag in astro['planetary_compatibility']['compatibility_flags']:
                 Story.append(Paragraph(f"• {flag}", styles['BulletStyle']))
         else:
             Story.append(Paragraph("No specific planetary compatibility flags identified for the suggested name based on conceptual analysis.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Phonetic Vibration (Conceptual)
+    # Phonetic Vibration (Conceptual Raw Data)
     if profile_details.get('phonetic_vibration'):
         phonetics = profile_details['phonetic_vibration']
-        Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual)", styles['Heading1']))
-        Story.append(Paragraph("This analysis provides conceptual insights into the sound and flow of your name, which can influence its energetic resonance.", styles['NormalBodyText']))
+        Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section provides the raw data from the conceptual phonetic analysis of your name.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
         Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['NormalBodyText']))
         Story.append(Paragraph(f"<b>Qualitative Description</b>: {phonetics.get('qualitative_description', 'N/A')}", styles['NormalBodyText']))
         if phonetics.get('notes'):
@@ -2383,11 +2441,15 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             for note in phonetics['notes']:
                 Story.append(Paragraph(f"• {note}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Expression Number Validation
+    # Expression Number Validation (Raw Data)
     if profile_details.get('expression_validation'):
         exp_val = profile_details['expression_validation']
-        Story.append(Paragraph("✅ Expression Number Validation", styles['Heading1']))
+        Story.append(Paragraph("✅ Expression Number Validation (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section presents the raw validation results for the suggested Expression Number.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
         Story.append(Paragraph(f"<b>Validity Status</b>: {'Valid' if exp_val['is_valid'] else 'Needs Attention'}", styles['NormalBodyText']))
         if exp_val.get('flags'):
             Story.append(Paragraph("<b>Flags/Concerns</b>:", styles['BoldBodyText']))
@@ -2395,34 +2457,43 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
                 Story.append(Paragraph(f"• {flag}", styles['BulletStyle']))
         Story.append(Paragraph(f"<b>Recommendation</b>: {exp_val['recommendation']}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Edge Case Handling
+    # Edge Case Handling (Raw Data)
     if profile_details.get('edge_cases'):
         edge_cases = profile_details['edge_cases']
         if edge_cases:
-            Story.append(Paragraph("⚠️ Identified Edge Cases & Special Considerations", styles['Heading1']))
-            Story.append(Paragraph("These are specific numerological or astro-numerological combinations that may present unique challenges or opportunities:", styles['NormalBodyText']))
+            Story.append(Paragraph("⚠️ Identified Edge Cases & Special Considerations (Raw Data)", styles['SubHeadingStyle']))
+            Story.append(Paragraph("This section lists the raw data for identified edge cases in your numerological profile.", styles['NormalBodyText']))
+            Story.append(Spacer(1, 0.1 * inch))
             for ec in edge_cases:
                 Story.append(Paragraph(f"<b>Type</b>: {ec['type']}", styles['BoldBodyText']))
                 Story.append(Paragraph(f"Description: {ec['description']}", styles['NormalBodyText']))
                 Story.append(Paragraph(f"Resolution Guidance: {ec['resolution_guidance']}", styles['NormalBodyText']))
                 Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Temporal Numerology
+    # Temporal Numerology (Raw Data)
     if report_data.get('timing_recommendations'):
         timing = report_data['timing_recommendations']
-        Story.append(Paragraph("⏰ Temporal Numerology (Timing & Cycles)", styles['Heading1']))
-        Story.append(Paragraph(f"<b>Current Personal Year ({timing['current_personal_year']})</b>: {timing['energy_description']}", styles['NormalBodyText']))
-        Story.append(Paragraph(f"<b>Optimal Activities for this Year</b>: {', '.join(timing['optimal_activities'])}", styles['NormalBodyText']))
+        Story.append(Paragraph("⏰ Temporal Numerology (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section provides the raw data for your current and future numerological cycles.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+        Story.append(Paragraph(f"<b>Current Personal Year</b>: {timing['current_personal_year']}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Optimal Activities</b>: {', '.join(timing['optimal_activities'])}", styles['NormalBodyText']))
         Story.append(Paragraph(f"<b>Best Months for Action/Implementation</b>: {', '.join(map(str, timing['best_months_for_action']))}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Shadow Work & Growth Edge (Potential Challenges)
+    # Shadow Work & Growth Edge (Raw Data)
     if report_data.get('potential_challenges', {}).get('potential_challenges'):
         challenges = report_data['potential_challenges']
-        Story.append(Paragraph("🚧 Shadow Work & Growth Edge", styles['Heading1']))
-        Story.append(Paragraph("Understanding potential challenges helps in transforming them into growth opportunities:", styles['NormalBodyText']))
+        Story.append(Paragraph("🚧 Shadow Work & Growth Edge (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section contains the raw data for potential challenges and growth areas.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
         Story.append(Paragraph("<b>Potential Challenges Identified</b>:", styles['BoldBodyText']))
         for challenge in challenges['potential_challenges']:
             Story.append(Paragraph(f"• {challenge}", styles['BulletStyle']))
@@ -2433,11 +2504,15 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         for opportunity in challenges['growth_opportunities']:
             Story.append(Paragraph(f"• {opportunity}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Personalized Development Blueprint
+    # Personalized Development Blueprint (Raw Data)
     if report_data.get('development_recommendations'):
         dev_recs = report_data['development_recommendations']
-        Story.append(Paragraph("🌱 Personalized Development Blueprint", styles['Heading1']))
+        Story.append(Paragraph("🌱 Personalized Development Blueprint (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section outlines the raw data for your personalized development recommendations.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
         Story.append(Paragraph(f"<b>Immediate Focus</b>: {dev_recs['immediate_focus']}", styles['NormalBodyText']))
         Story.append(Paragraph(f"<b>Long-Term Goal</b>: {dev_recs['long_term_goal']}", styles['NormalBodyText']))
         if dev_recs['karmic_work']:
@@ -2446,35 +2521,45 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         for practice in dev_recs['monthly_practices']:
             Story.append(Paragraph(f"• {practice}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Future Cycles Forecast
+    # Future Cycles Forecast (Raw Data)
     if report_data.get('yearly_forecast'):
-        Story.append(Paragraph("🗓️ Future Cycles Forecast (Next 3 Years)", styles['Heading1']))
+        Story.append(Paragraph("🗓️ Future Cycles Forecast (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section provides the raw data for your multi-year numerological forecast.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
         for year, forecast_data in report_data['yearly_forecast'].items():
-            Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>: {forecast_data['theme']}", styles['Heading2']))
+            Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>:", styles['BoldBodyText']))
+            Story.append(Paragraph(f"Theme: {forecast_data['theme']}", styles['NormalBodyText']))
             Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['NormalBodyText']))
             Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['NormalBodyText']))
             Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['NormalBodyText']))
             Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Numerical Uniqueness Profile
+    # Numerical Uniqueness Profile (Raw Data)
     if report_data.get('uniqueness_score'):
         uniqueness = report_data['uniqueness_score'] 
-        Story.append(Paragraph("✨ Numerical Uniqueness Profile", styles['Heading1']))
+        Story.append(Paragraph("✨ Numerical Uniqueness Profile (Raw Data)", styles['SubHeadingStyle']))
+        Story.append(Paragraph("This section presents the raw data for your numerical uniqueness assessment.", styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
         Story.append(Paragraph(f"<b>Your Profile Uniqueness Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['NormalBodyText']))
         Story.append(Paragraph(f"<b>Key Rarity Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
+        Story.append(PageBreak())
 
-    # Empowerment Conclusion
-    Story.append(PageBreak())
-    Story.append(Paragraph("💖 Empowerment & Final Thoughts 💖", styles['TitleStyle']))
-    Story.append(Spacer(1, 0.2 * inch))
-    Story.append(Paragraph("This report has unveiled the profound insights hidden within your unique numerological blueprint. Remember, this knowledge is a powerful tool to guide you, but your free will and conscious choices are the ultimate architects of your destiny. Embrace your numbers, align with your purpose, and step into your full potential.", styles['NormalBodyText']))
-    Story.append(Spacer(1, 0.5 * inch))
-    Story.append(Paragraph("Thank you for choosing Sheelaa's Elite AI Numerology Assistant for your journey of self-discovery and transformation.", styles['NormalBodyText']))
-    Story.append(Spacer(1, 0.2 * inch))
-    Story.append(Paragraph("<i>Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.</i>", styles['ItalicBodyText']))
+    # Empowerment Conclusion (This section is now part of the main LLM output)
+    # This block is commented out as its content should be integrated into the LLM's generated report.
+    # Story.append(PageBreak())
+    # Story.append(Paragraph("💖 Empowerment & Final Thoughts 💖", styles['TitleStyle']))
+    # Story.append(Spacer(1, 0.2 * inch))
+    # Story.append(Paragraph("This report has unveiled the profound insights hidden within your unique numerological blueprint. Remember, this knowledge is a powerful tool to guide you, but your free will and conscious choices are the ultimate architects of your destiny. Embrace your numbers, align with your purpose, and step into your full potential.", styles['NormalBodyText']))
+    # Story.append(Spacer(1, 0.5 * inch))
+    # Story.append(Paragraph("Thank you for choosing Sheelaa's Elite AI Numerology Assistant for your journey of self-discovery and transformation.", styles['NormalBodyText']))
+    # Story.append(Spacer(1, 0.2 * inch))
+    # Story.append(Paragraph("<i>Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.</i>", styles['ItalicBodyText']))
 
     doc.build(Story)
     buffer.seek(0)
@@ -2540,7 +2625,7 @@ def chat():
             val_planetary_compatibility = AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, astro_for_validation)
             
             # NEW: Recalculate Lo Shu Grid including the suggested name's influence
-            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val, )
+            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val, suggested_expression_num)
             
             # Expression validation for the suggested name
             expression_validation_for_suggested = AdvancedNumerologyCalculator.check_expression_validity(
@@ -2741,7 +2826,6 @@ def chat():
 @rate_limited("5 per hour")
 @performance_monitor
 def generate_pdf_report_endpoint():
-    
     """
     Endpoint to generate and return a PDF numerology report.
     This endpoint now expects the full, potentially modified/validated report data
