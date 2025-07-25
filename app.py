@@ -55,7 +55,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__app__)
 logger.info("Flask app instance created.") # Log app creation
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
 app.config['CACHE_TYPE'] = 'simple'
@@ -109,11 +109,14 @@ NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 
 ## CONVERSATION GUIDELINES:
 - **Start with an acknowledgement**: Confirm the name to be validated and the original profile context.
-- **Iterative Questioning**: If you need more information to provide a comprehensive validation, ask specific, open-ended follow-up questions. Examples:
-    - "To provide the most accurate validation, could you tell me more about the specific aspects of success (e.g., financial, career, personal fulfillment) you are hoping this name will enhance?"
-    - "Are there any specific cultural or family considerations for this suggested name?"
-    - "How important is maintaining phonetic similarity to the original name?"
-    - "What is the primary reason for considering this specific name change?"
+- **Iterative Questioning**: If you need more information to provide a comprehensive validation, ask specific, open-ended follow-up questions. Prioritize questions that will yield the most impactful numerological insights. Examples of practitioner-centric questions:
+    - "Considering the client's Lo Shu Grid, how does the suggested name's Expression Number (and its associated Chaldean planetary influence) specifically address or balance any missing numbers or over-represented energies in their birth chart? For instance, if a '5' is missing for adaptability, does this name help to integrate that energy?"
+    - "Given the client's conceptual astrological placements (Ascendant/Lagna ruler, Moon Sign, and any dominant benefic/malefic planetary lords from their birth date), how does the planetary ruler of this suggested name's Expression Number interact with these influences? Are there any potential harmonies or conflicts we should be aware of?"
+    - "Does this suggested name help to mitigate or transform the energy of any identified karmic debt numbers (e.g., 13, 14, 16, 19) present in the client's original birth date or current name?"
+    - "From a phonetic or 'pronology' perspective, what is the vibrational quality of this suggested name? Does it feel strong, harmonious, or are there any sounds that might create subtle dissonance or enhance specific qualities related to the client's desired outcome?"
+    - "Beyond the general desired outcome of '{desired_outcome}', could you elaborate on the *specific* nuances or sub-goals the client has in mind for this name change? For example, is 'success' primarily financial, related to leadership, public recognition, or a more internal sense of achievement?"
+    - "Are there any cultural or family traditions that might influence the acceptance or impact of this suggested name? How important is maintaining a close phonetic or structural resemblance to the original name for the client?"
+    - "If the client has a known numerological 'edge case' (e.g., Expression 8 / Life Path 1 conflict, or challenges with a Master Number), how is this specific suggested name designed to address or mitigate that particular challenge?"
 - **Provide Partial Insights**: Even if you need more information, offer initial observations or partial insights based on the data you have.
 - **Comprehensive Validation on Sufficient Data**: Once you feel you have enough information, provide a full, structured validation report in Markdown format, following the "VALIDATION FRAMEWORK" below. State clearly when you are providing the final validation.
 - **Maintain Context**: Remember the original profile and the suggested name throughout the conversation.
@@ -533,7 +536,7 @@ class AdvancedNumerologyCalculator:
                 is_valid = False
                 flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may lack grounding without 5 & 6 in Lo Shu Grid.")
                 recommendation = "Consider a name change to a more grounding number if Lo Shu grid is not supportive."
-            if "healer" in profession_desire.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
+            if "healer" in profession_desires.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
                 pass # Profession aligns
             else:
                 flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may not align with a purely material desired outcome.")
@@ -1588,7 +1591,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         for year, forecast_data in report_data['yearly_forecast'].items():
             Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>: {forecast_data['theme']}", styles['Heading2']))
             Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['BodyText']))
-            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']))
+            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']}")
             Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['BodyText']))
             Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
@@ -1669,10 +1672,10 @@ def chat(): # This remains a synchronous Flask view
                 "original_expression_number": original_profile['currentExpressionNumber'],
                 "original_life_path_number": original_profile['currentLifePathNumber'],
                 "original_birth_number": original_profile['currentBirthNumber'], # Include birth number
+                "desired_outcome": original_profile['desiredOutcome'], # Pass desired outcome
                 "suggested_name": suggested_name,
                 "suggested_expression_num": suggested_expression_num,
                 "suggested_core_interpretation": AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A'),
-                "desired_outcome": original_profile['desiredOutcome'],
                 # Recalculate these on backend for accuracy, or pass from frontend if available
                 "lo_shu_grid": AdvancedNumerologyCalculator.calculate_lo_shu_grid(original_profile['birthDate']),
                 "ascendant_info": AdvancedNumerologyCalculator.get_ascendant_info(original_profile['birthDate'], None, None),
@@ -1688,11 +1691,21 @@ def chat(): # This remains a synchronous Flask view
             }
 
             # Add the current user message to memory
-            validation_memory.chat_memory.add_user_message(HumanMessage(content=current_message))
+            # The current_message is already the last one in chat_history_from_frontend
+            # so we just need to make sure it's the right type for the LLM.
+            # Langchain expects HumanMessage and AIMessage objects.
+            
+            # Construct messages for LLM from the history
+            llm_messages = []
+            for msg in chat_history_from_frontend:
+                if msg['sender'] == 'user':
+                    llm_messages.append(HumanMessage(content=msg['text']))
+                elif msg['sender'] == 'ai':
+                    llm_messages.append(AIMessage(content=msg['text']))
 
             # Use the specific validation chat prompt
             prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT),
+                SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])), # Pass desired outcome to system prompt
                 HumanMessage(
                     content=NAME_VALIDATION_HUMAN_PROMPT.format(
                         original_full_name=llm_validation_input_data['original_full_name'],
@@ -1704,19 +1717,16 @@ def chat(): # This remains a synchronous Flask view
                         suggested_name=llm_validation_input_data['suggested_name'],
                         suggested_expression_num=llm_validation_input_data['suggested_expression_num'],
                         suggested_core_interpretation=llm_validation_input_data['suggested_core_interpretation'],
-                        chat_history=validation_memory.load_memory_variables({})['chat_history'], # Pass current history
-                        current_message=current_message
+                        chat_history="\n".join([f"{m.sender.capitalize()}: {m.content}" for m in llm_messages[:-1]]), # Exclude current message from history string
+                        current_message=llm_messages[-1].content # The actual current message
                     )
                 )
             ])
             
             chain = prompt | llm_manager.analytical_llm # Use analytical LLM for validation
 
-            ai_response = chain.invoke({"input": current_message}) # The 'input' is for the chain, the actual message is in the prompt
+            ai_response = chain.invoke({}) # No need for 'input' here as context is in prompt
             
-            # Add AI's response to memory
-            validation_memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
-
             return jsonify({"response": ai_response.content}), 200
 
         elif message: # Existing logic for GENERATE_ADVANCED_REPORT
