@@ -2184,9 +2184,11 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"For: <b>{report_data.get('full_name', 'Client Name')}</b>", styles['SubHeadingStyle']))
     Story.append(Paragraph(f"Birth Date: <b>{report_data.get('birth_date', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_time'):
-        Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}", styles['SubSectionHeadingStyle']))
+        # Corrected: Added missing </b> to close the bold tag for the value
+        Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_place'):
-        Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}", styles['SubSectionHeadingStyle']))
+        # Corrected: Added missing </b> to close the bold tag for the value
+        Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     Story.append(Paragraph(f"Desired Outcome: <b>{report_data.get('desired_outcome', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
