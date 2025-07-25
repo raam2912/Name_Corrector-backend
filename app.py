@@ -2510,43 +2510,54 @@ def chat():
             phonetic_vibration_json = json.dumps(llm_validation_input_data['phonetic_vibration'], indent=2)
             expression_validation_json = json.dumps(llm_validation_input_data['expression_validation_for_suggested'], indent=2)
 
-            # The prompt for validation chat
+                       # The prompt for validation chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])),
                 HumanMessage(
-                    content=f"""
-                    **CLIENT PROFILE FOR VALIDATION:**
-                    Original Full Name: {llm_validation_input_data['original_full_name']}
-                    Birth Date: {llm_validation_input_data['birth_date']}
-                    Birth Time: {llm_validation_input_data['birth_time']}
-                    Birth Place: {llm_validation_input_data['birth_place']}
-                    Desired Outcome: {llm_validation_input_data['desired_outcome']}
-                    Current Expression Number: {llm_validation_input_data['original_expression_number']}
-                    Current Life Path Number: {llm_validation_input_data['original_life_path_number']}
-                    Current Birth Day Number: {llm_validation_input_data['original_birth_day_number']}
+                    content=(
+                        "**CLIENT PROFILE FOR VALIDATION:**\n"
+                        f"Original Full Name: {llm_validation_input_data['original_full_name']}\n"
+                        f"Birth Date: {llm_validation_input_data['birth_date']}\n"
+                        f"Birth Time: {llm_validation_input_data['birth_time']}\n"
+                        f"Birth Place: {llm_validation_input_data['birth_place']}\n"
+                        f"Desired Outcome: {llm_validation_input_data['desired_outcome']}\n"
+                        f"Current Expression Number: {llm_validation_input_data['original_expression_number']}\n"
+                        f"Current Life Path Number: {llm_validation_input_data['original_life_path_number']}\n"
+                        f"Current Birth Day Number: {llm_validation_input_data['original_birth_day_number']}\n\n"
 
-                    **SUGGESTED NAME FOR ANALYSIS:**
-                    Name: {llm_validation_input_data['suggested_name']}
-                    Calculated Expression Number: {llm_validation_input_data['suggested_expression_num']}
-                    Core Interpretation: {llm_validation_input_data['suggested_core_interpretation']}
+                        "**SUGGESTED NAME FOR ANALYSIS:**\n"
+                        f"Name: {llm_validation_input_data['suggested_name']}\n"
+                        f"Calculated Expression Number: {llm_validation_input_data['suggested_expression_num']}\n"
+                        f"Core Interpretation: {llm_validation_input_data['suggested_core_interpretation']}\n\n"
 
-                    **DETAILED NUMEROLOGICAL & ASTRO-NUMEROLOGICAL DATA FOR SUGGESTED NAME:**
-                    Lo Shu Grid: {lo_shu_grid_json}
-                    Ascendant Info (Conceptual): {ascendant_info_json}
-                    Moon Sign Info (Conceptual): {moon_sign_info_json}
-                    Planetary Lords (Conceptual): {planetary_lords_json}
-                    Planetary Compatibility Notes: {planetary_compatibility_json}
-                    Phonetic Vibration: {phonetic_vibration_json}
-                    Expression Validation Summary: {expression_validation_json}
+                        "**DETAILED NUMEROLOGICAL & ASTRO-NUMEROLOGICAL DATA FOR SUGGESTED NAME:**\n"
+                        "Lo Shu Grid: {}\n"
+                        "Ascendant Info (Conceptual): {}\n"
+                        "Moon Sign Info (Conceptual): {}\n"
+                        "Planetary Lords (Conceptual): {}\n"
+                        "Planetary Compatibility Notes: {}\n"
+                        "Phonetic Vibration: {}\n"
+                        "Expression Validation Summary: {}\n\n"
 
-                    **CHAT HISTORY:**
-                    {"\n".join([f"{m.type.capitalize()}: {m.content}" for m in langchain_chat_history])}
+                        "**CHAT HISTORY:**\n"
+                        "{}\n\n"
 
-                    **LATEST USER MESSAGE:**
-                    {current_message_content}
-                    """
+                        "**LATEST USER MESSAGE:**\n"
+                        "{}"
+                    ).format(
+                        lo_shu_grid_json,
+                        ascendant_info_json,
+                        moon_sign_info_json,
+                        planetary_lords_json,
+                        planetary_compatibility_json,
+                        phonetic_vibration_json,
+                        expression_validation_json,
+                        "\n".join([f"{m.type.capitalize()}: {m.content}" for m in langchain_chat_history]),
+                        current_message_content
+                    )
                 )
             ])
+
             
             chain = prompt | llm_manager.analytical_llm
 
