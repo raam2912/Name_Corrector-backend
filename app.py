@@ -227,7 +227,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - Leave them feeling profoundly inspired, capable, and equipped with actionable wisdom.
 
 ## WRITING STANDARDS:
-- **Depth & Breadth**: Generate *extensive* content for each section and sub-section. **Aim for a minimum of 50 pages for the complete report, ensuring each point is elaborated with rich examples, detailed scenarios, and profound insights.** Maximize descriptive language and provide comprehensive analysis.
+- **Depth & Breadth**: Generate *extensive* content for each section and sub-section. **Aim for a minimum of 50 pages for the complete report, ensuring each point is elaborated with rich examples, detailed scenarios, and profound insights. Maximize descriptive language and provide comprehensive analysis.**
 - **Professional & Authoritative Tone**: Maintain the voice of a master numerologist – wise, insightful, and empowering. Avoid casual language. The tone should be academic, deeply analytical, and highly credible.
 - **Personal Touch**: Use their name throughout, make it feel custom-crafted and deeply personal.
 - **Markdown Formatting**: Use headers (`#`, `##`, `###`), bold text (`**text**`), italic text (`*text*`), and bullet points (`* item`).
@@ -2162,8 +2162,8 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     
     return forecast
 
-# NEW: Function to add page numbers to the canvas
-def add_page_number(canvas_obj, doc):
+# NEW: Function to add page numbers to the canvas (renamed and modified for onFirstPage/onLaterPages)
+def _header_footer(canvas_obj, doc):
     canvas_obj.saveState()
     canvas_obj.setFont('Helvetica', 9)
     page_number_text = f"Page {doc.page}"
@@ -2326,9 +2326,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"<b>Full Name:</b> {profile_details.get('full_name', 'N/A')}", styles['NormalBodyText']))
     Story.append(Paragraph(f"<b>Birth Date:</b> {profile_details.get('birth_date', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_time'):
-        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}</b>", styles['NormalBodyText']))
     if profile_details.get('birth_place'):
-        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}</b>", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
@@ -2384,11 +2384,11 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Ascendant/Lagna (Rising Sign)</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Conceptual Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
-        Story.append(Paragraph(f"<i>Notes:</i> {astro.get('ascendant_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText']))
+        Story.append(Paragraph(f"<i>Notes:</i> {astro.get('ascendant_info', {}).get('notes', 'N/A')}</i>", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Conceptual Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
-        Story.append(Paragraph(f"<i>Notes:</i> {astro.get('moon_sign_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText']))
+        Story.append(Paragraph(f"<i>Notes:</i> {astro.get('moon_sign_info', {}).get('notes', 'N/A')}</i>", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
         
         Story.append(Paragraph("<b>Conceptual Planetary Lords & Degrees (Benefic/Malefic Influences)</b>:", styles['BoldBodyText']))
@@ -2532,19 +2532,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.2 * inch))
         Story.append(PageBreak())
 
-    # Empowerment Conclusion (This section is now part of the main LLM output)
-    # This block is commented out as its content should be integrated into the LLM's generated report.
-    # Story.append(PageBreak())
-    # Story.append(Paragraph("💖 Empowerment & Final Thoughts 💖", styles['TitleStyle']))
-    # Story.append(Spacer(1, 0.2 * inch))
-    # Story.append(Paragraph("This report has unveiled the profound insights hidden within your unique numerological blueprint. Remember, this knowledge is a powerful tool to guide you, but your free will and conscious choices are the ultimate architects of your destiny. Embrace your numbers, align with your purpose, and step into your full potential.", styles['NormalBodyText']))
-    # Story.append(Spacer(1, 0.5 * inch))
-    # Story.append(Paragraph("Thank you for choosing Sheelaa's Elite AI Numerology Assistant for your journey of self-discovery and transformation.", styles['NormalBodyText']))
-    # Story.append(Spacer(1, 0.2 * inch))
-    # Story.append(Paragraph("<i>Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.</i>", styles['ItalicBodyText']))
-
     # Build the PDF with page numbering
-    doc.build(Story, onAndAfterPages=add_page_number)
+    doc.build(Story, onFirstPage=_header_footer, onLaterPages=_header_footer)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -2820,7 +2809,7 @@ def generate_pdf_report_endpoint():
         return jsonify({"error": "Missing essential data for PDF generation."}), 400
 
     try:
-        # Pass the add_page_number function to doc.build
+        # Pass the _header_footer function to doc.build
         pdf_bytes = create_numerology_pdf(report_data)
         
         logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
