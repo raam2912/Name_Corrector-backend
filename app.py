@@ -48,7 +48,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        sys.stdout # Correctly directs logs to stdout
+        # FIX: Wrap sys.stdout in a proper StreamHandler
+        logging.StreamHandler(sys.stdout) 
     ]
 )
 logger = logging.getLogger(__name__)
@@ -94,7 +95,7 @@ NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - **Lo Shu Grid Balance**: How the new name helps balance missing energies (e.g., if 5 is missing, does the new name's Expression 5 help?)
 - **Planetary Compatibility**: How the new name's planetary ruler (from Chaldean mapping) aligns with their Ascendant/Lagna or avoids conflicts with malefic planetary lords.
 - **Phonetic Harmony**: Confirm the suggested name maintains a pleasant and strong vibrational tone.
-- **Edge Case Resolutions**: If the original profile had an edge case (e.g., Expression 8/Life Path 1 conflict), explain how the new name resolves or mitigates it.## OUTPUT FORMAT:Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.## QUALITY STANDARDS:- Each rationale must be substantive, specific, and compelling- Avoid generic explanations - make each one unique and targeted- If a target number cannot be achieved while maintaining similarity, acknowledge this in reasoning""" + "{parser_instructions}"
+- **Edge Case Resolutions**: If the original profile had an exact edge case (e.g., Expression 8/Life Path 1 conflict), explain how the new name resolves or mitigates it.## OUTPUT FORMAT:Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.## QUALITY STANDARDS:- Each rationale must be substantive, specific, and compelling- Avoid generic explanations - make each one unique and targeted- If a target number cannot be achieved while maintaining similarity, acknowledge this in reasoning""" + "{parser_instructions}"
 NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST****Original Name:** "{original_full_name}"**Desired Life Outcome:** "{desired_outcome}"**Target Expression Numbers:** {target_expression_numbers}**TASK:** Create 3-5 name variations that are nearly identical to the original but numerologically optimized for the desired outcome. Each suggestion must include a detailed, specific rationale explaining its advantages.**REQUIREMENTS:**- Maintain 90%+ similarity to original name- Target the specified Expression Numbers- Provide compelling, detailed explanations for each suggestion- Ensure cultural appropriateness, natural sound, and **high practicality for adoption**"""
 
 # 2. REFINED ADVANCED REPORT PROMPT (replaces the system message in chat endpoint)
@@ -1464,7 +1465,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             Story.append(Paragraph(f"• {challenge}", styles['Bullet']))
         Story.append(Paragraph("<b>Mitigation Strategies</b>:", styles['BoldBodyText']))
         for strategy in challenges['mitigation_strategies']:
-            Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
+                Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
         Story.append(Paragraph("<b>Growth Opportunities</b>:", styles['BoldBodyText']))
         for opportunity in challenges['growth_opportunities']:
             Story.append(Paragraph(f"• {opportunity}", styles['Bullet']))
