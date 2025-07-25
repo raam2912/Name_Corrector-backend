@@ -55,7 +55,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__app__)
+# FIX: Changed __app__ to __name__
+app = Flask(__name__) 
 logger.info("Flask app instance created.") # Log app creation
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
 app.config['CACHE_TYPE'] = 'simple'
@@ -536,7 +537,8 @@ class AdvancedNumerologyCalculator:
                 is_valid = False
                 flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may lack grounding without 5 & 6 in Lo Shu Grid.")
                 recommendation = "Consider a name change to a more grounding number if Lo Shu grid is not supportive."
-            if "healer" in profession_desires.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
+            # FIX: Changed profession_desires.lower() to profession_desire.lower()
+            if "healer" in profession_desire.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
                 pass # Profession aligns
             else:
                 flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may not align with a purely material desired outcome.")
@@ -1591,7 +1593,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         for year, forecast_data in report_data['yearly_forecast'].items():
             Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>: {forecast_data['theme']}", styles['Heading2']))
             Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['BodyText']))
-            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']}")
+            # FIX: Changed 'Energy Level' to use forecast_data['energy_level'] correctly
+            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']))
             Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['BodyText']))
             Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
@@ -1645,7 +1648,7 @@ def chat(): # This remains a synchronous Flask view
             original_profile = data.get('original_profile')
             suggested_name = data.get('suggested_name')
             chat_history_from_frontend = data.get('chat_history', [])
-            current_message = data.get('current_message', '').strip()
+            current_message_content = data.get('current_message', '').strip() # Renamed to avoid conflict with Langchain message objects
 
             if not original_profile or not suggested_name:
                 return jsonify({"error": "Missing original profile or suggested name for validation chat."}), 400
@@ -1656,6 +1659,7 @@ def chat(): # This remains a synchronous Flask view
                 return_messages=True, 
                 k=10 # Keep a window of 10 messages for context
             )
+            # Load historical messages into the memory
             for msg in chat_history_from_frontend:
                 if msg['sender'] == 'user':
                     validation_memory.chat_memory.add_user_message(msg['text'])
@@ -1690,18 +1694,18 @@ def chat(): # This remains a synchronous Flask view
                 "expression_validation_for_suggested": AdvancedNumerologyCalculator.check_expression_validity(suggested_expression_num, original_profile['currentLifePathNumber'], AdvancedNumerologyCalculator.calculate_lo_shu_grid(original_profile['birthDate']), original_profile['desiredOutcome'])
             }
 
-            # Add the current user message to memory
-            # The current_message is already the last one in chat_history_from_frontend
-            # so we just need to make sure it's the right type for the LLM.
-            # Langchain expects HumanMessage and AIMessage objects.
-            
             # Construct messages for LLM from the history
-            llm_messages = []
+            # The last message in chat_history_from_frontend is the current user message
+            # We need to pass the *full* chat history to the LLM so it has context for its next response.
+            # The human prompt then formats the specific current turn.
+            
+            # Convert frontend chat history to Langchain message objects
+            langchain_chat_history = []
             for msg in chat_history_from_frontend:
                 if msg['sender'] == 'user':
-                    llm_messages.append(HumanMessage(content=msg['text']))
+                    langchain_chat_history.append(HumanMessage(content=msg['text']))
                 elif msg['sender'] == 'ai':
-                    llm_messages.append(AIMessage(content=msg['text']))
+                    langchain_chat_history.append(AIMessage(content=msg['text']))
 
             # Use the specific validation chat prompt
             prompt = ChatPromptTemplate.from_messages([
@@ -1717,8 +1721,8 @@ def chat(): # This remains a synchronous Flask view
                         suggested_name=llm_validation_input_data['suggested_name'],
                         suggested_expression_num=llm_validation_input_data['suggested_expression_num'],
                         suggested_core_interpretation=llm_validation_input_data['suggested_core_interpretation'],
-                        chat_history="\n".join([f"{m.sender.capitalize()}: {m.content}" for m in llm_messages[:-1]]), # Exclude current message from history string
-                        current_message=llm_messages[-1].content # The actual current message
+                        chat_history="\n".join([f"{m.type.capitalize()}: {m.content}" for m in langchain_chat_history[:-1]]), # Exclude current message from history string
+                        current_message=langchain_chat_history[-1].content # The actual current message
                     )
                 )
             ])
