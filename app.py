@@ -983,29 +983,30 @@ class AdvancedNumerologyCalculator:
             
             # Simplified conceptual mapping of hour to Ascendant sign and ruler
             # This is a very rough approximation and not real astrology.
-            if 0 <= birth_hour < 2:
+            # The mapping tries to loosely follow a diurnal cycle for planet rulership.
+            if 0 <= birth_hour < 2: # ~Midnight to 2 AM
                 ascendant_sign = "Capricorn" # Saturn
-            elif 2 <= birth_hour < 4:
+            elif 2 <= birth_hour < 4: # ~2 AM to 4 AM
                 ascendant_sign = "Aquarius" # Saturn / Rahu
-            elif 4 <= birth_hour < 6:
+            elif 4 <= birth_hour < 6: # ~4 AM to 6 AM (Pre-dawn)
                 ascendant_sign = "Pisces" # Jupiter / Ketu
-            elif 6 <= birth_hour < 8:
+            elif 6 <= birth_hour < 8: # ~6 AM to 8 AM (Sunrise)
                 ascendant_sign = "Aries" # Mars
-            elif 8 <= birth_hour < 10:
+            elif 8 <= birth_hour < 10: # ~8 AM to 10 AM
                 ascendant_sign = "Taurus" # Venus
-            elif 10 <= birth_hour < 12:
+            elif 10 <= birth_hour < 12: # ~10 AM to Noon
                 ascendant_sign = "Gemini" # Mercury
-            elif 12 <= birth_hour < 14:
+            elif 12 <= birth_hour < 14: # ~Noon to 2 PM
                 ascendant_sign = "Cancer" # Moon
-            elif 14 <= birth_hour < 16:
+            elif 14 <= birth_hour < 16: # ~2 PM to 4 PM
                 ascendant_sign = "Leo" # Sun
-            elif 16 <= birth_hour < 18:
+            elif 16 <= birth_hour < 18: # ~4 PM to 6 PM
                 ascendant_sign = "Virgo" # Mercury
-            elif 18 <= birth_hour < 20:
+            elif 18 <= birth_hour < 20: # ~6 PM to 8 PM (Sunset)
                 ascendant_sign = "Libra" # Venus
-            elif 20 <= birth_hour < 22:
+            elif 20 <= birth_hour < 22: # ~8 PM to 10 PM
                 ascendant_sign = "Scorpio" # Mars
-            else: # 22 <= birth_hour < 24
+            else: # 22 <= birth_hour < 24 (~10 PM to Midnight)
                 ascendant_sign = "Sagittarius" # Jupiter
 
             # Assign ruler based on conceptual sign
@@ -1021,33 +1022,45 @@ class AdvancedNumerologyCalculator:
             logger.warning("Invalid birth time format for conceptual ascendant calculation.")
             return {"sign": "Error", "ruler": "Error", "notes": "Invalid birth time format. Use HH:MM."}
 
-        return {"sign": ascendant_sign, "ruler": ascendant_ruler, "notes": "Conceptual calculation based on birth hour."}
+        return {"sign": ascendant_sign, "ruler": ascendant_ruler, "notes": "Conceptual calculation based on birth hour. For precise astrological readings, consult a professional astrologer."}
 
     @staticmethod
     def get_moon_sign_info(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> Dict:
         """
         Conceptual: Simulates fetching Moon Sign info.
         This is a simplified model and does not perform actual astrological calculations.
+        Based on "Rashi (Moon Sign): Influences name number compatibility" from PDF.
         """
         logger.warning("Astrological integration for Moon Sign is conceptual. Providing simplified data.")
-        # Dummy data based on birth day for demonstration
         moon_sign = "Not Calculated"
         moon_ruler = "N/A"
+        notes = "Conceptual calculation based on birth day. For precise astrological readings, consult a professional astrologer."
+
         try:
             day = int(birth_date_str.split('-')[2])
-            # Very simplistic mapping for demonstration
-            if 1 <= day <= 10:
-                moon_sign = "Cancer" # Moon ruled
+            # Very simplistic mapping for demonstration, aims for some variety
+            if 1 <= day <= 5:
+                moon_sign = "Aries" # Mars
+                moon_ruler = "Mars (♂)"
+            elif 6 <= day <= 10:
+                moon_sign = "Taurus" # Venus
+                moon_ruler = "Venus (♀)"
+            elif 11 <= day <= 15:
+                moon_sign = "Gemini" # Mercury
+                moon_ruler = "Mercury (☿)"
+            elif 16 <= day <= 20:
+                moon_sign = "Cancer" # Moon
                 moon_ruler = "Moon (☽)"
-            elif 11 <= day <= 20:
-                moon_sign = "Leo" # Sun ruled
+            elif 21 <= day <= 25:
+                moon_sign = "Leo" # Sun
                 moon_ruler = "Sun (☉)"
-            else:
-                moon_sign = "Virgo" # Mercury ruled
+            else: # 26 <= day <= 31
+                moon_sign = "Virgo" # Mercury
                 moon_ruler = "Mercury (☿)"
         except (ValueError, IndexError):
+            notes = "Birth date is needed for conceptual Moon Sign calculation."
             pass # Keep default unknown
-        return {"sign": moon_sign, "ruler": moon_ruler, "notes": "Conceptual calculation based on birth day."}
+        return {"sign": moon_sign, "ruler": moon_ruler, "notes": notes}
 
     @staticmethod
     def get_planetary_lords(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> List[Dict]:
@@ -1063,38 +1076,70 @@ class AdvancedNumerologyCalculator:
             month = int(birth_date_str.split('-')[1])
             day = int(birth_date_str.split('-')[2])
             
-            # Conceptual benefic/malefic based on month (very rough)
-            if month in [1, 5, 9]: # Aries, Leo, Sagittarius (Fire signs)
-                lords.append({"planet": "Sun (☉)", "nature": "Benefic"})
-                lords.append({"planet": "Mars (♂)", "nature": "Benefic"})
-                lords.append({"planet": "Saturn (♄)", "nature": "Malefic"}) 
-            elif month in [2, 6, 10]: # Taurus, Virgo, Capricorn (Earth signs)
-                lords.append({"planet": "Venus (♀)", "nature": "Benefic"})
-                lords.append({"planet": "Mercury (☿)", "nature": "Benefic"})
-                lords.append({"planet": "Rahu (☊)", "nature": "Malefic"})
-            elif month in [3, 7, 11]: # Gemini, Libra, Aquarius (Air signs)
-                lords.append({"planet": "Mercury (☿)", "nature": "Benefic"})
-                lords.append({"planet": "Venus (♀)", "nature": "Benefic"})
-                lords.append({"planet": "Ketu / Neptune (☋)", "nature": "Malefic"})
-            else: # 4, 8, 12 (Cancer, Scorpio, Pisces - Water signs)
-                lords.append({"planet": "Moon (☽)", "nature": "Benefic"})
-                lords.append({"planet": "Jupiter (♃)", "nature": "Benefic"})
-                lords.append({"planet": "Mars (♂)", "nature": "Malefic"}) # Mars can be malefic in water signs
+            # Conceptual benefic/malefic based on month and day (very rough approximation)
+            # This aims to provide some dynamic 'benefic' or 'malefic' planets for testing.
             
-            # Add a conceptual "debilitated" Saturn if day is a multiple of 4 (just for demo)
+            # Base lords (some always present for demo)
+            lords.append({"planet": "Sun (☉)", "nature": "Neutral"})
+            lords.append({"planet": "Moon (☽)", "nature": "Neutral"})
+            lords.append({"planet": "Mercury (☿)", "nature": "Neutral"})
+            lords.append({"planet": "Venus (♀)", "nature": "Neutral"})
+            lords.append({"planet": "Mars (♂)", "nature": "Neutral"})
+            lords.append({"planet": "Jupiter (♃)", "nature": "Neutral"})
+            lords.append({"planet": "Saturn (♄)", "nature": "Neutral"})
+            lords.append({"planet": "Rahu (☊)", "nature": "Neutral"})
+            lords.append({"planet": "Ketu / Neptune (☋)", "nature": "Neutral"})
+
+            # Introduce benefic/malefic based on date for demo purposes
+            if month in [4, 8, 12]: # Water signs (Cancer, Scorpio, Pisces)
+                # Moon and Jupiter tend to be benefic here
+                for p in lords:
+                    if p['planet'] == 'Moon (☽)' or p['planet'] == 'Jupiter (♃)':
+                        p['nature'] = 'Benefic'
+                # Mars can be malefic
+                for p in lords:
+                    if p['planet'] == 'Mars (♂)':
+                        p['nature'] = 'Malefic'
+            elif month in [1, 5, 9]: # Fire signs (Aries, Leo, Sagittarius)
+                # Sun and Mars tend to be benefic
+                for p in lords:
+                    if p['planet'] == 'Sun (☉)' or p['planet'] == 'Mars (♂)':
+                        p['nature'] = 'Benefic'
+                # Saturn can be malefic
+                for p in lords:
+                    if p['planet'] == 'Saturn (♄)':
+                        p['nature'] = 'Malefic'
+            else: # Earth/Air signs (Taurus, Gemini, Virgo, Libra, Capricorn, Aquarius)
+                # Mercury and Venus tend to be benefic
+                for p in lords:
+                    if p['planet'] == 'Mercury (☿)' or p['planet'] == 'Venus (♀)':
+                        p['nature'] = 'Benefic'
+                # Rahu/Ketu can be malefic
+                for p in lords:
+                    if p['planet'] == 'Rahu (☊)' or p['planet'] == 'Ketu / Neptune (☋)':
+                        p['nature'] = 'Malefic'
+            
+            # Specific conditions from PDF for debilitated/favored
+            # "If your chart shows a debilitated Saturn, then avoid name numbers totaling 8."
+            # Conceptual: If day is a multiple of 4, make Saturn malefic
             if day % 4 == 0:
-                # Ensure a malefic Saturn is present if this condition hits
-                if not any(p['planet'] == 'Saturn (♄)' and p['nature'] == 'Malefic' for p in lords):
-                    lords.append({"planet": "Saturn (♄)", "nature": "Malefic"})
+                for p in lords:
+                    if p['planet'] == 'Saturn (♄)':
+                        p['nature'] = 'Malefic'
             
-            # Add a conceptual "favored" Jupiter if day is a multiple of 3 (just for demo)
+            # "If your chart favors Jupiter, a name totaling 3 may amplify positivity."
+            # Conceptual: If day is a multiple of 3, make Jupiter benefic
             if day % 3 == 0:
-                if not any(p['planet'] == 'Jupiter (♃)' and p['nature'] == 'Benefic' for p in lords):
-                    lords.append({"planet": "Jupiter (♃)", "nature": "Benefic"})
+                for p in lords:
+                    if p['planet'] == 'Jupiter (♃)':
+                        p['nature'] = 'Benefic'
+
+            # Filter out neutral ones if they haven't been assigned benefic/malefic
+            lords = [p for p in lords if p['nature'] != 'Neutral']
 
         except (ValueError, IndexError):
             logger.warning(f"Could not parse birth date for conceptual planetary lords: {birth_date_str}")
-            lords.append({"planet": "Mixed", "nature": "Neutral"}) # Default if date parsing fails
+            lords = [{"planet": "Mixed", "nature": "Neutral", "notes": "Invalid birth date format for conceptual planetary lords."}] # Default if date parsing fails
 
         return lords
 
@@ -1128,9 +1173,10 @@ class AdvancedNumerologyCalculator:
         }
 
         # Specific conflicts/favored numbers based on Ascendant Ruler (from PDF)
-        if ascendant_ruler:
+        if ascendant_ruler and ascendant_ruler != "Not Calculated":
             # Check for favorable alignment
             if expression_number in favorable_map_by_ascendant_ruler.get(ascendant_ruler, []):
+                # Special notes for 8, 4, 9 even if favorable, as per PDF's cautions
                 if (expression_number == 8 and ascendant_ruler == 'Saturn (♄)') or \
                    (expression_number == 4 and ascendant_ruler == 'Rahu (☊)') or \
                    (expression_number == 9 and ascendant_ruler == 'Mars (♂)'):
@@ -1151,6 +1197,16 @@ class AdvancedNumerologyCalculator:
                 compatibility_flags.append(f"Caution: Expression {expression_number} (Saturn) may conflict with a Venus-ruled Ascendant ({ascendant_info.get('sign', 'N/A')}).")
             if ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9:
                  compatibility_flags.append(f"Caution: Expression {expression_number} (Mars) may conflict with a Ketu/Neptune-ruled Ascendant ({ascendant_info.get('sign', 'N/A')}).")
+            
+            # General non-alignment (if not covered by specific conflicts/favors)
+            if expression_planet and ascendant_ruler != 'Mixed' and expression_number not in favorable_map_by_ascendant_ruler.get(ascendant_ruler, []) and \
+               not ((ascendant_ruler == 'Sun (☉)' and expression_number in [8, 4]) or \
+                    (ascendant_ruler == 'Moon (☽)' and expression_number == 8) or \
+                    (ascendant_ruler == 'Jupiter (♃)' and expression_number in [4, 8]) or \
+                    (ascendant_ruler == 'Mercury (☿)' and expression_number in [4, 8]) or \
+                    (ascendant_ruler == 'Venus (♀)' and expression_number == 8) or \
+                    (ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9)):
+                compatibility_flags.append(f"Expression {expression_number} ({expression_planet}) may not have direct harmony with your Ascendant ruler ({ascendant_ruler}).")
 
 
         # Rule 2: Planetary Conflicts/Support from conceptual chart (from PDF)
@@ -1754,12 +1810,18 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
     """Generate optimal timing recommendations"""
     current_year = datetime.datetime.now().year
     
-    today = datetime.date.today()
-    
-    # Calculate Personal Year based on Birth Month, Birth Day, and Current Year
-    # As per PDF, Personal Year is calculated using Month + Day + Current Year (all reduced to single digits/master numbers)
-    personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(today.month, True)
-    personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(today.day, True)
+    # Use client's birth month and day for Personal Year calculation
+    try:
+        birth_month = int(profile['birth_date'].split('-')[1])
+        birth_day = int(profile['birth_date'].split('-')[2])
+    except (ValueError, IndexError):
+        # Fallback to current month/day if birth date parsing fails (though it should be valid from frontend)
+        birth_month = datetime.date.today().month
+        birth_day = datetime.date.today().day
+        logger.warning("Could not parse birth month/day from profile for Personal Year. Using current month/day as fallback.")
+
+    personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(birth_month, True)
+    personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(birth_day, True)
     personal_year_calc_year = AdvancedNumerologyCalculator.reduce_number(current_year, True)
     
     personal_year_sum = personal_year_calc_month + personal_year_calc_day + personal_year_calc_year
@@ -2147,9 +2209,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"<b>Full Name:</b> {profile_details.get('full_name', 'N/A')}", styles['NormalBodyText']))
     Story.append(Paragraph(f"<b>Birth Date:</b> {profile_details.get('birth_date', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_time'):
-        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}</b>", styles['NormalBodyText']))
     if profile_details.get('birth_place'):
-        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}</b>", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
