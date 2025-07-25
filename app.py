@@ -2162,7 +2162,7 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     
     return forecast
 
-# NEW: Function to add page numbers to the canvas (renamed and modified for onFirstPage/onLaterPages)
+# Function to add page numbers to the canvas (modified for onFirstPage/onLaterPages)
 def _header_footer(canvas_obj, doc):
     canvas_obj.saveState()
     canvas_obj.setFont('Helvetica', 9)
@@ -2246,9 +2246,11 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"For: <b>{report_data.get('full_name', 'Client Name')}</b>", styles['SubHeadingStyle']))
     Story.append(Paragraph(f"Birth Date: <b>{report_data.get('birth_date', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_time'):
-        Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
+        # FIXED: Removed the extra </b> tag here
+        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_place'):
-        Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
+        # FIXED: Removed the extra </b> tag here
+        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
     Story.append(PageBreak())
@@ -2326,9 +2328,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"<b>Full Name:</b> {profile_details.get('full_name', 'N/A')}", styles['NormalBodyText']))
     Story.append(Paragraph(f"<b>Birth Date:</b> {profile_details.get('birth_date', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_time'):
-        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}</b>", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_place'):
-        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}</b>", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
