@@ -55,7 +55,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-# FIX: Changed __app__ to __name__
 app = Flask(__name__) 
 logger.info("Flask app instance created.") # Log app creation
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
@@ -106,6 +105,7 @@ ADVANCED_REPORT_HUMAN_PROMPT = """**COMPREHENSIVE NUMEROLOGY REPORT REQUEST**Ple
 
 # 3. REFINED NAME VALIDATION PROMPT (replaces the system message in validation)
 # MODIFIED: Expanded to include Lo Shu, Astro, and Phonology in validation.
+# IMPROVED: Added clear instruction for conclusiveness and a trigger phrase for final report.
 NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance through a conversational interface. Your goal is to help practitioners thoroughly evaluate potential names by asking clarifying questions and providing iterative insights.
 
 ## CONVERSATION GUIDELINES:
@@ -119,7 +119,7 @@ NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
     - "Are there any cultural or family traditions that might influence the acceptance or impact of this suggested name? How important is maintaining a close phonetic or structural resemblance to the original name for the client?"
     - "If the client has a known numerological 'edge case' (e.g., Expression 8 / Life Path 1 conflict, or challenges with a Master Number), how is this specific suggested name designed to address or mitigate that particular challenge?"
 - **Provide Partial Insights**: Even if you need more information, offer initial observations or partial insights based on the data you have.
-- **Comprehensive Validation on Sufficient Data**: Once you feel you have enough information, provide a full, structured validation report in Markdown format, following the "VALIDATION FRAMEWORK" below. State clearly when you are providing the final validation.
+- **Comprehensive Validation on Sufficient Data**: Once you feel you have enough information OR the practitioner explicitly asks for a **'final validation report for [Suggested Name]'**, you MUST provide a full, structured validation report in Markdown format, following the "VALIDATION FRAMEWORK" below. State clearly when you are providing the final validation and why (e.g., 'Based on our discussion, here is the final validation report for [Suggested Name]:').
 - **Maintain Context**: Remember the original profile and the suggested name throughout the conversation.
 - **Empowering Tone**: Be supportive and informative.
 
@@ -184,7 +184,7 @@ Current Chat History:
 
 User's Latest Message: {current_message}
 
-Your task is to either ask a follow-up question to gather more information, provide iterative insights, or, if you have sufficient information, provide a comprehensive final validation report following the 'VALIDATION FRAMEWORK' in your system prompt.
+Your task is to either ask a follow-up question to gather more information, provide iterative insights, or, if you have sufficient information OR the user explicitly requests a final validation report, provide a comprehensive final validation report following the 'VALIDATION FRAMEWORK' in your system prompt.
 """
 
 # 4. REFINED GENERAL CHAT PROMPT (replaces the system message in general chat)
@@ -537,7 +537,6 @@ class AdvancedNumerologyCalculator:
                 is_valid = False
                 flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may lack grounding without 5 & 6 in Lo Shu Grid.")
                 recommendation = "Consider a name change to a more grounding number if Lo Shu grid is not supportive."
-            # FIX: Changed profession_desires.lower() to profession_desire.lower()
             if "healer" in profession_desire.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
                 pass # Profession aligns
             else:
@@ -604,7 +603,7 @@ class AdvancedNumerologyCalculator:
             edge_cases.append({
                 "type": "Missing 6 in Lo Shu Grid",
                 "description": "A missing 6 can indicate challenges with harmony, responsibility, or nurturing. Assigning Expression 6 might be challenging without this foundational energy.",
-                "resolution_guidence": "Focus on developing compassion and responsibility. A name with Expression 6 might be difficult to fully embody without the innate energy of 6 from birth."
+                "resolution_guidance": "Focus on developing compassion and responsibility. A name with Expression 6 might be difficult to fully embody without the innate energy of 6 from birth."
             })
         
         # Profession: Healer, Teacher (Accept 2, 7 only if supported by grid)
@@ -1246,10 +1245,10 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
         7: ["Actively engage in social activities", "Practice expressing emotions openly", "Apply knowledge practically in daily life"],
         8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy"],
-        9: ["Set realistic expectations for self and others", "Practice self-compassion and forgiveness", "Take breaks to prevent emotional burnout"],
-        11: ["Practice grounding exercises (e.g., walking in nature)", "Manage nervous energy through mindfulness", "Set realistic and achievable goals"],
-        22: ["Delegate tasks effectively to avoid overwhelm", "Prioritize self-care and rest", "Break down large goals into smaller, manageable steps"],
-        33: ["Establish strong energetic and emotional boundaries", "Practice self-love and self-nurturing", "Seek support from trusted friends or professionals"]
+        9: ["Emotional volatility, disappointment, and burnout"], # Corrected from list to string per standard
+        11: ["Nervous tension", "Unrealistic expectations", "Hypersensitivity"],
+        22: ["Overwhelming pressure", "Perfectionism", "Burnout risk"],
+        33: ["Emotional overwhelm, taking on others' pain, and tendency toward self-sacrifice"]
     }
     return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
 
@@ -1411,17 +1410,21 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
 def create_numerology_pdf(report_data: Dict) -> bytes:
     """
     Generates a PDF numerology report using ReportLab.
+    This function now expects ALL data to be pre-processed and sent from the frontend.
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
     
     # Custom styles for better readability
-    # For styles that are NOT part of getSampleStyleSheet(), use styles.add()
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20))
+    styles.add(ParagraphStyle(name='SubHeadingStyle', fontSize=16, leading=20, spaceBefore=15, spaceAfter=8, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='SectionHeadingStyle', fontSize=14, leading=18, spaceBefore=12, spaceAfter=6, fontName='Helvetica-Bold'))
     styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='NormalBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica'))
+    styles.add(ParagraphStyle(name='BulletStyle', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3, fontName='Helvetica'))
 
-    # For styles that ARE part of getSampleStyleSheet(), modify them directly
+    # Modify existing styles directly
     styles['Heading1'].fontSize = 18
     styles['Heading1'].leading = 22
     styles['Heading1'].spaceBefore = 12
@@ -1434,7 +1437,6 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles['Heading2'].spaceAfter = 4
     styles['Heading2'].fontName = 'Helvetica-Bold'
 
-    # Modify existing BodyText and Bullet styles directly instead of adding new ones
     styles['BodyText'].fontSize = 10
     styles['BodyText'].leading = 14
     styles['BodyText'].spaceAfter = 6
@@ -1452,111 +1454,146 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Spacer(1, 0.2 * inch))
 
     # Introduction (parsed from report_data.get('intro_response'))
-    intro_html = report_data.get('intro_response', 'No introduction available.').replace('\n', '<br/>')
-    # Basic Markdown to HTML conversion for bold text
-    intro_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', intro_html)
-    Story.append(Paragraph(intro_html, styles['BodyText']))
-    Story.append(Spacer(1, 0.2 * inch))
-
-    # Current Numerological Profile
-    Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) 
-    Story.append(Paragraph(f"<b>Expression Number {report_data.get('profile_details', {}).get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    Story.append(Paragraph(f"<b>Life Path Number {report_data.get('profile_details', {}).get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    # FIX: Use profile_details for birth_number
-    Story.append(Paragraph(f"<b>Birth Number {report_data.get('profile_details', {}).get('birth_number')}</b>: Day of birth influence.", styles['BodyText'])) 
-    Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('profile_details', {}).get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
+    # This now expects the *full LLM-generated report in markdown*, possibly edited.
+    # We need to process it to convert markdown headers, bold, etc., to ReportLab paragraphs.
+    intro_content = report_data.get('intro_response', 'No introduction available.')
+    lines = intro_content.split('\n')
     
-    if report_data.get('profile_details', {}).get('soul_urge_number'):
-        Story.append(Paragraph(f"<b>Soul Urge Number {report_data.get('profile_details', {}).get('soul_urge_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('soul_urge_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    if report_data.get('profile_details', {}).get('personality_number'):
-        Story.append(Paragraph(f"<b>Personality Number {report_data.get('profile_details', {}).get('personality_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('personality_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line.startswith('### '):
+            text = stripped_line[4:].strip()
+            Story.append(Paragraph(text, styles['SectionHeadingStyle']))
+        elif stripped_line.startswith('## '):
+            text = stripped_line[3:].strip()
+            Story.append(Paragraph(text, styles['SubHeadingStyle']))
+        elif stripped_line.startswith('* '):
+            text = stripped_line[2:].strip()
+            # Basic Markdown to HTML for bold text within bullet points
+            html_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+            Story.append(Paragraph(html_text, styles['BulletStyle']))
+        elif stripped_line.startswith('- '):
+            text = stripped_line[2:].strip()
+            html_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+            Story.append(Paragraph(html_text, styles['BulletStyle']))
+        elif stripped_line:
+            # Basic Markdown to HTML conversion for bold text in general paragraphs
+            html_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped_line)
+            Story.append(Paragraph(html_text, styles['NormalBodyText']))
+        else:
+            Story.append(Spacer(1, 0.1 * inch)) # Add a small space for blank lines
 
     Story.append(Spacer(1, 0.2 * inch))
 
-    # Suggested Name Corrections
-    # FIX: Correctly access 'suggestions' from the dictionary
+    # --- Incorporate specific sections from `profile_details` if needed, after the main LLM report ---
+    # This ensures calculated data (like Lo Shu, Astro, Edge Cases) is consistently present,
+    # even if the LLM's general report might summarize them differently.
+    
+    profile_details = report_data.get('profile_details', {})
+
+    # Suggested Name Corrections (Now comes from the *final validated* list)
     if report_data.get('suggested_names') and report_data['suggested_names'].get('suggestions'):
-        Story.append(Paragraph("🌟 Suggested Name Corrections", styles['Heading1']))
-        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'No specific reasoning provided.')}", styles['BodyText']))
-        for suggestion in report_data['suggested_names']['suggestions']: # Corrected access
-            Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['Bullet']))
+        Story.append(Paragraph("🌟 Strategic Name Corrections (Validated)", styles['Heading1']))
+        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'Based on a comprehensive numerological analysis and practitioner validation.')}", styles['NormalBodyText']))
+        for suggestion in report_data['suggested_names']['suggestions']:
+            Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.2 * inch))
 
-    # Karmic Lessons
-    if report_data.get('profile_details', {}).get('karmic_lessons', {}).get('lessons_from_name'): # Updated key access
+    # NEW: Validation Chat Conclusions (Optional, if frontend provides)
+    if report_data.get('validation_summary'):
+        Story.append(Paragraph("✅ Validation Chat Summary", styles['Heading1']))
+        # Treat as plain text, or add basic markdown parsing if expected
+        validation_html = report_data['validation_summary'].replace('\n', '<br/>')
+        validation_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', validation_html)
+        Story.append(Paragraph(validation_html, styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.2 * inch))
+
+    # NEW: Practitioner's Tailored Notes (Optional, if frontend provides)
+    if report_data.get('practitioner_notes'):
+        Story.append(Paragraph("✍️ Practitioner's Tailored Notes", styles['Heading1']))
+        notes_html = report_data['practitioner_notes'].replace('\n', '<br/>')
+        notes_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', notes_html)
+        Story.append(Paragraph(notes_html, styles['NormalBodyText']))
+        Story.append(Spacer(1, 0.2 * inch))
+
+    # --- Append other detailed sections from `profile_details` if they weren't fully covered
+    #     or if the practitioner wants them explicitly structured.
+    #     This part ensures data consistency regardless of LLM's summarization.
+
+    # Karmic Lessons (if not already covered in main report sufficiently)
+    if profile_details.get('karmic_lessons', {}).get('lessons_from_name'):
         Story.append(Paragraph("🔮 Karmic Lessons to Address", styles['Heading2']))
-        for lesson in report_data['profile_details']['karmic_lessons']['lessons_from_name']: # Updated key access
-            Story.append(Paragraph(f"• {lesson}", styles['Bullet']))
+        for lesson in profile_details['karmic_lessons']['lessons_from_name']:
+            Story.append(Paragraph(f"• {lesson}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Lo Shu Grid Analysis
-    if report_data.get('profile_details', {}).get('lo_shu_grid'):
-        lo_shu = report_data['profile_details']['lo_shu_grid']
+    if profile_details.get('lo_shu_grid'):
+        lo_shu = profile_details['lo_shu_grid']
         Story.append(Paragraph("🗺️ Lo Shu Grid Analysis", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Digits in DOB</b>: {lo_shu.get('grid_counts')}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Digits in DOB</b>: {lo_shu.get('grid_counts')}", styles['NormalBodyText']))
         if lo_shu.get('missing_numbers'):
             Story.append(Paragraph("<b>Missing Numbers & Lessons</b>:", styles['BoldBodyText']))
             for lesson in lo_shu['missing_lessons']:
-                Story.append(Paragraph(f"• Number {lesson['number']}: {lesson['impact']}", styles['Bullet']))
+                Story.append(Paragraph(f"• Number {lesson['number']}: {lesson['impact']}", styles['BulletStyle']))
         else:
-            Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['BodyText']))
+            Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Astrological Integration (Conceptual)
-    if report_data.get('profile_details', {}).get('ascendant_info') or report_data.get('profile_details', {}).get('moon_sign_info') or report_data.get('profile_details', {}).get('planetary_lords'):
-        astro = report_data['profile_details']
+    if profile_details.get('ascendant_info') or profile_details.get('moon_sign_info') or profile_details.get('planetary_lords'):
+        astro = profile_details
         Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual)", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Ascendant/Lagna</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Ascendant/Lagna</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
         if astro.get('planetary_compatibility', {}).get('compatibility_flags'):
             Story.append(Paragraph("<b>Planetary Compatibility Flags</b>:", styles['BoldBodyText']))
             for flag in astro['planetary_compatibility']['compatibility_flags']:
-                Story.append(Paragraph(f"• {flag}", styles['Bullet']))
+                Story.append(Paragraph(f"• {flag}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Phonetic Vibration (Conceptual)
-    if report_data.get('profile_details', {}).get('phonetic_vibration'):
-        phonetics = report_data['profile_details']['phonetic_vibration']
+    if profile_details.get('phonetic_vibration'):
+        phonetics = profile_details['phonetic_vibration']
         Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual)", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['NormalBodyText']))
         if phonetics.get('notes'):
             Story.append(Paragraph("<b>Notes</b>:", styles['BoldBodyText']))
             for note in phonetics['notes']:
-                Story.append(Paragraph(f"• {note}", styles['Bullet']))
+                Story.append(Paragraph(f"• {note}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Expression Number Validation
-    if report_data.get('profile_details', {}).get('expression_validation'):
-        exp_val = report_data['profile_details']['expression_validation']
+    if profile_details.get('expression_validation'):
+        exp_val = profile_details['expression_validation']
         Story.append(Paragraph("✅ Expression Number Validation", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Validity Status</b>: {'Valid' if exp_val['is_valid'] else 'Needs Attention'}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Validity Status</b>: {'Valid' if exp_val['is_valid'] else 'Needs Attention'}", styles['NormalBodyText']))
         if exp_val.get('flags'):
             Story.append(Paragraph("<b>Flags/Concerns</b>:", styles['BoldBodyText']))
             for flag in exp_val['flags']:
-                Story.append(Paragraph(f"• {flag}", styles['Bullet']))
-        Story.append(Paragraph(f"<b>Recommendation</b>: {exp_val['recommendation']}", styles['BodyText']))
+                Story.append(Paragraph(f"• {flag}", styles['BulletStyle']))
+        Story.append(Paragraph(f"<b>Recommendation</b>: {exp_val['recommendation']}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Edge Case Handling
-    if report_data.get('profile_details', {}).get('edge_cases'):
-        edge_cases = report_data['profile_details']['edge_cases']
+    if profile_details.get('edge_cases'):
+        edge_cases = profile_details['edge_cases']
         if edge_cases:
             Story.append(Paragraph("⚠️ Identified Edge Cases", styles['Heading2']))
             for ec in edge_cases:
                 Story.append(Paragraph(f"<b>Type</b>: {ec['type']}", styles['BoldBodyText']))
-                Story.append(Paragraph(f"Description: {ec['description']}", styles['BodyText']))
-                Story.append(Paragraph(f"Resolution Guidance: {ec['resolution_guidance']}", styles['BodyText']))
+                Story.append(Paragraph(f"Description: {ec['description']}", styles['NormalBodyText']))
+                Story.append(Paragraph(f"Resolution Guidance: {ec['resolution_guidance']}", styles['NormalBodyText']))
                 Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.1 * inch))
-
 
     # Timing Recommendations
     if report_data.get('timing_recommendations'):
         timing = report_data['timing_recommendations']
         Story.append(Paragraph("⏰ Optimal Timing & Energy", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Current Personal Year ({timing['current_personal_year']})</b>: {timing['energy_description']}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Optimal Activities</b>: {', '.join(timing['optimal_activities'])}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Best Months for Action</b>: {', '.join(map(str, timing['best_months_for_action']))}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Current Personal Year ({timing['current_personal_year']})</b>: {timing['energy_description']}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Optimal Activities</b>: {', '.join(timing['optimal_activities'])}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Best Months for Action</b>: {', '.join(map(str, timing['best_months_for_action']))}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Potential Challenges
@@ -1565,26 +1602,26 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph("🚧 Potential Challenges & Growth Areas", styles['Heading2']))
         Story.append(Paragraph("<b>Challenges</b>:", styles['BoldBodyText']))
         for challenge in challenges['potential_challenges']:
-            Story.append(Paragraph(f"• {challenge}", styles['Bullet']))
+            Story.append(Paragraph(f"• {challenge}", styles['BulletStyle']))
         Story.append(Paragraph("<b>Mitigation Strategies</b>:", styles['BoldBodyText']))
         for strategy in challenges['mitigation_strategies']:
-            Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
+            Story.append(Paragraph(f"• {strategy}", styles['BulletStyle']))
         Story.append(Paragraph("<b>Growth Opportunities</b>:", styles['BoldBodyText']))
         for opportunity in challenges['growth_opportunities']:
-            Story.append(Paragraph(f"• {opportunity}", styles['Bullet']))
+            Story.append(Paragraph(f"• {opportunity}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Development Recommendations
     if report_data.get('development_recommendations'):
         dev_recs = report_data['development_recommendations']
         Story.append(Paragraph("🌱 Personalized Development Recommendations", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Immediate Focus</b>: {dev_recs['immediate_focus']}", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Long-Term Goal</b>: {dev_recs['long_term_goal']}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Immediate Focus</b>: {dev_recs['immediate_focus']}", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Long-Term Goal</b>: {dev_recs['long_term_goal']}", styles['NormalBodyText']))
         if dev_recs['karmic_work']:
-            Story.append(Paragraph(f"<b>Karmic Work</b>: {', '.join(dev_recs['karmic_work'])}", styles['BodyText']))
+            Story.append(Paragraph(f"<b>Karmic Work</b>: {', '.join(dev_recs['karmic_work'])}", styles['NormalBodyText']))
         Story.append(Paragraph("<b>Monthly Practices</b>:", styles['BoldBodyText']))
         for practice in dev_recs['monthly_practices']:
-            Story.append(Paragraph(f"• {practice}", styles['Bullet']))
+            Story.append(Paragraph(f"• {practice}", styles['BulletStyle']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Yearly Forecast
@@ -1592,10 +1629,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph("🗓️ Yearly Forecast (Next 3 Years)", styles['Heading1']))
         for year, forecast_data in report_data['yearly_forecast'].items():
             Story.append(Paragraph(f"<b>Year {year} (Personal Year {forecast_data['personal_year']})</b>: {forecast_data['theme']}", styles['Heading2']))
-            Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['BodyText']))
-            # FIX: Changed 'Energy Level' to use forecast_data['energy_level'] correctly
-            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['BodyText']))
-            Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['BodyText']))
+            Story.append(Paragraph(f"Focus: {forecast_data['focus_areas']}", styles['NormalBodyText']))
+            Story.append(Paragraph(f"Energy Level: {forecast_data['energy_level']}", styles['NormalBodyText']))
+            Story.append(Paragraph(f"Optimal Months: {', '.join(map(str, forecast_data['optimal_months']))}", styles['NormalBodyText']))
             Story.append(Spacer(1, 0.1 * inch))
         Story.append(Spacer(1, 0.2 * inch))
 
@@ -1603,15 +1639,15 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     if report_data.get('uniqueness_score'):
         uniqueness = report_data['uniqueness_score'] 
         Story.append(Paragraph("✨ Uniqueness of Your Profile", styles['Heading2']))
-        Story.append(Paragraph(f"<b>Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['BodyText']))
-        Story.append(Paragraph(f"<b>Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Score</b>: {uniqueness['score']:.2f} ({uniqueness['interpretation']})", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Factors</b>: {', '.join(uniqueness['rarity_factors'])}", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Final Note
     Story.append(PageBreak()) # Start final note on a new page if content is long
     Story.append(Paragraph("Thank you for using Sheelaa's Elite AI Numerology Assistant!", styles['TitleStyle']))
     Story.append(Spacer(1, 0.2 * inch))
-    Story.append(Paragraph("Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.", styles['BodyText']))
+    Story.append(Paragraph("Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.", styles['NormalBodyText']))
 
     doc.build(Story)
     buffer.seek(0)
@@ -1695,11 +1731,6 @@ def chat(): # This remains a synchronous Flask view
             }
 
             # Construct messages for LLM from the history
-            # The last message in chat_history_from_frontend is the current user message
-            # We need to pass the *full* chat history to the LLM so it has context for its next response.
-            # The human prompt then formats the specific current turn.
-            
-            # Convert frontend chat history to Langchain message objects
             langchain_chat_history = []
             for msg in chat_history_from_frontend:
                 if msg['sender'] == 'user':
@@ -1735,7 +1766,6 @@ def chat(): # This remains a synchronous Flask view
 
         elif message: # Existing logic for GENERATE_ADVANCED_REPORT
             report_request = MessageParser.parse_report_request(message)
-            # validation_request = MessageParser.parse_validation_request(message) # This is no longer used for single-shot validation
 
             if report_request:
                 logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {message}")
@@ -1799,6 +1829,8 @@ def chat(): # This remains a synchronous Flask view
                 report_response = llm_manager.creative_llm.invoke(messages)
                 
                 # Store the full report data, including the LLM's response, for PDF generation
+                # The frontend will be responsible for modifying 'suggested_names' and 'intro_response'
+                # after the validation chat.
                 full_report_data = {
                     **llm_input_data, # Include all calculated profile data
                     "intro_response": report_response.content # This is the LLM generated Markdown report
@@ -1837,9 +1869,11 @@ def chat(): # This remains a synchronous Flask view
 @rate_limited("5 per hour") # Limit PDF generation due to resource intensity
 @performance_monitor
 def generate_pdf_report_endpoint():
-    """Endpoint to generate and return a PDF numerology report."""
-    # This endpoint now expects the full_report_data_for_pdf directly from the frontend
-    # which contains all the pre-calculated numerology and LLM response.
+    """
+    Endpoint to generate and return a PDF numerology report.
+    This endpoint now expects the full, potentially modified/validated report data
+    directly from the frontend.
+    """
     report_data = request.json
     
     # Basic validation for essential fields
