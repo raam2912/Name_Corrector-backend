@@ -855,7 +855,7 @@ class AdvancedNumerologyCalculator:
             edge_cases.append({
                 "type": "Expression 8 vs. Sun-ruled Ascendant Conflict",
                 "description": f"Your Expression Number 8 (ruled by Saturn) may create friction with your Sun-ruled Ascendant ({astro_info.get('ascendant_info',{}).get('sign', 'N/A')}). This can manifest as struggles between ambition and personal freedom, or delays in leadership roles. Saturn's restrictive nature can challenge the Sun's expansive drive.",
-                "resolution_guidance": "Focus on disciplined effort without rigidity. Cultivate patience and ensure your actions are aligned with your true self, not just material gain. Consider names with Expression 1, 3, or 5 if seeking more direct alignment with solar energy."
+                "resolution_guidance": "Focus on disciplined effort without rigidity. Cultivate patience and ensure your actions are aligned with your true self, not just material gain. Consider names with Expression 1, 3, 5, or 6 if seeking more direct alignment with solar energy."
             })
         
         # Example: Expression 4 (Rahu) vs. Jupiter-ruled Ascendant (Sagittarius/Pisces) - from PDF
@@ -1242,7 +1242,7 @@ class AdvancedNumerologyCalculator:
         if expression_number == 1 and any(p['planet'] == 'Sun (☉)' and p['nature'] == 'Benefic' for p in planetary_lords):
             compatibility_flags.append("Strong alignment: Expression 1 (Sun) is amplified by a favored Sun, enhancing leadership and vitality.")
         if expression_number == 1 and any(p['planet'] == 'Sun (☉)' and p['nature'] == 'Malefic' for p in planetary_lords):
-            compatibility_flags.append("Caution: Expression 1 (Sun) may bring ego challenges or conflicts with authority if your conceptual chart indicates a malefic Sun.")
+            compatibility_flags.append("Caution: Expression 1 (Sun) may bring ego challenges, arrogance, or difficulties in asserting yourself if your conceptual chart indicates a malefic Sun.")
 
 
         return {
@@ -2028,21 +2028,15 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     
     for year_offset in range(years):
         target_year = current_year + year_offset
-        # Personal Year calculation based on birth month, birth day, and target year
-        # Note: For accuracy, this should use the client's actual birth month and day,
-        # but the prompt implies using current date for 'personal year' calculation.
-        # Sticking to the previous implementation which uses current month/day for personal year.
-        # If the intention is for Personal Year based on DOB, the logic needs adjustment.
-        # Assuming current month/day for Personal Year calculation as per standard numerology practice.
-        
-        # Use client's birth month and day for Personal Year calculation
+        # Personal Year calculation based on birth month and day, and target year
         try:
             birth_month = int(profile['birth_date'].split('-')[1])
             birth_day = int(profile['birth_date'].split('-')[2])
         except (ValueError, IndexError):
+            # Fallback to current month/day if birth date parsing fails (though it should be valid from frontend)
             birth_month = datetime.date.today().month
             birth_day = datetime.date.today().day
-            logger.warning("Could not parse birth month/day for Personal Year. Using current month/day.")
+            logger.warning("Could not parse birth month/day for Personal Year. Using current month/day as fallback.")
 
         personal_year_calc_month = AdvancedNumerologyCalculator.reduce_number(birth_month, True)
         personal_year_calc_day = AdvancedNumerologyCalculator.reduce_number(birth_day, True)
@@ -2264,7 +2258,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         if lo_shu.get('missing_numbers'):
             Story.append(Paragraph("<b>Missing Numbers & Their Impact</b>:", styles['BoldBodyText']))
             for lesson in lo_shu['missing_lessons']:
-                Story.append(Paragraph(f"• Number {lesson['number']}: {lesson['impact']}", styles['BulletStyle']))
+                Story.append(Paragraph(f"• {lesson['number']}: {lesson['impact']}", styles['BulletStyle']))
         else:
             Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
@@ -2507,6 +2501,15 @@ def chat():
                 elif msg['sender'] == 'ai':
                     langchain_chat_history.append(AIMessage(content=msg['text']))
 
+            # Pre-format JSON strings to avoid f-string backslash issue
+            lo_shu_grid_json = json.dumps(llm_validation_input_data['lo_shu_grid'], indent=2)
+            ascendant_info_json = json.dumps(llm_validation_input_data['ascendant_info'], indent=2)
+            moon_sign_info_json = json.dumps(llm_validation_input_data['moon_sign_info'], indent=2)
+            planetary_lords_json = json.dumps(llm_validation_input_data['planetary_lords'], indent=2)
+            planetary_compatibility_json = json.dumps(llm_validation_input_data['planetary_compatibility'], indent=2)
+            phonetic_vibration_json = json.dumps(llm_validation_input_data['phonetic_vibration'], indent=2)
+            expression_validation_json = json.dumps(llm_validation_input_data['expression_validation_for_suggested'], indent=2)
+
             # The prompt for validation chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])),
@@ -2528,13 +2531,13 @@ def chat():
                     Core Interpretation: {llm_validation_input_data['suggested_core_interpretation']}
 
                     **DETAILED NUMEROLOGICAL & ASTRO-NUMEROLOGICAL DATA FOR SUGGESTED NAME:**
-                    Lo Shu Grid: {json.dumps(llm_validation_input_data['lo_shu_grid'], indent=2)}
-                    Ascendant Info (Conceptual): {json.dumps(llm_validation_input_data['ascendant_info'], indent=2)}
-                    Moon Sign Info (Conceptual): {json.dumps(llm_validation_input_data['moon_sign_info'], indent=2)}
-                    Planetary Lords (Conceptual): {json.dumps(llm_validation_input_data['planetary_lords'], indent=2)}
-                    Planetary Compatibility Notes: {json.dumps(llm_validation_input_data['planetary_compatibility'], indent=2)}
-                    Phonetic Vibration: {json.dumps(llm_validation_input_data['phonetic_vibration'], indent=2)}
-                    Expression Validation Summary: {json.dumps(llm_validation_input_data['expression_validation_for_suggested'], indent=2)}
+                    Lo Shu Grid: {lo_shu_grid_json}
+                    Ascendant Info (Conceptual): {ascendant_info_json}
+                    Moon Sign Info (Conceptual): {moon_sign_info_json}
+                    Planetary Lords (Conceptual): {planetary_lords_json}
+                    Planetary Compatibility Notes: {planetary_compatibility_json}
+                    Phonetic Vibration: {phonetic_vibration_json}
+                    Expression Validation Summary: {expression_validation_json}
 
                     **CHAT HISTORY:**
                     {"\n".join([f"{m.type.capitalize()}: {m.content}" for m in langchain_chat_history])}
