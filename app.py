@@ -234,6 +234,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
     - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation.
     - **Important Note**: For cautionary or vital information, start a paragraph with "<b>Important Note:</b> " followed by the note.
     - Use `**bold**` for all numerological terms (e.g., **Expression Number**, **Life Path Number**) and key concepts.
+- **STRICT ADHERENCE TO NAMES**: When referring to the client's original or suggested names, you MUST use the exact spelling provided in the input data. Do NOT alter or simplify the spelling of names (e.g., if the input is 'Naraayanan', use 'Naraayanan', not 'Narayanan').
 - **Specific Details**: Avoid generalities. Provide concrete insights, **referencing specific numbers, grid positions, planetary influences, and real-world implications where relevant.**
 - **No AI Disclaimers.**
 - **Ensure the content flows logically and is highly coherent, even with its extensive detail.**
@@ -1433,7 +1434,7 @@ class MessageParser:
             return None
         
         return ReportRequest(
-            full_name=match.group(1),
+            full_name=match.group(1), # This captures the full name
             birth_date=match.group(2),
             current_expression_number=int(match.group(3)),
             current_life_path_number=int(match.group(4)),
@@ -2387,7 +2388,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             for num in lo_shu['missing_numbers']:
                 Story.append(Paragraph(f"• {num}", styles['BulletStyle']))
         else:
-            Story.append(Paragraph("All numbers 1-9 are present in your birth date.", styles['NormalBodyText']))
+            Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
         
         if lo_shu.get('grid_updated_by_name'):
              Story.append(Paragraph(f"<i>Note: This grid includes the conceptual influence of the suggested name's Expression Number.</i>", styles['ItalicBodyText']))
