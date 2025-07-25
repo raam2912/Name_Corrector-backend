@@ -963,7 +963,7 @@ def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_
     # New: Calculate Birth Number (Day of birth reduced)
     try:
         birth_day = int(birth_date.split('-')[2])
-        birth_number = calculator.reduce_number(birth_day)
+        birth_number = calculator.reduce_number(birth_day, True) # Allow master numbers for birth number
     except (ValueError, IndexError):
         birth_number = None # Handle invalid date format
         logger.warning(f"Could not calculate Birth Number for date: {birth_date}")
@@ -1000,7 +1000,7 @@ def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_
         "expression_details": expression_details,
         "life_path_number": life_path_num,
         "life_path_details": life_path_details,
-        "birth_number": birth_number, # New
+        "birth_number": birth_number, # Ensure birth_number is included here
         "soul_urge_number": soul_urge_num,
         "soul_urge_details": soul_urge_details,
         "personality_number": personality_num,
@@ -1359,36 +1359,38 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     # Current Numerological Profile
     Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) 
-    Story.append(Paragraph(f"<b>Expression Number {report_data.get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    Story.append(Paragraph(f"<b>Life Path Number {report_data.get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    Story.append(Paragraph(f"<b>Birth Number {report_data.get('birth_number')}</b>: Day of birth influence.", styles['BodyText'])) # Added Birth Number
-    Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
+    Story.append(Paragraph(f"<b>Expression Number {report_data.get('profile_details', {}).get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    Story.append(Paragraph(f"<b>Life Path Number {report_data.get('profile_details', {}).get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    # FIX: Use profile_details for birth_number
+    Story.append(Paragraph(f"<b>Birth Number {report_data.get('profile_details', {}).get('birth_number')}</b>: Day of birth influence.", styles['BodyText'])) 
+    Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('profile_details', {}).get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
     
-    if report_data.get('soul_urge_number'):
-        Story.append(Paragraph(f"<b>Soul Urge Number {report_data.get('soul_urge_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('soul_urge_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
-    if report_data.get('personality_number'):
-        Story.append(Paragraph(f"<b>Personality Number {report_data.get('personality_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('personality_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    if report_data.get('profile_details', {}).get('soul_urge_number'):
+        Story.append(Paragraph(f"<b>Soul Urge Number {report_data.get('profile_details', {}).get('soul_urge_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('soul_urge_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    if report_data.get('profile_details', {}).get('personality_number'):
+        Story.append(Paragraph(f"<b>Personality Number {report_data.get('profile_details', {}).get('personality_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('profile_details', {}).get('personality_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
 
     Story.append(Spacer(1, 0.2 * inch))
 
     # Suggested Name Corrections
-    if report_data.get('suggested_names') and report_data['suggested_names'].suggestions:
+    # FIX: Correctly access 'suggestions' from the dictionary
+    if report_data.get('suggested_names') and report_data['suggested_names'].get('suggestions'):
         Story.append(Paragraph("🌟 Suggested Name Corrections", styles['Heading1']))
-        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].reasoning}", styles['BodyText']))
-        for suggestion in report_data['suggested_names'].suggestions:
-            Story.append(Paragraph(f"• <b>{suggestion.name}</b> (Expression Number: {suggestion.expression_number}): {suggestion.rationale}", styles['Bullet']))
+        Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'No specific reasoning provided.')}", styles['BodyText']))
+        for suggestion in report_data['suggested_names']['suggestions']: # Corrected access
+            Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['Bullet']))
         Story.append(Spacer(1, 0.2 * inch))
 
     # Karmic Lessons
-    if report_data.get('karmic_lessons', {}).get('lessons_from_name'): # Updated key
+    if report_data.get('profile_details', {}).get('karmic_lessons', {}).get('lessons_from_name'): # Updated key access
         Story.append(Paragraph("🔮 Karmic Lessons to Address", styles['Heading2']))
-        for lesson in report_data['karmic_lessons']['lessons_from_name']: # Updated key
+        for lesson in report_data['profile_details']['karmic_lessons']['lessons_from_name']: # Updated key access
             Story.append(Paragraph(f"• {lesson}", styles['Bullet']))
         Story.append(Spacer(1, 0.1 * inch))
 
     # Lo Shu Grid Analysis
-    if report_data.get('lo_shu_grid'):
-        lo_shu = report_data['lo_shu_grid']
+    if report_data.get('profile_details', {}).get('lo_shu_grid'):
+        lo_shu = report_data['profile_details']['lo_shu_grid']
         Story.append(Paragraph("🗺️ Lo Shu Grid Analysis", styles['Heading2']))
         Story.append(Paragraph(f"<b>Digits in DOB</b>: {lo_shu.get('grid_counts')}", styles['BodyText']))
         if lo_shu.get('missing_numbers'):
@@ -1400,8 +1402,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
     # Astrological Integration (Conceptual)
-    if report_data.get('ascendant_info') or report_data.get('moon_sign_info') or report_data.get('planetary_lords'):
-        astro = report_data
+    if report_data.get('profile_details', {}).get('ascendant_info') or report_data.get('profile_details', {}).get('moon_sign_info') or report_data.get('profile_details', {}).get('planetary_lords'):
+        astro = report_data['profile_details']
         Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual)", styles['Heading2']))
         Story.append(Paragraph(f"<b>Ascendant/Lagna</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
         Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
@@ -1412,8 +1414,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
     # Phonetic Vibration (Conceptual)
-    if report_data.get('phonetic_vibration'):
-        phonetics = report_data['phonetic_vibration']
+    if report_data.get('profile_details', {}).get('phonetic_vibration'):
+        phonetics = report_data['profile_details']['phonetic_vibration']
         Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual)", styles['Heading2']))
         Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['BodyText']))
         if phonetics.get('notes'):
@@ -1423,8 +1425,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
     # Expression Number Validation
-    if report_data.get('expression_validation'):
-        exp_val = report_data['expression_validation']
+    if report_data.get('profile_details', {}).get('expression_validation'):
+        exp_val = report_data['profile_details']['expression_validation']
         Story.append(Paragraph("✅ Expression Number Validation", styles['Heading2']))
         Story.append(Paragraph(f"<b>Validity Status</b>: {'Valid' if exp_val['is_valid'] else 'Needs Attention'}", styles['BodyText']))
         if exp_val.get('flags'):
@@ -1435,8 +1437,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
     # Edge Case Handling
-    if report_data.get('edge_cases'):
-        edge_cases = report_data['edge_cases']
+    if report_data.get('profile_details', {}).get('edge_cases'):
+        edge_cases = report_data['profile_details']['edge_cases']
         if edge_cases:
             Story.append(Paragraph("⚠️ Identified Edge Cases", styles['Heading2']))
             for ec in edge_cases:
@@ -1465,7 +1467,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             Story.append(Paragraph(f"• {challenge}", styles['Bullet']))
         Story.append(Paragraph("<b>Mitigation Strategies</b>:", styles['BoldBodyText']))
         for strategy in challenges['mitigation_strategies']:
-                Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
+            Story.append(Paragraph(f"• {strategy}", styles['Bullet']))
         Story.append(Paragraph("<b>Growth Opportunities</b>:", styles['BoldBodyText']))
         for opportunity in challenges['growth_opportunities']:
             Story.append(Paragraph(f"• {opportunity}", styles['Bullet']))
