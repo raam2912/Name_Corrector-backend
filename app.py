@@ -22,6 +22,7 @@ import hmac
 import psutil
 from collections import Counter
 import sys 
+import random # Added for conceptual planetary degrees
 
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -51,7 +52,6 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout) # Correctly use StreamHandler for sys.stdout
     ]
 )
-
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
@@ -414,7 +414,7 @@ class AdvancedNumerologyCalculator:
             "challenges": "Tendency to scatter energy and avoid difficult emotions through superficiality.",
             "spiritual": "Learning to channel creative gifts for higher purpose and authentic expression."
         },
-        4: {
+    4: {
             "core": "Stability, diligent hard work, discipline, organization, and building strong foundations for lasting security. It signifies reliability and a practical approach. Number 4 is the builder, representing order, structure, and practicality. It is associated with responsibility, honesty, and a strong work ethic. Those influenced by 4 are often methodical, reliable, and persistent. They excel at creating systems, managing resources, and ensuring long-term security through diligent effort.",
             "psychological": "Methodical planners who value structure, reliability, and systematic approaches to life.",
             "career": "Excel in project management, finance, construction, systems analysis, and administrative roles.",
@@ -645,10 +645,11 @@ class AdvancedNumerologyCalculator:
 
     # 3️⃣ CORE NUMBERS FROM BIRTH (Lo Shu Grid)
     @staticmethod
-    def calculate_lo_shu_grid(birth_date_str: str) -> Dict:
+    def calculate_lo_shu_grid(birth_date_str: str, suggested_name_expression_num: Optional[int] = None) -> Dict:
         """
         Calculates the Lo Shu Grid digit counts from a birth date.
         Identifies missing numbers and provides basic interpretations.
+        Optionally incorporates the suggested name's expression number for analysis.
         """
         try:
             dob_digits = [int(d) for d in birth_date_str.replace('-', '') if d.isdigit()]
@@ -657,6 +658,14 @@ class AdvancedNumerologyCalculator:
         
         grid_counts = Counter(dob_digits)
         
+        # If a suggested name's expression number is provided, add its single digit to the grid counts
+        if suggested_name_expression_num is not None:
+            # Reduce master numbers for Lo Shu Grid if they are not already single digits
+            # The Lo Shu grid is typically 1-9. Master numbers are usually reduced to their single digit sum for grid analysis.
+            grid_friendly_expression = AdvancedNumerologyCalculator.reduce_number(suggested_name_expression_num, allow_master_numbers=False)
+            grid_counts[grid_friendly_expression] += 1
+            logger.info(f"Lo Shu Grid updated with suggested name's expression number: {grid_friendly_expression}")
+
         missing_numbers = sorted([i for i in range(1, 10) if i not in grid_counts])
         
         missing_impact = {
@@ -683,7 +692,8 @@ class AdvancedNumerologyCalculator:
             "has_5": 5 in grid_counts,
             "has_6": 6 in grid_counts,
             "has_3": 3 in grid_counts,
-            "has_8": 8 in grid_counts # For Expression 8 validation
+            "has_8": 8 in grid_counts, # For Expression 8 validation
+            "grid_updated_by_name": suggested_name_expression_num is not None
         }
 
     # 5️⃣ VALIDATION LOGIC FOR EXPRESSION NUMBER (from PDF with refinements)
@@ -745,6 +755,12 @@ class AdvancedNumerologyCalculator:
             flags.append("Significant Caution: Expression 8 (Saturn) is highly problematic if 8 is missing from Lo Shu Grid, indicating a lack of foundational energy for material success and power.")
             is_valid = False
             recommendation = "Strongly advise against Expression 8 if 8 is missing from Lo Shu Grid. It can lead to severe financial or power struggles."
+
+        # NEW: Lo Shu Grid Balancing for Suggested Name's Expression Number
+        # If the suggested name's expression number is missing from the Lo Shu Grid,
+        # it can be seen as helping to balance that missing energy.
+        if expression_number in lo_shu_grid.get('missing_numbers', []):
+            flags.append(f"The suggested Expression Number {expression_number} helps to balance the missing energy of {expression_number} in your Lo Shu Grid, promoting integration of its qualities.")
 
 
         # Rule 4: Astrological Compatibility (Conceptual, from PDF)
@@ -821,6 +837,18 @@ class AdvancedNumerologyCalculator:
                 "resolution_guidance": "Focus on developing compassion and responsibility through conscious effort. The name can support this, but foundational work on these themes may be necessary."
             })
         
+        # NEW: Lo Shu Grid Balancing for Suggested Name's Expression Number
+        # This is not an "edge case" in the negative sense, but a positive alignment
+        # that should be highlighted if the suggested name's expression number
+        # helps fill a missing number in the Lo Shu Grid.
+        if expression_number in lo_shu_grid.get('missing_numbers', []):
+            edge_cases.append({
+                "type": f"Expression {expression_number} Harmonizes with Missing Lo Shu Grid Number",
+                "description": f"The suggested name's Expression Number ({expression_number}) directly addresses and helps balance the missing energy of {expression_number} in your Lo Shu Grid. This promotes the integration of its qualities (e.g., {'adaptability' if expression_number == 5 else 'harmony/responsibility' if expression_number == 6 else 'creativity/communication' if expression_number == 3 else 'leadership/independence' if expression_number == 1 else 'N/A'}) into your life.",
+                "resolution_guidance": "Embrace the qualities of this number as they are now reinforced by your name, helping to fill a foundational energetic gap in your blueprint."
+            })
+
+
         # Profession: Healer, Teacher (Accept 2, 7 only if supported by grid) (from PDF)
         spiritual_professions = ["healer", "teacher", "counselor", "artist", "researcher", "spiritual guide"]
         if any(p in profession_desire for p in spiritual_professions):
@@ -1066,81 +1094,69 @@ class AdvancedNumerologyCalculator:
     @staticmethod
     def get_planetary_lords(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> List[Dict]:
         """
-        Conceptual: Simulates fetching dominant planetary lords (benefic/malefic).
+        Conceptual: Simulates fetching dominant planetary lords (benefic/malefic) and their conceptual degrees.
         This is a simplified model and does not perform actual astrological calculations.
         Based on "Planetary Conflicts and Support" section from PDF.
         """
-        logger.warning("Astrological integration for Planetary Lords is conceptual. Providing simplified data.")
+        logger.warning("Astrological integration for Planetary Lords and Degrees is conceptual. Providing simulated data.")
         
         lords = []
         try:
             month = int(birth_date_str.split('-')[1])
             day = int(birth_date_str.split('-')[2])
             
-            # Conceptual benefic/malefic based on month and day (very rough approximation)
-            # This aims to provide some dynamic 'benefic' or 'malefic' planets for testing.
-            
-            # Base lords (some always present for demo)
-            lords.append({"planet": "Sun (☉)", "nature": "Neutral"})
-            lords.append({"planet": "Moon (☽)", "nature": "Neutral"})
-            lords.append({"planet": "Mercury (☿)", "nature": "Neutral"})
-            lords.append({"planet": "Venus (♀)", "nature": "Neutral"})
-            lords.append({"planet": "Mars (♂)", "nature": "Neutral"})
-            lords.append({"planet": "Jupiter (♃)", "nature": "Neutral"})
-            lords.append({"planet": "Saturn (♄)", "nature": "Neutral"})
-            lords.append({"planet": "Rahu (☊)", "nature": "Neutral"})
-            lords.append({"planet": "Ketu / Neptune (☋)", "nature": "Neutral"})
+            # Base lords (some always present for demo) with random conceptual degrees
+            planets_with_degrees = [
+                {"planet": "Sun (☉)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Moon (☽)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Mercury (☿)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Venus (♀)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Mars (♂)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Jupiter (♃)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Saturn (♄)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Rahu (☊)", "nature": "Neutral", "degree": random.randint(0, 29)},
+                {"planet": "Ketu / Neptune (☋)", "nature": "Neutral", "degree": random.randint(0, 29)}
+            ]
 
             # Introduce benefic/malefic based on date for demo purposes
-            if month in [4, 8, 12]: # Water signs (Cancer, Scorpio, Pisces)
-                # Moon and Jupiter tend to be benefic here
-                for p in lords:
+            for p in planets_with_degrees:
+                if month in [4, 8, 12]: # Water signs (Cancer, Scorpio, Pisces)
                     if p['planet'] == 'Moon (☽)' or p['planet'] == 'Jupiter (♃)':
                         p['nature'] = 'Benefic'
-                # Mars can be malefic
-                for p in lords:
-                    if p['planet'] == 'Mars (♂)':
+                    elif p['planet'] == 'Mars (♂)':
                         p['nature'] = 'Malefic'
-            elif month in [1, 5, 9]: # Fire signs (Aries, Leo, Sagittarius)
-                # Sun and Mars tend to be benefic
-                for p in lords:
+                elif month in [1, 5, 9]: # Fire signs (Aries, Leo, Sagittarius)
                     if p['planet'] == 'Sun (☉)' or p['planet'] == 'Mars (♂)':
                         p['nature'] = 'Benefic'
-                # Saturn can be malefic
-                for p in lords:
-                    if p['planet'] == 'Saturn (♄)':
+                    elif p['planet'] == 'Saturn (♄)':
                         p['nature'] = 'Malefic'
-            else: # Earth/Air signs (Taurus, Gemini, Virgo, Libra, Capricorn, Aquarius)
-                # Mercury and Venus tend to be benefic
-                for p in lords:
+                else: # Earth/Air signs (Taurus, Gemini, Virgo, Libra, Capricorn, Aquarius)
                     if p['planet'] == 'Mercury (☿)' or p['planet'] == 'Venus (♀)':
                         p['nature'] = 'Benefic'
-                # Rahu/Ketu can be malefic
-                for p in lords:
-                    if p['planet'] == 'Rahu (☊)' or p['planet'] == 'Ketu / Neptune (☋)':
+                    elif p['planet'] == 'Rahu (☊)' or p['planet'] == 'Ketu / Neptune (☋)':
                         p['nature'] = 'Malefic'
             
             # Specific conditions from PDF for debilitated/favored
             # "If your chart shows a debilitated Saturn, then avoid name numbers totaling 8."
             # Conceptual: If day is a multiple of 4, make Saturn malefic
             if day % 4 == 0:
-                for p in lords:
+                for p in planets_with_degrees:
                     if p['planet'] == 'Saturn (♄)':
                         p['nature'] = 'Malefic'
             
             # "If your chart favors Jupiter, a name totaling 3 may amplify positivity."
             # Conceptual: If day is a multiple of 3, make Jupiter benefic
             if day % 3 == 0:
-                for p in lords:
+                for p in planets_with_degrees:
                     if p['planet'] == 'Jupiter (♃)':
                         p['nature'] = 'Benefic'
 
             # Filter out neutral ones if they haven't been assigned benefic/malefic
-            lords = [p for p in lords if p['nature'] != 'Neutral']
+            lords = [p for p in planets_with_degrees if p['nature'] != 'Neutral']
 
         except (ValueError, IndexError):
             logger.warning(f"Could not parse birth date for conceptual planetary lords: {birth_date_str}")
-            lords = [{"planet": "Mixed", "nature": "Neutral", "notes": "Invalid birth date format for conceptual planetary lords."}] # Default if date parsing fails
+            lords = [{"planet": "Mixed", "nature": "Neutral", "degree": "N/A", "notes": "Invalid birth date format for conceptual planetary lords."}] # Default if date parsing fails
 
         return lords
 
@@ -1253,10 +1269,11 @@ class AdvancedNumerologyCalculator:
 
     # 9️⃣ PHONETIC VIBRATION (“PRONOLOGY”) (Conceptual, based on PDF)
     @staticmethod
-    def analyze_phonetic_vibration(name: str) -> Dict:
+    def analyze_phonetic_vibration(name: str, desired_outcome: str) -> Dict:
         """
         Simulates phonetic vibration analysis based on PDF rules:
         "Avoid harsh consonant combinations" and "Ensure pleasant vowel flow".
+        Now provides a more detailed qualitative description and aligns with desired outcome.
         """
         logger.warning("Phonetic vibration analysis is conceptual. Returning dummy data with more detail.")
         name_lower = name.lower()
@@ -1265,41 +1282,63 @@ class AdvancedNumerologyCalculator:
         consonant_count = sum(1 for char in name_lower if char.isalpha() and char not in 'aeiou')
         
         # Simple detection of "harsh" consonant combinations (conceptual)
-        harsh_combinations = ["th", "sh", "ch", "gh", "ph", "ck", "tch", "dge", "ght"] # Example combinations
+        harsh_combinations = ["th", "sh", "ch", "gh", "ph", "ck", "tch", "dge", "ght", "str", "scr", "spl"] # Expanded examples
         harsh_flags = [combo for combo in harsh_combinations if combo in name_lower]
 
         # Simple check for vowel flow
-        vowel_ratio = vowel_count / max(1, len(name_lower.replace(" ", ""))) # Ignore spaces for ratio
+        total_alpha_chars = len(name_lower.replace(" ", ""))
+        vowel_ratio = vowel_count / max(1, total_alpha_chars) # Ignore spaces for ratio
         
         vibration_score = 0.7 # Start with a good score
         vibration_notes = []
+        qualitative_description = ""
 
-        if len(name.replace(" ", "")) < 4:
+        if total_alpha_chars < 4:
             vibration_notes.append("Very short names may have less complex vibrational patterns.")
+            qualitative_description += "The name is concise and direct. "
         
         if vowel_ratio < 0.3 or vowel_ratio > 0.6: # Too few or too many vowels (conceptual range)
             vibration_notes.append(f"Vowel-to-consonant balance ({vowel_ratio:.2f} vowel ratio) might affect the pleasantness of the flow.")
             vibration_score -= 0.1
+            if vowel_ratio < 0.3:
+                qualitative_description += "Its sound is more consonant-heavy, lending it a grounded and perhaps assertive quality. "
+            else:
+                qualitative_description += "Its sound is more vowel-heavy, giving it a flowing and open quality. "
 
         if harsh_flags:
             vibration_notes.append(f"Contains potentially harsh consonant combinations: {', '.join(harsh_flags)}. This might affect the overall sound vibration.")
             vibration_score -= 0.2
+            qualitative_description += "Some phonetic combinations might create a strong or slightly abrupt impression. "
         
         # Check for pleasant vowel flow (conceptual)
-        # Example: if name has many consecutive identical vowels or very abrupt vowel changes
         if re.search(r'(aa|ee|ii|oo|uu){2,}', name_lower): # Double vowels
-             vibration_notes.append("Repeated consecutive vowels might create a drawn-out sound.")
+             vibration_notes.append("Repeated consecutive vowels might create a drawn-out or emphasized sound.")
+             qualitative_description += "The presence of repeated vowels gives it a sustained and perhaps melodious feel. "
              vibration_score -= 0.05
         
-        # General positive note if no issues found
-        if not vibration_notes:
-            vibration_notes.append("Name appears to have a harmonious phonetic vibration with balanced vowel and consonant flow.")
+        # Align with desired outcome (conceptual)
+        desired_outcome_lower = desired_outcome.lower()
+        if "financial" in desired_outcome_lower or "business" in desired_outcome_lower or "leadership" in desired_outcome_lower:
+            if "strong" in qualitative_description or "assertive" in qualitative_description or "direct" in qualitative_description:
+                qualitative_description += "This strong and direct phonetic quality aligns well with a desired public image in the financial or business world, suggesting confidence and clarity."
+            else:
+                qualitative_description += "While harmonious, the phonetic quality might lean towards gentle or flowing, which could be balanced with other energetic aspects for a strong financial presence."
+        elif "creative" in desired_outcome_lower or "artistic" in desired_outcome_lower:
+            if "flowing" in qualitative_description or "melodious" in qualitative_description:
+                qualitative_description += "The flowing and melodious phonetic quality is highly conducive to creative and artistic expression."
+        
+        # General positive note if no specific issues found and no detailed description yet
+        if not vibration_notes and not qualitative_description:
+            qualitative_description = "The name appears to have a harmonious and balanced phonetic vibration with a pleasant flow, suitable for general positive interactions."
             vibration_score = 0.9 # Excellent
+        elif not qualitative_description: # If notes but no description yet
+             qualitative_description = "The name has a distinct phonetic quality. " + (vibration_notes[0] if vibration_notes else "")
 
         return {
             "score": max(0.1, min(1.0, vibration_score)), # Keep score between 0.1 and 1.0
             "notes": list(set(vibration_notes)), # Remove duplicates
-            "is_harmonious": vibration_score > 0.65
+            "is_harmonious": vibration_score > 0.65,
+            "qualitative_description": qualitative_description.strip()
         }
 
 
@@ -1619,8 +1658,11 @@ def rate_limited(limit_string="30 per minute"):
 
 @cached_operation(timeout=3600)
 @performance_monitor
-def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, profession_desire: Optional[str] = None) -> Dict:
-    """Get comprehensive numerology profile with caching and advanced calculations"""
+def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, profession_desire: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
+    """
+    Get comprehensive numerology profile with caching and advanced calculations.
+    Now accepts suggested_name_expression_num to update Lo Shu Grid for validation context.
+    """
     calculator = AdvancedNumerologyCalculator()
     
     # Calculate all core numbers
@@ -1632,8 +1674,8 @@ def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_
     # New: Calculate Birth Day Number
     birth_day_num, birth_day_details = calculator.calculate_birth_day_number(birth_date)
 
-    # New: Calculate Lo Shu Grid
-    lo_shu_grid = calculator.calculate_lo_shu_grid(birth_date)
+    # New: Calculate Lo Shu Grid, potentially incorporating suggested name's expression
+    lo_shu_grid = calculator.calculate_lo_shu_grid(birth_date, suggested_name_expression_num)
     
     # New: Conceptual Astrological Integration
     ascendant_info = calculator.get_ascendant_info(birth_date, birth_time, birth_place)
@@ -1648,8 +1690,8 @@ def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_
     }
     planetary_compatibility = calculator.check_planetary_compatibility(expression_num, astro_for_compatibility)
 
-    # New: Conceptual Phonetic Vibration
-    phonetic_vibration = calculator.analyze_phonetic_vibration(full_name)
+    # New: Conceptual Phonetic Vibration - Pass desired_outcome for more tailored description
+    phonetic_vibration = calculator.analyze_phonetic_vibration(full_name, profession_desire or "")
 
     # New: Validation Logic for Expression Number - Pass full astro_info
     expression_validation = calculator.check_expression_validity(
@@ -2052,7 +2094,7 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
             3: {"theme": "Creative Expression & Communication", "focus": "Socializing, artistic pursuits, joyful self-expression."},
             4: {"theme": "Building Foundations & Discipline", "focus": "Hard work, organization, establishing security, practical planning."},
             5: {"theme": "Freedom & Dynamic Change", "focus": "Embracing new experiences, travel, adaptability, adventure."},
-            6: {"theme": "Responsibility & Harmony", "focus": "Focusing on family/home, providing service, nurturing others, community engagement."},
+            6: {"theme": "Responsibility & Harmony", "focus": "Focusing on family/home, providing service, nurturing self and others, community engagement."},
             7: {"theme": "Introspection & Spiritual Growth", "focus": "Study, reflection, inner development, seeking deeper truths."},
             8: {"theme": "Material Success & Power", "focus": "Business expansion, financial management, achievement, leadership in material world."},
             9: {"theme": "Completion & Humanitarianism", "focus": "Endings, letting go of the past, humanitarian efforts, universal love."},
@@ -2154,18 +2196,46 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     # This section is the initial AI-generated report content, which the practitioner can edit.
     # It should contain all 11 sections as generated by the LLM.
     intro_content = report_data.get('intro_response', 'No introduction available.')
-    # Replace markdown headers with ReportLab paragraph styles
-    # H1 -> SubHeadingStyle, H2 -> SectionHeadingStyle, H3 -> SubSectionHeadingStyle
-    # Use regex to replace markdown headers and bold text
-    formatted_intro_content = intro_content
-    formatted_intro_content = re.sub(r'### (.*)', r'<para style="SubSectionHeadingStyle">\1</para>', formatted_intro_content)
-    formatted_intro_content = re.sub(r'## (.*)', r'<para style="SectionHeadingStyle">\1</para>', formatted_intro_content)
-    formatted_intro_content = re.sub(r'# (.*)', r'<para style="SubHeadingStyle">\1</para>', formatted_intro_content)
-    formatted_intro_content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', formatted_intro_content) # Bold
-    formatted_intro_content = re.sub(r'\*(.*?)\*', r'<i>\1</i>', formatted_intro_content) # Italic
-    formatted_intro_content = formatted_intro_content.replace('\n', '<br/>') # Convert newlines to breaks
+    
+    # Process Markdown content line by line to apply correct ReportLab styles
+    lines = intro_content.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            Story.append(Spacer(1, 0.1 * inch)) # Add a small space for empty lines
+            continue
 
-    Story.append(Paragraph(formatted_intro_content, styles['NormalBodyText']))
+        if line.startswith('### '):
+            # SubSectionHeadingStyle for H3
+            clean_line = line[4:].strip()
+            # Convert bold/italic within the header using ReportLab's markup
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
+            clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
+            Story.append(Paragraph(clean_line, styles['SubSectionHeadingStyle']))
+        elif line.startswith('## '):
+            # SectionHeadingStyle for H2
+            clean_line = line[3:].strip()
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
+            clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
+            Story.append(Paragraph(clean_line, styles['SectionHeadingStyle']))
+        elif line.startswith('# '):
+            # SubHeadingStyle for H1
+            clean_line = line[2:].strip()
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
+            clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
+            Story.append(Paragraph(clean_line, styles['SubHeadingStyle']))
+        elif line.startswith('* '): # Handle bullet points
+            clean_line = line[2:].strip()
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
+            clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
+            Story.append(Paragraph(clean_line, styles['BulletStyle']))
+        else:
+            # Default to NormalBodyText for regular paragraphs
+            clean_line = line.strip()
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
+            clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
+            Story.append(Paragraph(clean_line, styles['NormalBodyText']))
+    
     Story.append(PageBreak())
 
     profile_details = report_data.get('profile_details', {})
@@ -2262,9 +2332,12 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
                 Story.append(Paragraph(f"• {lesson['number']}: {lesson['impact']}", styles['BulletStyle']))
         else:
             Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
+        
+        if lo_shu.get('grid_updated_by_name'):
+             Story.append(Paragraph(f"<i>Note: This Lo Shu Grid has been conceptually updated to include the influence of the suggested name's Expression Number.</i>", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.2 * inch))
 
-    # Astrological Integration (Conceptual) - Enhanced to show compatibility flags
+    # Astrological Integration (Conceptual) - Enhanced to show compatibility flags and degrees
     if profile_details.get('ascendant_info') or profile_details.get('moon_sign_info') or profile_details.get('planetary_lords'):
         astro = profile_details
         Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual)", styles['Heading1']))
@@ -2279,10 +2352,11 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph(f"<i>Notes:</i> {astro.get('moon_sign_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
         
-        Story.append(Paragraph("<b>Conceptual Planetary Lords (Benefic/Malefic Influences)</b>:", styles['BoldBodyText']))
+        Story.append(Paragraph("<b>Conceptual Planetary Lords & Degrees (Benefic/Malefic Influences)</b>:", styles['BoldBodyText']))
         if astro.get('planetary_lords'):
             for lord in astro['planetary_lords']:
-                Story.append(Paragraph(f"• {lord['planet']} ({lord['nature']})", styles['BulletStyle']))
+                degree_info = f" ({lord['degree']}°)" if 'degree' in lord and lord['degree'] != 'N/A' else ""
+                Story.append(Paragraph(f"• {lord['planet']} ({lord['nature']}){degree_info}", styles['BulletStyle']))
         else:
             Story.append(Paragraph("No specific conceptual planetary lords identified.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
@@ -2301,6 +2375,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual)", styles['Heading1']))
         Story.append(Paragraph("This analysis provides conceptual insights into the sound and flow of your name, which can influence its energetic resonance.", styles['NormalBodyText']))
         Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Qualitative Description</b>: {phonetics.get('qualitative_description', 'N/A')}", styles['NormalBodyText']))
         if phonetics.get('notes'):
             Story.append(Paragraph("<b>Notes on Sound Vibration</b>:", styles['BoldBodyText']))
             for note in phonetics['notes']:
@@ -2461,17 +2536,23 @@ def chat():
                 "planetary_lords": val_planetary_lords
             }
             val_planetary_compatibility = AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, astro_for_validation)
-            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val)
+            
+            # NEW: Recalculate Lo Shu Grid including the suggested name's influence
+            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val, suggested_expression_num)
             
             # Expression validation for the suggested name
             expression_validation_for_suggested = AdvancedNumerologyCalculator.check_expression_validity(
                 suggested_expression_num, 
                 current_life_path_val, 
-                val_lo_shu_grid, 
+                val_lo_shu_grid, # Use the potentially updated Lo Shu Grid
                 desired_outcome_val, 
                 current_birth_day_val, 
                 astro_for_validation
             )
+
+            # NEW: Phonetic vibration analysis for the suggested name, with desired outcome
+            phonetic_vibration_for_suggested = AdvancedNumerologyCalculator.analyze_phonetic_vibration(suggested_name, desired_outcome_val)
+
 
             llm_validation_input_data = {
                 "original_full_name": original_profile['fullName'],
@@ -2485,12 +2566,12 @@ def chat():
                 "suggested_name": suggested_name,
                 "suggested_expression_num": suggested_expression_num,
                 "suggested_core_interpretation": AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A'),
-                "lo_shu_grid": val_lo_shu_grid,
+                "lo_shu_grid": val_lo_shu_grid, # This now includes suggested name's influence
                 "ascendant_info": val_ascendant_info,
                 "moon_sign_info": val_moon_sign_info,
-                "planetary_lords": val_planetary_lords,
+                "planetary_lords": val_planetary_lords, # This now includes conceptual degrees
                 "planetary_compatibility": val_planetary_compatibility,
-                "phonetic_vibration": AdvancedNumerologyCalculator.analyze_phonetic_vibration(suggested_name),
+                "phonetic_vibration": phonetic_vibration_for_suggested, # This is now more detailed
                 "expression_validation_for_suggested": expression_validation_for_suggested
             }
 
@@ -2511,7 +2592,7 @@ def chat():
             phonetic_vibration_json = json.dumps(llm_validation_input_data['phonetic_vibration'], indent=2)
             expression_validation_json = json.dumps(llm_validation_input_data['expression_validation_for_suggested'], indent=2)
 
-                       # The prompt for validation chat
+            # The prompt for validation chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])),
                 HumanMessage(
@@ -2558,7 +2639,6 @@ def chat():
                     )
                 )
             ])
-
             
             chain = prompt | llm_manager.analytical_llm
 
@@ -2659,6 +2739,7 @@ def chat():
 @rate_limited("5 per hour")
 @performance_monitor
 def generate_pdf_report_endpoint():
+    
     """
     Endpoint to generate and return a PDF numerology report.
     This endpoint now expects the full, potentially modified/validated report data
