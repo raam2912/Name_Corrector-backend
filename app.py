@@ -345,11 +345,11 @@ class ValidationRequest:
 class ReportRequest:
     full_name: str
     birth_date: str
-    birth_time: Optional[str] = None # Added birth_time
-    birth_place: Optional[str] = None # Added birth_place
-    desired_outcome: str
-    current_expression_number: int
-    current_life_path_number: int
+    desired_outcome: str # Moved before optional arguments
+    current_expression_number: int # Moved before optional arguments
+    current_life_path_number: int # Moved before optional arguments
+    birth_time: Optional[str] = None
+    birth_place: Optional[str] = None
 
 class NameSuggestion(BaseModel):
     name: str = Field(description="Full name suggestion")
