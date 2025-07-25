@@ -48,9 +48,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        sys.stdout # Directly use sys.stdout
+        logging.StreamHandler(sys.stdout) # Correctly use StreamHandler for sys.stdout
     ]
 )
+
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
