@@ -105,8 +105,83 @@ ADVANCED_REPORT_HUMAN_PROMPT = """**COMPREHENSIVE NUMEROLOGY REPORT REQUEST**Ple
 
 # 3. REFINED NAME VALIDATION PROMPT (replaces the system message in validation)
 # MODIFIED: Expanded to include Lo Shu, Astro, and Phonology in validation.
-NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance. You will evaluate a suggested name against the client's original numerological blueprint, desired outcome, **Lo Shu Grid, and conceptual astrological influences.**## VALIDATION FRAMEWORK:### **Analysis Structure:**#### 1. **Suggested Name Numerological Profile**- Expression Number and its core energetic signature, **including its Chaldean planetary association.**- Psychological traits and natural tendencies.- Career and relationship implications.- Spiritual significance and growth potential.- **Comment on its phonetic vibration and ease of adoption.**#### 2. **Outcome Alignment Assessment** (Critical)- **Direct Correlation**: How the suggested name's energy specifically supports their desired outcome.- **Energy Shift Analysis**: Compare current vs. suggested name's energetic influence.- **Manifestation Potential**: Rate the name's power to attract their desired results.- **Obstacle Clearing**: How this name helps overcome current limitations.- **How does it specifically address the client's desired profession/vocation?**#### 3. **Life Path & Core Compatibility Matrix**- **Synergy Score**: How well the new Expression Number harmonizes with their Life Path and Birth Number.- **Challenge Areas**: Potential friction points and how to navigate them.- **Amplification Effects**: Ways the combination enhances their natural gifts.- **Balance Dynamics**: How this pairing creates equilibrium or tension.- **Critically, assess its compatibility with their Ascendant/Lagna ruler and Moon Sign, and whether it avoids conflict with any planetary lords.**- **Evaluate its impact on their Lo Shu Grid balance (e.g., does it introduce a missing number or reinforce an over-represented one?).**#### 4. **Strategic Recommendation** (Clear Verdict)- **Rating Scale**: "Exceptional Fit" | "Strong Alignment" | "Moderate Benefit" | "Requires Consideration" | "Not Recommended"- **Confidence Level**: High/Medium/Low with reasoning.- **Implementation Timeline**: When and how to make the change.- **Expected Outcomes**: Realistic timeline for seeing results.- **Provide specific guidance on how to maximize the benefits of this name, considering all numerological and conceptual astrological factors.**## EVALUATION CRITERIA:- **Numerical Harmony**: Mathematical compatibility between numbers.- **Energetic Resonance**: How well the vibrations support their goals.- **Practical Viability**: Real-world considerations for name change, **including phonetic ease and cultural fit.**- **Timing Considerations**: Current life cycles and optimal implementation.- **Holistic Alignment**: How the name integrates with their entire numerological and conceptual astrological profile.## OUTPUT STANDARDS:- **Markdown Formatting**: Clear headers and structured presentation.- **Specific Evidence**: Reference exact numerical relationships, **Lo Shu grid observations, and conceptual planetary influences.**- **Balanced Perspective**: Honest assessment including any concerns.- **Actionable Guidance**: Concrete next steps and recommendations.- **Encouraging Tone**: Supportive while being truthfully analytical."""
-NAME_VALIDATION_HUMAN_PROMPT = """**NAME VALIDATION REQUEST****Original Profile:**- Full Name: {original_full_name}- Birth Date: {birth_date}- Current Expression Number: {original_expression_number}- Life Path Number: {original_life_path_number}**Validation Target:**- Suggested Name: {suggested_name}- Calculated Expression Number: {suggested_expression_num}- Core Interpretation: {suggested_core_interpretation}**Desired Outcome:** {desired_outcome}**TASK:** Provide comprehensive validation analysis following your 4-section framework. Give clear recommendation with confidence level and implementation guidance."""
+NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance through a conversational interface. Your goal is to help practitioners thoroughly evaluate potential names by asking clarifying questions and providing iterative insights.
+
+## CONVERSATION GUIDELINES:
+- **Start with an acknowledgement**: Confirm the name to be validated and the original profile context.
+- **Iterative Questioning**: If you need more information to provide a comprehensive validation, ask specific, open-ended follow-up questions. Examples:
+    - "To provide the most accurate validation, could you tell me more about the specific aspects of success (e.g., financial, career, personal fulfillment) you are hoping this name will enhance?"
+    - "Are there any specific cultural or family considerations for this suggested name?"
+    - "How important is maintaining phonetic similarity to the original name?"
+    - "What is the primary reason for considering this specific name change?"
+- **Provide Partial Insights**: Even if you need more information, offer initial observations or partial insights based on the data you have.
+- **Comprehensive Validation on Sufficient Data**: Once you feel you have enough information, provide a full, structured validation report in Markdown format, following the "VALIDATION FRAMEWORK" below. State clearly when you are providing the final validation.
+- **Maintain Context**: Remember the original profile and the suggested name throughout the conversation.
+- **Empowering Tone**: Be supportive and informative.
+
+## VALIDATION FRAMEWORK (Use this structure for the final comprehensive validation):
+### **Analysis Structure:**
+#### 1. **Suggested Name Numerological Profile**
+- Expression Number and its core energetic signature, **including its Chaldean planetary association.**
+- Psychological traits and natural tendencies.
+- Career and relationship implications.
+- Spiritual significance and growth potential.
+- **Comment on its phonetic vibration and ease of adoption.**
+#### 2. **Outcome Alignment Assessment** (Critical)
+- **Direct Correlation**: How the suggested name's energy specifically supports their desired outcome.
+- **Energy Shift Analysis**: Compare current vs. suggested name's energetic influence.
+- **Manifestation Potential**: Rate the name's power to attract their desired results.
+- **Obstacle Clearing**: How this name helps overcome current limitations.
+- **How does it specifically address the client's desired profession/vocation?**
+#### 3. **Life Path & Core Compatibility Matrix**
+- **Synergy Score**: How well the new Expression Number harmonizes with their Life Path and Birth Number.
+- **Challenge Areas**: Potential friction points and how to navigate them.
+- **Amplification Effects**: Ways the combination enhances their natural gifts.
+- **Balance Dynamics**: How this pairing creates equilibrium or tension.
+- **Critically, assess its compatibility with their Ascendant/Lagna ruler and Moon Sign, and whether it avoids conflict with any planetary lords.**
+- **Evaluate its impact on their Lo Shu Grid balance (e.g., does it introduce a missing number or reinforce an over-represented one?).**
+#### 4. **Strategic Recommendation** (Clear Verdict)
+- **Rating Scale**: "Exceptional Fit" | "Strong Alignment" | "Moderate Benefit" | "Requires Consideration" | "Not Recommended"
+- **Confidence Level**: High/Medium/Low with reasoning.
+- **Implementation Timeline**: When and how to make the change.
+- **Expected Outcomes**: Realistic timeline for seeing results.
+- **Provide specific guidance on how to maximize the benefits of this name, considering all numerological and conceptual astrological factors.**
+
+## EVALUATION CRITERIA:
+- **Numerical Harmony**: Mathematical compatibility between numbers.
+- **Energetic Resonance**: How well the vibrations support their goals.
+- **Practical Viability**: Real-world considerations for name change, **including phonetic ease and cultural fit.**
+- **Timing Considerations**: Current life cycles and optimal implementation.
+- **Holistic Alignment**: How the name integrates with their entire numerological and conceptual astrological profile.
+
+## OUTPUT STANDARDS:
+- **Markdown Formatting**: Clear headers and structured presentation for final reports.
+- **Specific Evidence**: Reference exact numerical relationships, **Lo Shu grid observations, and conceptual planetary influences.**
+- **Balanced Perspective**: Honest assessment including any concerns.
+- **Actionable Guidance**: Concrete next steps and recommendations.
+- **Encouraging Tone**: Supportive while being truthfully analytical.
+- **NO AI DISCLAIMERS.**
+"""
+NAME_VALIDATION_HUMAN_PROMPT = """**NAME VALIDATION CHAT TURN**
+Original Profile:
+- Full Name: {original_full_name}
+- Birth Date: {birth_date}
+- Current Expression Number: {original_expression_number}
+- Life Path Number: {original_life_path_number}
+- Birth Number: {original_birth_number}
+- Desired Outcome: {desired_outcome}
+
+Suggested Name for Validation: {suggested_name}
+Calculated Expression Number for Suggested Name: {suggested_expression_num}
+Core Interpretation for Suggested Name: {suggested_core_interpretation}
+
+Current Chat History:
+{chat_history}
+
+User's Latest Message: {current_message}
+
+Your task is to either ask a follow-up question to gather more information, provide iterative insights, or, if you have sufficient information, provide a comprehensive final validation report following the 'VALIDATION FRAMEWORK' in your system prompt.
+"""
 
 # 4. REFINED GENERAL CHAT PROMPT (replaces the system message in general chat)
 GENERAL_CHAT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant - a wise, knowledgeable, and approachable guide in the sacred science of numbers.## YOUR ROLE:- **Numerology Expert**: Provide accurate information about numerological principles- **Supportive Guide**: Offer gentle, encouraging guidance without being prescriptive- **Educational Resource**: Explain concepts clearly for all knowledge levels- **Boundary Keeper**: Redirect for personalized calculations requiring specific data## RESPONSE GUIDELINES:- **Concise & Helpful**: Keep responses focused and valuable- **Warm Personality**: Maintain Sheelaa's caring, intuitive energy- **Educational Focus**: Teach numerological principles and concepts- **Ethical Boundaries**: No specific predictions, only guidance and insights## WHAT YOU CAN HELP WITH:- General numerology education and principles- Explaining number meanings and significance- Discussing numerological concepts and history- Providing general guidance about name energy- Answering questions about numerological practices## WHAT REQUIRES SPECIALIZED SERVICE:- Personal number calculations (need full name + birth date)- Specific name suggestions or validations- Comprehensive reports or detailed analysis- PDF generation or advanced consultations## COMMUNICATION STYLE:- Professional yet warm and accessible- Encouraging and empowering- Clear explanations without overwhelming detail- Respectful of numerological traditionsWhen users need personalized services, guide them toward providing complete information for proper analysis."""
@@ -524,7 +599,7 @@ class AdvancedNumerologyCalculator:
             edge_cases.append({
                 "type": "Missing 6 in Lo Shu Grid",
                 "description": "A missing 6 can indicate challenges with harmony, responsibility, or nurturing. Assigning Expression 6 might be challenging without this foundational energy.",
-                "resolution_guidance": "Focus on developing compassion and responsibility. A name with Expression 6 might be difficult to fully embody without the innate energy of 6 from birth."
+                "resolution_guidence": "Focus on developing compassion and responsibility. A name with Expression 6 might be difficult to fully embody without the innate energy of 6 from birth."
             })
         
         # Profession: Healer, Teacher (Accept 2, 7 only if supported by grid)
@@ -723,6 +798,25 @@ class MessageParser:
             current_life_path_number=int(match.group(4))
         )
 
+    @staticmethod
+    def parse_initial_validation_chat_message(message: str) -> Optional[Dict]:
+        """Parse INITIATE_VALIDATION_CHAT message format."""
+        pattern = r"INITIATE_VALIDATION_CHAT: Suggested Name: \"(.*?)\"\. My original profile: Full Name: \"(.*?)\", Birth Date: \"(.*?)\", Desired Outcome: \"(.*?)\"\. My current Expression Number is (\d+) and Life Path Number is (\d+)\. My Birth Number is (\d+)\."
+        match = re.search(pattern, message)
+        if not match:
+            return None
+        
+        return {
+            "suggested_name": match.group(1),
+            "original_full_name": match.group(2),
+            "birth_date": match.group(3),
+            "desired_outcome": match.group(4),
+            "current_expression_number": int(match.group(5)),
+            "current_life_path_number": int(match.group(6)),
+            "current_birth_number": int(match.group(7))
+        }
+
+
 # --- Name Suggestion Engine ---
 class NameSuggestionEngine:
     """Handles logic for suggesting names and resolving names for calculation."""
@@ -840,6 +934,8 @@ class LLMManager:
         self.creative_llm = None
         self.analytical_llm = None
         self.memory = None
+        # NEW: Separate memory for validation chat, keyed by a simple hash of profile+suggested_name
+        self.validation_chat_memories = {} 
         self.executor = ThreadPoolExecutor(max_workers=3)
         
     def initialize(self) -> bool:
@@ -1527,177 +1623,197 @@ def home():
 def chat(): # This remains a synchronous Flask view
     """Handles chat messages and advanced report/validation requests."""
     data = request.json
-    message = data.get('message')
+    message = data.get('message') # This is for the main report generation
+    chat_type = data.get('type') # New: to distinguish chat types
 
-    if not message:
+    if not message and chat_type != 'validation_chat':
         return jsonify({"error": "No message provided"}), 400
-
-    if not SecurityManager.validate_input_security(message):
+    
+    # Security check for general messages
+    if chat_type != 'validation_chat' and not SecurityManager.validate_input_security(message):
         logger.warning(f"Security alert: Malicious input detected: {message}")
         return jsonify({"error": "Invalid input. Potential security threat detected."}), 400
 
-    logger.info(f"Received message: {message}")
-
-    # Check for specific commands
-    report_request = MessageParser.parse_report_request(message)
-    validation_request = MessageParser.parse_validation_request(message)
+    logger.info(f"Received request type: {chat_type}")
 
     try:
-        if report_request:
-            logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {message}")
-            # Generate comprehensive profile - now includes new astro/lo shu data
-            profile = get_comprehensive_numerology_profile(
-                report_request.full_name, 
-                report_request.birth_date,
-                # These might be None as the current frontend doesn't capture them
-                birth_time=None, 
-                birth_place=None,
-                profession_desire=report_request.desired_outcome # Pass desired outcome as profession_desire
-            )
-            
-            # Determine target numbers for name suggestions
-            target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(report_request.desired_outcome)
-            
-            # Generate name suggestions using the creative LLM
-            name_suggestions = NameSuggestionEngine.generate_name_suggestions(
-                llm_manager.creative_llm, 
-                report_request.full_name, 
-                report_request.desired_outcome, 
-                target_numbers
-            )
-            logger.info(f"Generated Name Suggestions: {name_suggestions.json()}")
+        if chat_type == 'validation_chat':
+            logger.info("Processing validation chat message.")
+            original_profile = data.get('original_profile')
+            suggested_name = data.get('suggested_name')
+            chat_history_from_frontend = data.get('chat_history', [])
+            current_message = data.get('current_message', '').strip()
 
-            # Generate additional insights
-            timing_recommendations = generate_timing_recommendations(profile)
-            uniqueness_score = calculate_uniqueness_score(profile)
-            potential_challenges = identify_potential_challenges(profile)
-            development_recommendations = get_development_recommendations(profile)
-            yearly_forecast = generate_yearly_forecast(profile)
-
-            # Prepare data for LLM
-            llm_input_data = {
-                "full_name": report_request.full_name,
-                "birth_date": report_request.birth_date,
-                "desired_outcome": report_request.desired_outcome,
-                "current_expression_number": report_request.current_expression_number,
-                "current_life_path_number": report_request.current_life_path_number,
-                "profile_details": profile, # This now contains all advanced data
-                "timing_recommendations": timing_recommendations,
-                "uniqueness_score": uniqueness_score,
-                "potential_challenges": potential_challenges,
-                "development_recommendations": development_recommendations,
-                "yearly_forecast": yearly_forecast,
-                "suggested_names": name_suggestions.dict() # Include suggested names in LLM input
-            }
+            if not original_profile or not suggested_name:
+                return jsonify({"error": "Missing original profile or suggested name for validation chat."}), 400
             
-            # IMPLEMENTATION: Use the new ADVANCED_REPORT_SYSTEM_PROMPT and ADVANCED_REPORT_HUMAN_PROMPT
-            system_message = SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT)
-            
-            human_message = HumanMessage(
-                content=ADVANCED_REPORT_HUMAN_PROMPT.format(
-                    llm_input_data=json.dumps(llm_input_data, indent=2)
-                )
+            # Reconstruct memory from chat_history_from_frontend
+            validation_memory = ConversationBufferWindowMemory(
+                memory_key="chat_history", 
+                return_messages=True, 
+                k=10 # Keep a window of 10 messages for context
             )
-            
-            messages = [system_message, human_message]
-            
-            # Direct synchronous invocation of the LLM.
-            report_response = llm_manager.creative_llm.invoke(messages)
-            
-            # Store the full report data, including the LLM's response, for PDF generation
-            full_report_data = {
-                **llm_input_data, # Include all calculated profile data
-                "intro_response": report_response.content # This is the LLM generated Markdown report
-            }
+            for msg in chat_history_from_frontend:
+                if msg['sender'] == 'user':
+                    validation_memory.chat_memory.add_user_message(msg['text'])
+                elif msg['sender'] == 'ai':
+                    validation_memory.chat_memory.add_ai_message(msg['text'])
 
-            return jsonify({"response": report_response.content, "full_report_data_for_pdf": full_report_data}), 200
+            # Calculate numerology for suggested name
+            suggested_expression_num, suggested_expression_details = AdvancedNumerologyCalculator.calculate_expression_number(suggested_name)
 
-        elif validation_request:
-            logger.info(f"Attempting to parse VALIDATE_NAME_ADVANCED message: {message}")
-            # Generate comprehensive profile for original name - now includes new astro/lo shu data
-            original_profile = get_comprehensive_numerology_profile(
-                validation_request.original_full_name, 
-                validation_request.birth_date,
-                # These might be None as the current frontend doesn't capture them
-                birth_time=None, 
-                birth_place=None,
-                profession_desire=validation_request.desired_outcome # Pass desired outcome as profession_desire
-            )
-            
-            # Resolve the full name for calculation based on suggested part
-            full_name_for_validation = NameSuggestionEngine.resolve_full_name_for_calculation(
-                validation_request.original_full_name,
-                validation_request.suggested_name
-            )
-            
-            # Calculate numerology for suggested name - now includes planetary ruler
-            suggested_expression_num, suggested_expression_details = AdvancedNumerologyCalculator.calculate_expression_number(full_name_for_validation)
-
-            # Prepare data for LLM validation prompt
+            # Prepare LLM input data for the validation chat
             llm_validation_input_data = {
-                "original_full_name": validation_request.original_full_name,
-                "birth_date": validation_request.birth_date,
-                "original_expression_number": original_profile['expression_number'],
-                "original_life_path_number": original_profile['life_path_number'],
-                "suggested_name": validation_request.suggested_name,
+                "original_full_name": original_profile['fullName'],
+                "birth_date": original_profile['birthDate'],
+                "original_expression_number": original_profile['currentExpressionNumber'],
+                "original_life_path_number": original_profile['currentLifePathNumber'],
+                "original_birth_number": original_profile['currentBirthNumber'], # Include birth number
+                "suggested_name": suggested_name,
                 "suggested_expression_num": suggested_expression_num,
                 "suggested_core_interpretation": AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A'),
-                "desired_outcome": validation_request.desired_outcome,
-                "lo_shu_grid": original_profile['lo_shu_grid'],
-                "ascendant_info": original_profile['ascendant_info'],
-                "moon_sign_info": original_profile['moon_sign_info'],
-                "planetary_lords": original_profile['planetary_lords'],
-                "planetary_compatibility": AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, {"ascendant_info": original_profile['ascendant_info'], "moon_sign_info": original_profile['moon_sign_info'], "planetary_lords": original_profile['planetary_lords']}),
-                "phonetic_vibration": AdvancedNumerologyCalculator.analyze_phonetic_vibration(validation_request.suggested_name),
-                "expression_validation_for_suggested": AdvancedNumerologyCalculator.check_expression_validity(suggested_expression_num, original_profile['life_path_number'], original_profile['lo_shu_grid'], validation_request.desired_outcome)
+                "desired_outcome": original_profile['desiredOutcome'],
+                # Recalculate these on backend for accuracy, or pass from frontend if available
+                "lo_shu_grid": AdvancedNumerologyCalculator.calculate_lo_shu_grid(original_profile['birthDate']),
+                "ascendant_info": AdvancedNumerologyCalculator.get_ascendant_info(original_profile['birthDate'], None, None),
+                "moon_sign_info": AdvancedNumerologyCalculator.get_moon_sign_info(original_profile['birthDate'], None, None),
+                "planetary_lords": AdvancedNumerologyCalculator.get_planetary_lords(original_profile['birthDate'], None, None),
+                "planetary_compatibility": AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, {
+                    "ascendant_info": AdvancedNumerologyCalculator.get_ascendant_info(original_profile['birthDate'], None, None), 
+                    "moon_sign_info": AdvancedNumerologyCalculator.get_moon_sign_info(original_profile['birthDate'], None, None), 
+                    "planetary_lords": AdvancedNumerologyCalculator.get_planetary_lords(original_profile['birthDate'], None, None)
+                }),
+                "phonetic_vibration": AdvancedNumerologyCalculator.analyze_phonetic_vibration(suggested_name),
+                "expression_validation_for_suggested": AdvancedNumerologyCalculator.check_expression_validity(suggested_expression_num, original_profile['currentLifePathNumber'], AdvancedNumerologyCalculator.calculate_lo_shu_grid(original_profile['birthDate']), original_profile['desiredOutcome'])
             }
 
+            # Add the current user message to memory
+            validation_memory.chat_memory.add_user_message(HumanMessage(content=current_message))
 
-            # IMPLEMENTATION: Use the new NAME_VALIDATION_SYSTEM_PROMPT and NAME_VALIDATION_HUMAN_PROMPT
-            system_message = SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT)
-            
-            human_message = HumanMessage(
-                content=NAME_VALIDATION_HUMAN_PROMPT.format(
-                    original_full_name=validation_request.original_full_name,
-                    birth_date=validation_request.birth_date,
-                    original_expression_number=original_profile['expression_number'],
-                    original_life_path_number=original_profile['life_path_number'],
-                    suggested_name=validation_request.suggested_name,
-                    suggested_expression_num=suggested_expression_num,
-                    suggested_core_interpretation=AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(
-                        suggested_expression_num, {}
-                    ).get('core', 'N/A'),
-                    desired_outcome=validation_request.desired_outcome
-                )
-            )
-            
-            messages = [system_message, human_message]
-            
-            # Direct synchronous invocation of the LLM.
-            validation_response = llm_manager.analytical_llm.invoke(messages)
-            
-            return jsonify({"response": validation_response.content}), 200
-
-        else:
-            # Fallback for general chat messages
-            logger.info(f"Processing general chat message: {message}")
-            
-            llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
-            
-            # IMPLEMENTATION: Use the new GENERAL_CHAT_SYSTEM_PROMPT
+            # Use the specific validation chat prompt
             prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT),
-                llm_manager.memory.chat_memory.messages[-1] 
+                SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT),
+                HumanMessage(
+                    content=NAME_VALIDATION_HUMAN_PROMPT.format(
+                        original_full_name=llm_validation_input_data['original_full_name'],
+                        birth_date=llm_validation_input_data['birth_date'],
+                        original_expression_number=llm_validation_input_data['original_expression_number'],
+                        original_life_path_number=llm_validation_input_data['original_life_path_number'],
+                        original_birth_number=llm_validation_input_data['original_birth_number'],
+                        desired_outcome=llm_validation_input_data['desired_outcome'],
+                        suggested_name=llm_validation_input_data['suggested_name'],
+                        suggested_expression_num=llm_validation_input_data['suggested_expression_num'],
+                        suggested_core_interpretation=llm_validation_input_data['suggested_core_interpretation'],
+                        chat_history=validation_memory.load_memory_variables({})['chat_history'], # Pass current history
+                        current_message=current_message
+                    )
+                )
             ])
             
-            chain = prompt | llm_manager.llm
+            chain = prompt | llm_manager.analytical_llm # Use analytical LLM for validation
+
+            ai_response = chain.invoke({"input": current_message}) # The 'input' is for the chain, the actual message is in the prompt
             
-            # Direct synchronous invocation of the LLM.
-            ai_response = chain.invoke({"input": message})
-            
-            llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
-            
+            # Add AI's response to memory
+            validation_memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
+
             return jsonify({"response": ai_response.content}), 200
+
+        elif message: # Existing logic for GENERATE_ADVANCED_REPORT
+            report_request = MessageParser.parse_report_request(message)
+            # validation_request = MessageParser.parse_validation_request(message) # This is no longer used for single-shot validation
+
+            if report_request:
+                logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {message}")
+                # Generate comprehensive profile - now includes new astro/lo shu data
+                profile = get_comprehensive_numerology_profile(
+                    report_request.full_name, 
+                    report_request.birth_date,
+                    # These might be None as the current frontend doesn't capture them
+                    birth_time=None, 
+                    birth_place=None,
+                    profession_desire=report_request.desired_outcome # Pass desired outcome as profession_desire
+                )
+                
+                # Determine target numbers for name suggestions
+                target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(report_request.desired_outcome)
+                
+                # Generate name suggestions using the creative LLM
+                name_suggestions = NameSuggestionEngine.generate_name_suggestions(
+                    llm_manager.creative_llm, 
+                    report_request.full_name, 
+                    report_request.desired_outcome, 
+                    target_numbers
+                )
+                logger.info(f"Generated Name Suggestions: {name_suggestions.json()}")
+
+                # Generate additional insights
+                timing_recommendations = generate_timing_recommendations(profile)
+                uniqueness_score = calculate_uniqueness_score(profile)
+                potential_challenges = identify_potential_challenges(profile)
+                development_recommendations = get_development_recommendations(profile)
+                yearly_forecast = generate_yearly_forecast(profile)
+
+                # Prepare data for LLM
+                llm_input_data = {
+                    "full_name": report_request.full_name,
+                    "birth_date": report_request.birth_date,
+                    "desired_outcome": report_request.desired_outcome,
+                    "current_expression_number": report_request.current_expression_number,
+                    "current_life_path_number": report_request.current_life_path_number,
+                    "profile_details": profile, # This now contains all advanced data
+                    "timing_recommendations": timing_recommendations,
+                    "uniqueness_score": uniqueness_score,
+                    "potential_challenges": potential_challenges,
+                    "development_recommendations": development_recommendations,
+                    "yearly_forecast": yearly_forecast,
+                    "suggested_names": name_suggestions.dict() # Include suggested names in LLM input
+                }
+                
+                # IMPLEMENTATION: Use the new ADVANCED_REPORT_SYSTEM_PROMPT and ADVANCED_REPORT_HUMAN_PROMPT
+                system_message = SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT)
+                
+                human_message = HumanMessage(
+                    content=ADVANCED_REPORT_HUMAN_PROMPT.format(
+                        llm_input_data=json.dumps(llm_input_data, indent=2)
+                    )
+                )
+                
+                messages = [system_message, human_message]
+                
+                # Direct synchronous invocation of the LLM.
+                report_response = llm_manager.creative_llm.invoke(messages)
+                
+                # Store the full report data, including the LLM's response, for PDF generation
+                full_report_data = {
+                    **llm_input_data, # Include all calculated profile data
+                    "intro_response": report_response.content # This is the LLM generated Markdown report
+                }
+
+                return jsonify({"response": report_response.content, "full_report_data_for_pdf": full_report_data}), 200
+
+            else:
+                # Fallback for general chat messages
+                logger.info(f"Processing general chat message: {message}")
+                
+                llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
+                
+                # IMPLEMENTATION: Use the new GENERAL_CHAT_SYSTEM_PROMPT
+                prompt = ChatPromptTemplate.from_messages([
+                    SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT),
+                    llm_manager.memory.chat_memory.messages[-1] 
+                ])
+                
+                chain = prompt | llm_manager.llm
+                
+                # Direct synchronous invocation of the LLM.
+                ai_response = chain.invoke({"input": message})
+                
+                llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
+                
+                return jsonify({"response": ai_response.content}), 200
+        else:
+            return jsonify({"error": "Invalid request type or missing message."}), 400
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}", exc_info=True)
