@@ -2184,9 +2184,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"For: <b>{report_data.get('full_name', 'Client Name')}</b>", styles['SubHeadingStyle']))
     Story.append(Paragraph(f"Birth Date: <b>{report_data.get('birth_date', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_time'):
-        Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
+        Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_place'):
-        Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
+        Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}", styles['SubSectionHeadingStyle']))
     Story.append(Paragraph(f"Desired Outcome: <b>{report_data.get('desired_outcome', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
@@ -2274,9 +2274,9 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"<b>Full Name:</b> {profile_details.get('full_name', 'N/A')}", styles['NormalBodyText']))
     Story.append(Paragraph(f"<b>Birth Date:</b> {profile_details.get('birth_date', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_time'):
-        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}</b>", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_place'):
-        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}</b>", styles['NormalBodyText']))
+        Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
@@ -2538,7 +2538,7 @@ def chat():
             val_planetary_compatibility = AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, astro_for_validation)
             
             # NEW: Recalculate Lo Shu Grid including the suggested name's influence
-            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val, suggested_expression_num)
+            val_lo_shu_grid = AdvancedNumerologyCalculator.calculate_lo_shu_grid(birth_date_val, )
             
             # Expression validation for the suggested name
             expression_validation_for_suggested = AdvancedNumerologyCalculator.check_expression_validity(
