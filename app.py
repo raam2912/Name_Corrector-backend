@@ -24,6 +24,16 @@ from collections import Counter
 import sys 
 import random # Added for conceptual planetary degrees
 
+# ReportLab specific imports for page numbering
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.lib.colors import HexColor # For custom colors
+import io
+
 # Langchain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.memory import ConversationBufferWindowMemory
@@ -31,15 +41,6 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field 
 from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
-
-# ReportLab imports for PDF generation
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-from reportlab.lib.colors import HexColor # For custom colors
-import io
 
 # Load environment variables
 load_dotenv()
@@ -136,6 +137,7 @@ NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST**
 - Provide compelling, detailed explanations for each suggestion
 - Ensure cultural appropriateness, natural sound, and **high practicality for adoption**"""
 
+# UPDATED: ADVANCED_REPORT_SYSTEM_PROMPT for more detail and professionalism
 ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding, **integrating Chaldean Numerology, Lo Shu Grid analysis, Astro-Numerology principles (based on provided data), and Phonology considerations.**
 
 ## REPORT STRUCTURE (Follow Exactly):
@@ -225,19 +227,19 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - Leave them feeling profoundly inspired, capable, and equipped with actionable wisdom.
 
 ## WRITING STANDARDS:
-- **Depth & Breadth**: Generate *extensive* content for each section and sub-section. Aim for 4-5 substantial paragraphs per major point, with rich examples, scenarios, and detailed explanations. The goal is a truly comprehensive, almost book-like report.
-- **Professional & Authoritative Tone**: Maintain the voice of a master numerologist – wise, insightful, and empowering. Avoid casual language.
+- **Depth & Breadth**: Generate *extensive* content for each section and sub-section. **Aim for a minimum of 50 pages for the complete report, ensuring each point is elaborated with rich examples, detailed scenarios, and profound insights.** Maximize descriptive language and provide comprehensive analysis.
+- **Professional & Authoritative Tone**: Maintain the voice of a master numerologist – wise, insightful, and empowering. Avoid casual language. The tone should be academic, deeply analytical, and highly credible.
 - **Personal Touch**: Use their name throughout, make it feel custom-crafted and deeply personal.
 - **Markdown Formatting**: Use headers (`#`, `##`, `###`), bold text (`**text**`), italic text (`*text*`), and bullet points (`* item`).
 - **Highlighting for Readability**:
-    - **Crucial Takeaway**: For key insights or critical advice, start a paragraph with "<b>Crucial Takeaway:</b> " followed by the insight.
-    - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation.
+    - **Crucial Takeaway**: For key insights or critical advice, start a paragraph with "<b>Crucial Takeaway:</b> " followed by the insight. Use this frequently for vital information.
+    - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation. Use this to draw attention to important interpretations.
     - **Important Note**: For cautionary or vital information, start a paragraph with "<b>Important Note:</b> " followed by the note.
     - Use `**bold**` for all numerological terms (e.g., **Expression Number**, **Life Path Number**) and key concepts.
 - **STRICT ADHERENCE TO NAMES**: When referring to the client's original or suggested names, you MUST use the exact spelling provided in the input data. Do NOT alter or simplify the spelling of names (e.g., if the input is 'Naraayanan', use 'Naraayanan', not 'Narayanan').
 - **Specific Details**: Avoid generalities. Provide concrete insights, **referencing specific numbers, grid positions, planetary influences, and real-world implications where relevant.**
+- **Cohesion & Flow**: Despite the extensive detail, ensure the content flows logically and is highly coherent, guiding the reader through their numerological journey seamlessly.
 - **No AI Disclaimers.**
-- **Ensure the content flows logically and is highly coherent, even with its extensive detail.**
 - **Assume the reader is a practitioner who appreciates deep, academic-level numerological analysis.**
 """
 
@@ -2160,6 +2162,14 @@ def generate_yearly_forecast(profile: Dict, years: int = 3) -> Dict:
     
     return forecast
 
+# NEW: Function to add page numbers to the canvas
+def add_page_number(canvas_obj, doc):
+    canvas_obj.saveState()
+    canvas_obj.setFont('Helvetica', 9)
+    page_number_text = f"Page {doc.page}"
+    canvas_obj.drawString(doc.rightMargin, 0.75 * inch, page_number_text)
+    canvas_obj.restoreState()
+
 # --- PDF Generation Function ---
 def create_numerology_pdf(report_data: Dict) -> bytes:
     """
@@ -2184,22 +2194,22 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     styles.add(ParagraphStyle(name='BulletStyle', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3, fontName='Helvetica'))
     styles.add(ParagraphStyle(name='ItalicBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY))
     
-    # New styles for highlighting and aesthetics
+    # New styles for highlighting and aesthetics (slightly softer colors)
     styles.add(ParagraphStyle(name='ExecutiveSummaryStyle', fontSize=11, leading=16, spaceBefore=10, spaceAfter=12, fontName='Helvetica', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#F0F8FF'), # AliceBlue
-                                borderPadding=6, borderWidth=0.5, borderColor=HexColor('#ADD8E6'), # LightBlue
+                                backColor=HexColor('#E6F7FF'), # Softer AliceBlue
+                                borderPadding=6, borderWidth=0.5, borderColor=HexColor('#A0D9EF'), # Softer LightBlue
                                 borderRadius=5))
     styles.add(ParagraphStyle(name='KeyInsightStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#FFFACD'), # LemonChiffon
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#DAA520'), # Goldenrod
+                                backColor=HexColor('#FFF8E1'), # Softer LemonChiffon
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFD700'), # Gold
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='CrucialTakeawayStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#FFDAB9'), # PeachPuff
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFA07A'), # LightSalmon
+                                backColor=HexColor('#FCE4EC'), # Softer PeachPuff (light pink)
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFAB91'), # Softer LightSalmon
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='ImportantNoteStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#E0FFFF'), # LightCyan
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#AFEEEE'), # PaleTurquoise
+                                backColor=HexColor('#E0FFFF'), # LightCyan (kept as is, it's already soft)
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#AFEEEE'), # PaleTurquoise (kept as is)
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='QuoteStyle', fontSize=10, leading=14, spaceBefore=10, spaceAfter=10, leftIndent=20, rightIndent=20, fontName='Helvetica-Oblique', textColor=HexColor('#555555')))
 
@@ -2236,10 +2246,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph(f"For: <b>{report_data.get('full_name', 'Client Name')}</b>", styles['SubHeadingStyle']))
     Story.append(Paragraph(f"Birth Date: <b>{report_data.get('birth_date', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_time'):
-        # Corrected: Added missing </b> to close the bold tag for the value
         Story.append(Paragraph(f"Birth Time: <b>{report_data.get('birth_time', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     if report_data.get('birth_place'):
-        # Corrected: Added missing </b> to close the bold tag for the value
         Story.append(Paragraph(f"Birth Place: <b>{report_data.get('birth_place', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
@@ -2304,40 +2312,13 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     profile_details = report_data.get('profile_details', {})
 
-    # 4. Strategic Name Corrections (from final_suggested_names_list) - This section is now part of the main LLM output
-    # This block is commented out as its content should be integrated into the LLM's generated report.
-    # if report_data.get('suggested_names') and report_data['suggested_names'].get('suggestions'):
-    #     Story.append(Paragraph("🌟 Strategic Name Corrections (Validated)", styles['Heading1']))
-    #     Story.append(Paragraph(f"Overall Reasoning: {report_data['suggested_names'].get('reasoning', 'Based on a comprehensive numerological analysis and practitioner validation.')}", styles['NormalBodyText']))
-    #     for suggestion in report_data['suggested_names']['suggestions']:
-    #         Story.append(Paragraph(f"• <b>{suggestion['name']}</b> (Expression Number: {suggestion['expression_number']}): {suggestion['rationale']}", styles['BulletStyle']))
-    #     Story.append(Spacer(1, 0.2 * inch))
-
-    # NEW: Validation Chat Summary (Optional, if frontend provides)
-    if report_data.get('validation_summary'):
-        Story.append(Paragraph("✅ Validation Chat Summary & Practitioner's Conclusion", styles['SubHeadingStyle']))
-        validation_html = report_data['validation_summary'].replace('\n', '<br/>')
-        validation_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', validation_html)
-        Story.append(Paragraph(validation_html, styles['NormalBodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
-        Story.append(PageBreak())
-
-    # NEW: Practitioner's Tailored Notes (Optional, if frontend provides)
-    if report_data.get('practitioner_notes'):
-        Story.append(Paragraph("✍️ Practitioner's Private Notes", styles['SubHeadingStyle']))
-        notes_html = report_data['practitioner_notes'].replace('\n', '<br/>')
-        notes_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', notes_html)
-        Story.append(Paragraph(notes_html, styles['NormalBodyText']))
-        Story.append(Spacer(1, 0.2 * inch))
-        Story.append(PageBreak())
-
-    # --- Append other detailed sections from `profile_details` for clarity in PDF
+    # NEW: Raw Data Sections are now consolidated and presented more cleanly
     # These sections are generated by the backend's numerology calculations and
     # are passed to the LLM for the main report. Including them explicitly here
     # ensures they are always present in the PDF, regardless of how the LLM phrases them.
     # These are now supplementary details, as the LLM is expected to elaborate on them in the main report.
 
-    # Core Numerological Blueprint (Detailed Analysis)
+    # Core Numerological Blueprint (Raw Data)
     Story.append(Paragraph("📊 Core Numerological Blueprint (Raw Data)", styles['SubHeadingStyle']))
     Story.append(Paragraph("This section provides the raw calculated data for your core numerological blueprint, which forms the foundation of the detailed interpretations found earlier in the report.", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
@@ -2562,7 +2543,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     # Story.append(Spacer(1, 0.2 * inch))
     # Story.append(Paragraph("<i>Disclaimer: Numerology provides insights and guidance. It is not a substitute for professional advice. Your free will and choices ultimately shape your destiny.</i>", styles['ItalicBodyText']))
 
-    doc.build(Story)
+    # Build the PDF with page numbering
+    doc.build(Story, onAndAfterPages=add_page_number)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -2838,6 +2820,7 @@ def generate_pdf_report_endpoint():
         return jsonify({"error": "Missing essential data for PDF generation."}), 400
 
     try:
+        # Pass the add_page_number function to doc.build
         pdf_bytes = create_numerology_pdf(report_data)
         
         logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
