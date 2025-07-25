@@ -20,7 +20,7 @@ import time
 import secrets
 import hmac
 import psutil
-from collections import Counter
+from collections import Counter # Added for Lo Shu Grid
 import sys 
 
 # Langchain imports
@@ -48,7 +48,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        logging.StreamHandler(sys.stdout) # Correctly directs logs to stdout
+        sys.stdout # Correctly directs logs to stdout
     ]
 )
 logger = logging.getLogger(__name__)
@@ -88,15 +88,23 @@ logger.info("CORS configured for the Flask app.") # Log CORS configuration
 # # These prompts replace the existing ones in your Flask app
 
 # 1. REFINED NAME SUGGESTION PROMPT (replaces the prompt in generate_name_suggestions)
-NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.## YOUR MISSION:Generate 3-5 strategically crafted full name variations that:- Maintain maximum similarity to the original name (90%+ resemblance)- Align precisely with target Expression Numbers- Directly support the user's specific desired outcome- Sound natural and culturally appropriate## MODIFICATION GUIDELINES:- **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals- **Preserve Core Identity**: Keep the essence and pronunciation as close as possible- **Cultural Sensitivity**: Ensure variations respect the original name's cultural context## RATIONALE REQUIREMENTS:For each suggestion, provide a comprehensive 2-3 sentence explanation that:1. **Specifies the exact numerological advantage** of the new Expression Number2. **Directly connects** this advantage to the user's desired outcome3. **Explains the energetic transformation** this change creates4. **Emphasizes positive impact** and specific benefits## OUTPUT FORMAT:Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.## QUALITY STANDARDS:- Each rationale must be substantive, specific, and compelling- Avoid generic explanations - make each one unique and targeted- If a target number cannot be achieved while maintaining similarity, acknowledge this in reasoning""" + "{parser_instructions}"
-NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST****Original Name:** "{original_full_name}"**Desired Life Outcome:** "{desired_outcome}"**Target Expression Numbers:** {target_expression_numbers}**TASK:** Create 3-5 name variations that are nearly identical to the original but numerologically optimized for the desired outcome. Each suggestion must include a detailed, specific rationale explaining its advantages.**REQUIREMENTS:**- Maintain 90%+ similarity to original name- Target the specified Expression Numbers- Provide compelling, detailed explanations for each suggestion- Ensure cultural appropriateness and natural sound"""
+# MODIFIED: Added emphasis on practicality and real-world use and new analytical factors.
+NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.## YOUR MISSION:Generate 3-5 strategically crafted full name variations that:- Maintain maximum similarity to the original name (90%+ resemblance)- Align precisely with target Expression Numbers- Directly support the user's specific desired outcome- Sound natural, culturally appropriate, and **highly practical for real-world use**## MODIFICATION GUIDELINES:- **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals- **Preserve Core Identity**: Keep the essence and pronunciation as close as possible- **Cultural Sensitivity**: Ensure variations respect the original name's cultural context- **Practicality First**: Prioritize names that are easy to adopt and integrate into daily life. Avoid overly complex or unusual suggestions unless specifically requested.## RATIONALE REQUIREMENTS:For each suggestion, provide a comprehensive 2-3 sentence explanation that:1. **Specifies the exact numerological advantage** of the new Expression Number2. **Directly connects** this advantage to the user's desired outcome3. **Explains the energetic transformation** this change creates4. **Emphasizes positive impact** and specific benefits
+**When crafting rationales, consider these additional factors from the client's profile:**
+- **Lo Shu Grid Balance**: How the new name helps balance missing energies (e.g., if 5 is missing, does the new name's Expression 5 help?)
+- **Planetary Compatibility**: How the new name's planetary ruler (from Chaldean mapping) aligns with their Ascendant/Lagna or avoids conflicts with malefic planetary lords.
+- **Phonetic Harmony**: Confirm the suggested name maintains a pleasant and strong vibrational tone.
+- **Edge Case Resolutions**: If the original profile had an edge case (e.g., Expression 8/Life Path 1 conflict), explain how the new name resolves or mitigates it.## OUTPUT FORMAT:Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.## QUALITY STANDARDS:- Each rationale must be substantive, specific, and compelling- Avoid generic explanations - make each one unique and targeted- If a target number cannot be achieved while maintaining similarity, acknowledge this in reasoning""" + "{parser_instructions}"
+NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST****Original Name:** "{original_full_name}"**Desired Life Outcome:** "{desired_outcome}"**Target Expression Numbers:** {target_expression_numbers}**TASK:** Create 3-5 name variations that are nearly identical to the original but numerologically optimized for the desired outcome. Each suggestion must include a detailed, specific rationale explaining its advantages.**REQUIREMENTS:**- Maintain 90%+ similarity to original name- Target the specified Expression Numbers- Provide compelling, detailed explanations for each suggestion- Ensure cultural appropriateness, natural sound, and **high practicality for adoption**"""
 
 # 2. REFINED ADVANCED REPORT PROMPT (replaces the system message in chat endpoint)
-ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding.## REPORT STRUCTURE (Follow Exactly):### 1. **Introduction** (Warm & Personal)- Acknowledge their name, birth date, and desired outcome personally- Create immediate connection and establish trust- Set positive, empowering tone for the entire report### 2. **Core Numerological Blueprint** (Detailed Analysis)- **Expression Number Deep Dive**: Core traits, psychological patterns, natural abilities- **Life Path Number Analysis**: Life purpose, karmic direction, soul mission- **Compatibility Synthesis**: How these numbers work together or challenge each other- Draw from provided interpretations but add unique insights### 3. **Soul Architecture** (Soul Urge & Personality)- **Soul Urge Number**: Inner motivations, heart's desires, what fulfills them- **Personality Number**: How others perceive them, outer persona, first impressions- **Integration Dynamics**: How inner and outer selves align or conflict### 4. **🌟 STRATEGIC NAME CORRECTIONS** (CRITICAL SECTION)- Present each suggested name with its Expression Number- **Use the exact detailed rationales provided in the input data**- Explain how each suggestion specifically enhances their desired outcome- Compare energetic shifts from current to suggested numbers- Provide implementation guidance and timing recommendations### 5. **Karmic Lessons & Soul Work** (Transformational)- Detail missing numbers and their significance- Explain how addressing these lessons accelerates growth- Connect lessons to their desired outcome### 6. **Temporal Numerology** (Timing & Cycles)- Current Personal Year energy and optimal activities- Best months for implementing changes- Energy forecasts and strategic timing### 7. **Shadow Work & Growth Edge** (Honest Assessment)- Potential challenges specific to their numbers- Practical mitigation strategies- Transform challenges into growth opportunities### 8. **Personalized Development Blueprint** (Actionable)- Immediate focus areas with specific actions- Long-term vision aligned with their numbers- Monthly practices for sustained growth### 9. **Future Cycles Forecast** (3-Year Vision)- Year-by-year energy themes and focus areas- Strategic planning for optimal outcomes- Timeline for major life decisions### 10. **Numerical Uniqueness Profile** (Special Recognition)- Highlight rare combinations or master numbers- Explain their unique gifts and cosmic significance### 11. **Empowerment Conclusion** (Inspiring Close)- Synthesize key insights- Reinforce their power to shape destiny- Leave them feeling inspired and capable## WRITING STANDARDS:- **Depth Over Breadth**: Elaborate significantly on each section- **Personal Touch**: Use their name throughout, make it feel custom-crafted- **Markdown Formatting**: Use headers, bold text, bullet points for readability- **Empowering Tone**: Inspiring, supportive, never fatalistic- **Specific Details**: Avoid generalities, provide concrete insights- **Professional Quality**: No AI disclaimers, no sensitive information## SUCCESS METRICS:The report should feel like a personal consultation worth hundreds of dollars, providing actionable insights that directly address their desired outcome while honoring the sacred wisdom of numerology."""
+# MODIFIED: Expanded to incorporate Lo Shu, Astro-Numerology, Pronology, and detailed validation/edge cases.
+ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding, **integrating Chaldean Numerology, Lo Shu Grid analysis, Astro-Numerology principles (based on provided data), and Phonology considerations.**## REPORT STRUCTURE (Follow Exactly):### 1. **Introduction** (Warm & Personal)- Acknowledge their name, birth date, and desired outcome personally- Create immediate connection and establish trust- Set positive, empowering tone for the entire report### 2. **Core Numerological Blueprint** (Detailed Analysis)- **Expression Number Deep Dive**: Core traits, psychological patterns, natural abilities, **and its Chaldean planetary association.**- **Life Path Number Analysis**: Life purpose, karmic direction, soul mission.- **Birth Number Significance**: Explain the day of birth's influence.- **Compatibility Synthesis**: How these numbers work together or challenge each other.- Draw from provided interpretations but add unique insights.### 3. **Soul Architecture** (Soul Urge & Personality)- **Soul Urge Number**: Inner motivations, heart's desires, what fulfills them.- **Personality Number**: How others perceive them, outer persona, first impressions.- **Integration Dynamics**: How inner and outer selves align or conflict.### 4. **🌟 STRATEGIC NAME CORRECTIONS** (CRITICAL SECTION)- Present each suggested name with its Expression Number.- **Use the exact detailed rationales provided in the input data.**- Explain how each suggestion specifically enhances their desired outcome.- Compare energetic shifts from current to suggested numbers.- Provide implementation guidance and timing recommendations.- **Crucially, discuss how each suggested name addresses specific numerological or astrological imbalances identified in the client's profile (e.g., balancing missing Lo Shu numbers, harmonizing with planetary influences).**### 5. **Karmic Lessons & Soul Work** (Transformational)- Detail missing numbers from their **Lo Shu Grid** and their significance.- Explain how addressing these lessons accelerates growth.- Connect lessons to their desired outcome.- **Specifically mention any karmic debt numbers identified in their birth date or original name.**### 6. **Temporal Numerology** (Timing & Cycles)- Current Personal Year energy and optimal activities.- Best months for implementing changes (e.g., name changes, new ventures).- Energy forecasts and strategic timing.### 7. **Shadow Work & Growth Edge** (Honest Assessment)- Potential challenges specific to their numbers, **including any identified edge cases (e.g., Expression 8/Life Path 1 conflict, Master Number challenges).**- Practical mitigation strategies.- Transform challenges into growth opportunities.### 8. **Personalized Development Blueprint** (Actionable)- Immediate focus areas with specific actions.- Long-term vision aligned with their numbers.- Monthly practices for sustained growth.- **Suggest actions that help integrate energies from their Lo Shu Grid or align with beneficial planetary influences.**### 9. **Future Cycles Forecast** (3-Year Vision)- Year-by-year energy themes and focus areas.- Strategic planning for optimal outcomes.- Timeline for major life decisions.### 10. **Numerical Uniqueness Profile** (Special Recognition)- Highlight rare combinations or master numbers.- Explain their unique gifts and cosmic significance.- **Discuss how their unique numerical blueprint interacts with their conceptual astrological parameters (Ascendant/Lagna, Moon Sign).**### 11. **Empowerment Conclusion** (Inspiring Close)- Synthesize key insights.- Reinforce their power to shape destiny.- Leave them feeling inspired and capable.## WRITING STANDARDS:- **Depth Over Breadth**: Elaborate significantly on each section, providing rich, nuanced insights.- **Personal Touch**: Use their name throughout, make it feel custom-crafted.- **Markdown Formatting**: Use headers, bold text, bullet points for readability.- **Empowering Tone**: Inspiring, supportive, never fatalistic.- **Specific Details**: Avoid generalities, provide concrete insights, **referencing specific numbers, grid positions, or planetary influences where relevant.**- **Professional Quality**: No AI disclaimers, no sensitive information.## SUCCESS METRICS:The report should feel like a personal consultation worth hundreds of dollars, providing actionable insights that directly address their desired outcome while honoring the sacred wisdom of numerology."""
 ADVANCED_REPORT_HUMAN_PROMPT = """**COMPREHENSIVE NUMEROLOGY REPORT REQUEST**Please generate a detailed, transformational numerology report using this complete profile data:```json{llm_input_data}```**REQUIREMENTS:**- Follow the exact 11-section structure outlined in your instructions- Elaborate extensively on each section - aim for comprehensive analysis- Use the provided detailed rationales for name suggestions verbatim- Directly address how everything connects to their desired outcome- Create a report that feels personally crafted and professionally valuable"""
 
 # 3. REFINED NAME VALIDATION PROMPT (replaces the system message in validation)
-NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance.## VALIDATION FRAMEWORK:### **Analysis Structure:**#### 1. **Suggested Name Numerological Profile**- Expression Number and its core energetic signature- Psychological traits and natural tendencies- Career and relationship implications- Spiritual significance and growth potential#### 2. **Outcome Alignment Assessment** (Critical)- **Direct Correlation**: How the suggested name's energy specifically supports their desired outcome- **Energy Shift Analysis**: Compare current vs. suggested name's energetic influence- **Manifestation Potential**: Rate the name's power to attract their desired results- **Obstacle Clearing**: How this name helps overcome current limitations#### 3. **Life Path Compatibility Matrix**- **Synergy Score**: How well the new Expression Number harmonizes with their Life Path- **Challenge Areas**: Potential friction points and how to navigate them- **Amplification Effects**: Ways the combination enhances their natural gifts- **Balance Dynamics**: How this pairing creates equilibrium or tension#### 4. **Strategic Recommendation** (Clear Verdict)- **Rating Scale**: "Exceptional Fit" | "Strong Alignment" | "Moderate Benefit" | "Requires Consideration" | "Not Recommended"- **Confidence Level**: High/Medium/Low with reasoning- **Implementation Timeline**: When and how to make the change- **Expected Outcomes**: Realistic timeline for seeing results## EVALUATION CRITERIA:- **Numerical Harmony**: Mathematical compatibility between numbers- **Energetic Resonance**: How well the vibrations support their goals- **Practical Viability**: Real-world considerations for name change- **Timing Considerations**: Current life cycles and optimal implementation## OUTPUT STANDARDS:- **Markdown Formatting**: Clear headers and structured presentation- **Specific Evidence**: Reference exact numerical relationships- **Balanced Perspective**: Honest assessment including any concerns- **Actionable Guidance**: Concrete next steps and recommendations- **Encouraging Tone**: Supportive while being truthfully analytical"""
+# MODIFIED: Expanded to include Lo Shu, Astro, and Phonology in validation.
+NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise numerological name validation and strategic guidance. You will evaluate a suggested name against the client's original numerological blueprint, desired outcome, **Lo Shu Grid, and conceptual astrological influences.**## VALIDATION FRAMEWORK:### **Analysis Structure:**#### 1. **Suggested Name Numerological Profile**- Expression Number and its core energetic signature, **including its Chaldean planetary association.**- Psychological traits and natural tendencies.- Career and relationship implications.- Spiritual significance and growth potential.- **Comment on its phonetic vibration and ease of adoption.**#### 2. **Outcome Alignment Assessment** (Critical)- **Direct Correlation**: How the suggested name's energy specifically supports their desired outcome.- **Energy Shift Analysis**: Compare current vs. suggested name's energetic influence.- **Manifestation Potential**: Rate the name's power to attract their desired results.- **Obstacle Clearing**: How this name helps overcome current limitations.- **How does it specifically address the client's desired profession/vocation?**#### 3. **Life Path & Core Compatibility Matrix**- **Synergy Score**: How well the new Expression Number harmonizes with their Life Path and Birth Number.- **Challenge Areas**: Potential friction points and how to navigate them.- **Amplification Effects**: Ways the combination enhances their natural gifts.- **Balance Dynamics**: How this pairing creates equilibrium or tension.- **Critically, assess its compatibility with their Ascendant/Lagna ruler and Moon Sign, and whether it avoids conflict with any planetary lords.**- **Evaluate its impact on their Lo Shu Grid balance (e.g., does it introduce a missing number or reinforce an over-represented one?).**#### 4. **Strategic Recommendation** (Clear Verdict)- **Rating Scale**: "Exceptional Fit" | "Strong Alignment" | "Moderate Benefit" | "Requires Consideration" | "Not Recommended"- **Confidence Level**: High/Medium/Low with reasoning.- **Implementation Timeline**: When and how to make the change.- **Expected Outcomes**: Realistic timeline for seeing results.- **Provide specific guidance on how to maximize the benefits of this name, considering all numerological and conceptual astrological factors.**## EVALUATION CRITERIA:- **Numerical Harmony**: Mathematical compatibility between numbers.- **Energetic Resonance**: How well the vibrations support their goals.- **Practical Viability**: Real-world considerations for name change, **including phonetic ease and cultural fit.**- **Timing Considerations**: Current life cycles and optimal implementation.- **Holistic Alignment**: How the name integrates with their entire numerological and conceptual astrological profile.## OUTPUT STANDARDS:- **Markdown Formatting**: Clear headers and structured presentation.- **Specific Evidence**: Reference exact numerical relationships, **Lo Shu grid observations, and conceptual planetary influences.**- **Balanced Perspective**: Honest assessment including any concerns.- **Actionable Guidance**: Concrete next steps and recommendations.- **Encouraging Tone**: Supportive while being truthfully analytical."""
 NAME_VALIDATION_HUMAN_PROMPT = """**NAME VALIDATION REQUEST****Original Profile:**- Full Name: {original_full_name}- Birth Date: {birth_date}- Current Expression Number: {original_expression_number}- Life Path Number: {original_life_path_number}**Validation Target:**- Suggested Name: {suggested_name}- Calculated Expression Number: {suggested_expression_num}- Core Interpretation: {suggested_core_interpretation}**Desired Outcome:** {desired_outcome}**TASK:** Provide comprehensive validation analysis following your 4-section framework. Give clear recommendation with confidence level and implementation guidance."""
 
 # 4. REFINED GENERAL CHAT PROMPT (replaces the system message in general chat)
@@ -145,16 +153,26 @@ class NameSuggestionsOutput(BaseModel):
 
 # --- Advanced Numerology Calculator ---
 class AdvancedNumerologyCalculator:
+    # 1️⃣ CHALDEAN LETTER-TO-NUMBER MAPPING WITH PLANETS
     NUMEROLOGY_MAP = {
-        'A': 1, 'J': 1, 'S': 1,
-        'B': 2, 'K': 2, 'T': 2,
-        'C': 3, 'L': 3, 'U': 3,
-        'D': 4, 'M': 4, 'V': 4,
-        'E': 5, 'N': 5, 'W': 5,
-        'F': 6, 'O': 6, 'X': 6,
-        'G': 7, 'P': 7, 'Y': 7,
-        'H': 8, 'Q': 8, 'Z': 8,
-        'I': 9, 'R': 9
+        'A': (1, 'Sun (☉)'), 'J': (1, 'Sun (☉)'), 'S': (1, 'Sun (☉)'),
+        'B': (2, 'Moon (☽)'), 'K': (2, 'Moon (☽)'), 'T': (2, 'Moon (☽)'),
+        'C': (3, 'Jupiter (♃)'), 'G': (3, 'Jupiter (♃)'), 'L': (3, 'Jupiter (♃)'), 'U': (3, 'Jupiter (♃)'),
+        'D': (4, 'Rahu (☊)'), 'M': (4, 'Rahu (☊)'), 'V': (4, 'Rahu (☊)'),
+        'E': (5, 'Mercury (☿)'), 'H': (5, 'Mercury (☿)'), 'N': (5, 'Mercury (☿)'), 'X': (5, 'Mercury (☿)'),
+        'F': (6, 'Venus (♀)'), 'O': (6, 'Venus (♀)'), 'W': (6, 'Venus (♀)'),
+        'P': (7, 'Ketu / Neptune (☋)'), 'Z': (7, 'Ketu / Neptune (☋)'),
+        'I': (8, 'Saturn (♄)'), 'R': (8, 'Saturn (♄)'),
+        # Note: 9 is not assigned in Chaldean, but we need it for some calculations,
+        # so we'll treat it as Mars for general number meanings, but it won't appear
+        # directly from letter mapping.
+    }
+    # Separate mapping for direct number-to-planet if needed for non-letter derived numbers
+    NUMBER_TO_PLANET_MAP = {
+        1: 'Sun (☉)', 2: 'Moon (☽)', 3: 'Jupiter (♃)', 4: 'Rahu (☊)',
+        5: 'Mercury (☿)', 6: 'Venus (♀)', 7: 'Ketu / Neptune (☋)', 8: 'Saturn (♄)',
+        9: 'Mars (♂)', # 9 is often associated with Mars in some systems
+        11: 'Higher Moon / Spiritual Insight', 22: 'Higher Rahu / Master Builder', 33: 'Higher Jupiter / Master Healer'
     }
     
     VOWELS = set('AEIOU')
@@ -276,16 +294,19 @@ class AdvancedNumerologyCalculator:
     
     @staticmethod
     def calculate_expression_number(name: str) -> Tuple[int, Dict]:
-        """Calculate expression number with detailed breakdown"""
+        """Calculate expression number with detailed breakdown and planetary association"""
         total = 0
         letter_breakdown = {}
         cleaned_name = ''.join(filter(str.isalpha, name)).upper()
         
         for letter in cleaned_name:
             if letter in AdvancedNumerologyCalculator.NUMEROLOGY_MAP:
-                value = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
+                value, planet = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
                 total += value
-                letter_breakdown[letter] = letter_breakdown.get(letter, 0) + value
+                # Store the value and planet for each letter
+                if letter not in letter_breakdown:
+                    letter_breakdown[letter] = {"value": value, "planet": planet, "count": 0}
+                letter_breakdown[letter]["count"] += 1
         
         reduced = AdvancedNumerologyCalculator.reduce_number(total)
         
@@ -293,7 +314,8 @@ class AdvancedNumerologyCalculator:
             "total_before_reduction": total,
             "letter_breakdown": letter_breakdown,
             "is_master_number": reduced in AdvancedNumerologyCalculator.MASTER_NUMBERS,
-            "karmic_debt": total in AdvancedNumerologyCalculator.KARMIC_DEBT_NUMBERS
+            "karmic_debt": total in AdvancedNumerologyCalculator.KARMIC_DEBT_NUMBERS,
+            "planetary_ruler": AdvancedNumerologyCalculator.NUMBER_TO_PLANET_MAP.get(reduced, 'N/A')
         }
     
     @staticmethod
@@ -305,7 +327,7 @@ class AdvancedNumerologyCalculator:
         
         for letter in cleaned_name:
             if letter in AdvancedNumerologyCalculator.VOWELS and letter in AdvancedNumerologyCalculator.NUMEROLOGY_MAP:
-                value = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
+                value, _ = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
                 total += value
                 vowel_breakdown[letter] = vowel_breakdown.get(letter, 0) + value
         
@@ -326,7 +348,7 @@ class AdvancedNumerologyCalculator:
         
         for letter in cleaned_name:
             if letter in AdvancedNumerologyCalculator.CONSONANTS and letter in AdvancedNumerologyCalculator.NUMEROLOGY_MAP:
-                value = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
+                value, _ = AdvancedNumerologyCalculator.NUMEROLOGY_MAP[letter]
                 total += value
                 consonant_breakdown[letter] = consonant_breakdown.get(letter, 0) + value
         
@@ -372,6 +394,264 @@ class AdvancedNumerologyCalculator:
             "karmic_debt_numbers": karmic_debt_present,
             "is_master_number": final_number in AdvancedNumerologyCalculator.MASTER_NUMBERS
         }
+
+    # 3️⃣ CORE NUMBERS FROM BIRTH (Lo Shu Grid)
+    @staticmethod
+    def calculate_lo_shu_grid(birth_date_str: str) -> Dict:
+        """
+        Calculates the Lo Shu Grid digit counts from a birth date.
+        Identifies missing numbers and provides basic interpretations.
+        """
+        try:
+            dob_digits = [int(d) for d in birth_date_str.replace('-', '') if d.isdigit()]
+        except ValueError:
+            raise ValueError("Invalid birth date format for Lo Shu Grid. Please use YYYY-MM-DD.")
+        
+        grid_counts = Counter(dob_digits)
+        
+        missing_numbers = sorted([i for i in range(1, 10) if i not in grid_counts])
+        
+        missing_impact = {
+            1: "May indicate challenges with independence or self-assertion.",
+            2: "Could suggest difficulties with cooperation or sensitivity.",
+            3: "Might point to challenges in self-expression or creativity.",
+            4: "Potential issues with stability, discipline, or practical matters.",
+            5: "Lack of grounding, adaptability, or a need for more freedom.",
+            6: "Harmony issues, challenges with responsibility or nurturing.",
+            7: "May indicate a need for deeper introspection or spiritual understanding.",
+            8: "Potential struggles with material abundance or executive ability.",
+            9: "Challenges with humanitarianism, compassion, or completion."
+        }
+        
+        detailed_missing_lessons = [
+            {"number": num, "impact": missing_impact.get(num, "General energy imbalance.")}
+            for num in missing_numbers
+        ]
+
+        return {
+            "grid_counts": dict(grid_counts),
+            "missing_numbers": missing_numbers,
+            "missing_lessons": detailed_missing_lessons,
+            "has_5": 5 in grid_counts,
+            "has_6": 6 in grid_counts,
+            "has_3": 3 in grid_counts
+        }
+
+    # 5️⃣ VALIDATION LOGIC FOR EXPRESSION NUMBER
+    @staticmethod
+    def check_expression_validity(expression_number: int, life_path_number: int, lo_shu_grid: Dict, profession_desire: str) -> Dict:
+        """
+        Validates the Expression Number based on comprehensive rules.
+        Returns a dictionary indicating validity and any flags/recommendations.
+        """
+        is_valid = True
+        flags = []
+        recommendation = "Generally harmonious."
+        
+        # General Meaning
+        if expression_number in {1, 3, 5, 6}:
+            pass # Ideal
+        elif expression_number in {2, 7}:
+            # Spiritual, sensitive, analytical - only if Lo Shu Grid has 5 & 6 and profession aligns
+            if not (lo_shu_grid.get('has_5') and lo_shu_grid.get('has_6')):
+                is_valid = False
+                flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may lack grounding without 5 & 6 in Lo Shu Grid.")
+                recommendation = "Consider a name change to a more grounding number if Lo Shu grid is not supportive."
+            if "healer" in profession_desire.lower() or "psychologist" in profession_desire.lower() or "spiritual" in profession_desire.lower() or "teacher" in profession_desire.lower():
+                pass # Profession aligns
+            else:
+                flags.append(f"Expression {expression_number} (Spiritual/Sensitive) may not align with a purely material desired outcome.")
+        elif expression_number in {4, 8, 9}:
+            # Heavy karma, delays, chaos - use only if validated astrologically (conceptual)
+            flags.append(f"Expression {expression_number} (Karmic/Challenging) numbers often bring lessons. Astrological validation is highly recommended.")
+            recommendation = "A name change to a more harmonious number is often beneficial unless strongly supported by astrology."
+            # This is where a real astrological check would come in. For now, it's a flag.
+            
+        # Master Numbers (11, 22, 33)
+        if expression_number in AdvancedNumerologyCalculator.MASTER_NUMBERS:
+            # Only retain if Life Path or Lagna supports them (Lagna is conceptual)
+            if life_path_number not in AdvancedNumerologyCalculator.MASTER_NUMBERS and expression_number != life_path_number:
+                flags.append(f"Master Expression {expression_number} without a supporting Master Life Path can be challenging to embody fully.")
+                recommendation = "The energy of this Master Number may feel overwhelming or difficult to ground without strong alignment in other core numbers."
+
+        return {
+            "is_valid": is_valid,
+            "flags": flags,
+            "recommendation": recommendation
+        }
+
+    # 6️⃣ EDGE CASE HANDLING
+    @staticmethod
+    def analyze_edge_cases(expression_number: int, life_path_number: int, lo_shu_grid: Dict, profession_desire: str, birth_number: int) -> List[Dict]:
+        """
+        Identifies specific challenging numerological combinations and provides insights.
+        """
+        edge_cases = []
+
+        # Expression = 8, Life Path = 1 (Conflict: Saturn vs Sun)
+        if expression_number == 8 and life_path_number == 1:
+            edge_cases.append({
+                "type": "Expression 8 / Life Path 1 Conflict",
+                "description": "A clash between Saturn's discipline (8) and Sun's leadership (1) can lead to internal friction or external power struggles. The 8 may bring delays or heavy lessons to the pioneering 1.",
+                "resolution_guidance": "A name change to Expression 1, 3, 5, or 6 is often recommended to harmonize with the Life Path 1 energy. Focus on balanced leadership and avoiding materialism."
+            })
+        
+        # Master Number Expression but LP = 4 (Master vs Builder)
+        if expression_number in AdvancedNumerologyCalculator.MASTER_NUMBERS and life_path_number == 4:
+            edge_cases.append({
+                "type": "Master Expression / Life Path 4 Challenge",
+                "description": f"The expansive, visionary energy of Master Number {expression_number} can feel constrained or frustrated by the practical, structured nature of Life Path 4. It's a call to ground big visions into tangible reality, which can be a heavy task.",
+                "resolution_guidance": "Focus on disciplined manifestation. If the Master energy feels overwhelming, it may reduce to a single digit (e.g., 11 to 2, 22 to 4, 33 to 6) which might be more harmonious with the LP 4, offering a more practical path."
+            })
+
+        # 4 in Expression and Birth Number = 4 (Too much karma)
+        if expression_number == 4 and birth_number == 4:
+             edge_cases.append({
+                "type": "Double 4 (Expression & Birth Number)",
+                "description": "Having both Expression and Birth Numbers as 4 can amplify the karmic lessons associated with hard work, discipline, and potential rigidity. It suggests a life path heavily focused on building and structure, which can sometimes feel burdensome.",
+                "resolution_guidance": "It's crucial to balance hard work with self-care and flexibility. Seek opportunities for creative expression and avoid becoming too rigid or overwhelmed by responsibility. Astrological validation is highly recommended to understand specific challenges."
+            })
+
+        # Grid lacks 5 or 6 (Avoid assigning name #5 or #6 to Expression if missing)
+        if not lo_shu_grid.get('has_5'):
+            edge_cases.append({
+                "type": "Missing 5 in Lo Shu Grid",
+                "description": "A missing 5 can indicate a lack of grounding, adaptability, or a need for more freedom and adventure. Assigning Expression 5 might be challenging to integrate without this foundational energy.",
+                "resolution_guidance": "Focus on developing flexibility and embracing change. A name with Expression 5 might be difficult to fully embody without the innate energy of 5 from birth."
+            })
+        if not lo_shu_grid.get('has_6'):
+            edge_cases.append({
+                "type": "Missing 6 in Lo Shu Grid",
+                "description": "A missing 6 can indicate challenges with harmony, responsibility, or nurturing. Assigning Expression 6 might be challenging without this foundational energy.",
+                "resolution_guidance": "Focus on developing compassion and responsibility. A name with Expression 6 might be difficult to fully embody without the innate energy of 6 from birth."
+            })
+        
+        # Profession: Healer, Teacher (Accept 2, 7 only if supported by grid)
+        if "healer" in profession_desire.lower() or "teacher" in profession_desire.lower() or "counselor" in profession_desire.lower():
+            if expression_number in {2, 7}:
+                if not (lo_shu_grid.get('has_5') and lo_shu_grid.get('has_6')):
+                    edge_cases.append({
+                        "type": "Spiritual Profession / Unsupportive Grid",
+                        "description": f"While Expression {expression_number} aligns with your desired profession, the missing 5 or 6 in your Lo Shu Grid might make grounding these energies challenging.",
+                        "resolution_guidance": "Focus on practical application of your spiritual gifts and building stable foundations. Consider names that reinforce grounding numbers if appropriate."
+                    })
+
+        # Surname brings unlucky compound (e.g. 14) - This is more about name generation, not analysis of existing name.
+        # This check would be part of the name suggestion algorithm's internal validation.
+
+        # Family insists on keeping surname - This is a client constraint for name suggestion, not a numerological edge case.
+
+        return edge_cases
+
+    # 7️⃣ ASTROLOGICAL INTEGRATION (Conceptual)
+    @staticmethod
+    def get_ascendant_info(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> Dict:
+        """
+        PLACEHOLDER: Simulates fetching Ascendant/Lagna info.
+        In a real app, this would integrate with an astrological API or library.
+        """
+        logger.warning("Astrological integration is conceptual. Returning dummy data for Ascendant/Lagna.")
+        # Dummy data based on birth month for demonstration
+        month = int(birth_date_str.split('-')[1])
+        if month in [3, 4]: # Aries/Taurus season
+            return {"sign": "Aries", "ruler": "Mars (♂)"}
+        elif month in [7, 8]: # Leo/Virgo season
+            return {"sign": "Leo", "ruler": "Sun (☉)"}
+        elif month in [10, 11]: # Libra/Scorpio season
+            return {"sign": "Libra", "ruler": "Venus (♀)"}
+        else:
+            return {"sign": "Unknown", "ruler": "General"}
+
+    @staticmethod
+    def get_moon_sign_info(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> Dict:
+        """
+        PLACEHOLDER: Simulates fetching Moon Sign info.
+        In a real app, this would integrate with an astrological API or library.
+        """
+        logger.warning("Astrological integration is conceptual. Returning dummy data for Moon Sign.")
+        # Dummy data based on birth day for demonstration
+        day = int(birth_date_str.split('-')[2])
+        if day % 3 == 0:
+            return {"sign": "Cancer", "ruler": "Moon (☽)"}
+        elif day % 3 == 1:
+            return {"sign": "Gemini", "ruler": "Mercury (☿)"}
+        else:
+            return {"sign": "Pisces", "ruler": "Jupiter (♃)"}
+
+    @staticmethod
+    def get_planetary_lords(birth_date_str: str, birth_time_str: Optional[str], birth_place: Optional[str]) -> List[Dict]:
+        """
+        PLACEHOLDER: Simulates fetching dominant planetary lords (benefic/malefic).
+        In a real app, this would integrate with an astrological API or library.
+        """
+        logger.warning("Astrological integration is conceptual. Returning dummy data for Planetary Lords.")
+        # Dummy data
+        return [
+            {"planet": "Jupiter (♃)", "nature": "Benefic"},
+            {"planet": "Saturn (♄)", "nature": "Malefic"}
+        ]
+
+    @staticmethod
+    def check_planetary_compatibility(expression_number: int, astro_info: Dict) -> Dict:
+        """
+        Checks compatibility between expression number's planetary ruler and astrological info.
+        """
+        expression_planet = AdvancedNumerologyCalculator.NUMBER_TO_PLANET_MAP.get(expression_number)
+        
+        compatibility_flags = []
+        
+        # Example: If Lagna is Leo (Sun), favor name numbers 1 or 3, avoid 8
+        if astro_info.get('ascendant_info', {}).get('sign') == 'Leo': # Corrected key to ascendant_info
+            if expression_number == 8:
+                compatibility_flags.append("Expression 8 (Saturn) may conflict with Leo Ascendant (Sun).")
+            elif expression_number in [1, 3]:
+                compatibility_flags.append(f"Expression {expression_number} (Sun/Jupiter) aligns well with Leo Ascendant (Sun).")
+        
+        # Add more complex rules here based on planetary lords, moon sign etc.
+        
+        return {
+            "expression_planet": expression_planet,
+            "compatibility_flags": compatibility_flags
+        }
+
+    # 9️⃣ PHONETIC VIBRATION (“PRONOLOGY”)
+    @staticmethod
+    def analyze_phonetic_vibration(name: str) -> Dict:
+        """
+        PLACEHOLDER: Simulates basic phonetic vibration analysis.
+        Real phonetic analysis would be very complex.
+        """
+        logger.warning("Phonetic vibration analysis is conceptual. Returning dummy data.")
+        name_lower = name.lower()
+        
+        vowel_count = sum(1 for char in name_lower if char in 'aeiou')
+        consonant_clusters = re.findall(r'[^aeiou\s]{2,}', name_lower)
+        
+        vibration_score = 0.5 # Neutral
+        vibration_notes = []
+
+        if len(name) < 4:
+            vibration_notes.append("Short names may have less complex vibrational patterns.")
+        if vowel_count / max(1, len(name_lower)) < 0.2:
+            vibration_notes.append("Low vowel count might lead to a 'heavy' or less flowing sound.")
+        if len(consonant_clusters) > 2:
+            vibration_notes.append("Multiple consonant clusters could make pronunciation challenging or sound dissonant.")
+        
+        # Example of a simple rule for "Kiran" vs "Kiraen"
+        if "kiraen" in name_lower:
+            vibration_notes.append("The 'ae' combination might disrupt natural flow for some pronunciations.")
+            vibration_score -= 0.1
+        
+        if not vibration_notes:
+            vibration_notes.append("Name appears to have a harmonious phonetic vibration.")
+            vibration_score = 0.8 # Good
+
+        return {
+            "score": vibration_score,
+            "notes": vibration_notes,
+            "is_harmonious": vibration_score > 0.6
+        }
+
 
 # --- Security Manager ---
 class SecurityManager:
@@ -669,34 +949,72 @@ def rate_limited(limit_string="30 per minute"):
 
 @cached_operation(timeout=3600)
 @performance_monitor
-def get_comprehensive_numerology_profile(full_name: str, birth_date: str) -> Dict:
-    """Get comprehensive numerology profile with caching"""
+def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, profession_desire: Optional[str] = None) -> Dict:
+    """Get comprehensive numerology profile with caching and advanced calculations"""
     calculator = AdvancedNumerologyCalculator()
     
-    # Calculate all numbers
+    # Calculate all core numbers
     expression_num, expression_details = calculator.calculate_expression_number(full_name)
     life_path_num, life_path_details = calculator.calculate_life_path_number(birth_date)
     soul_urge_num, soul_urge_details = calculator.calculate_soul_urge_number(full_name)
     personality_num, personality_details = calculator.calculate_personality_number(full_name)
     
-    # Calculate compatibility and insights
-    compatibility_insights = calculate_number_compatibility(expression_num, life_path_num)
-    karmic_lessons = analyze_karmic_lessons(full_name)
+    # New: Calculate Birth Number (Day of birth reduced)
+    try:
+        birth_day = int(birth_date.split('-')[2])
+        birth_number = calculator.reduce_number(birth_day)
+    except (ValueError, IndexError):
+        birth_number = None # Handle invalid date format
+        logger.warning(f"Could not calculate Birth Number for date: {birth_date}")
+
+    # New: Calculate Lo Shu Grid
+    lo_shu_grid = calculator.calculate_lo_shu_grid(birth_date)
     
+    # New: Conceptual Astrological Integration
+    ascendant_info = calculator.get_ascendant_info(birth_date, birth_time, birth_place)
+    moon_sign_info = calculator.get_moon_sign_info(birth_date, birth_time, birth_place)
+    planetary_lords = calculator.get_planetary_lords(birth_date, birth_time, birth_place)
+    planetary_compatibility = calculator.check_planetary_compatibility(expression_num, {"ascendant_info": ascendant_info, "moon_sign_info": moon_sign_info, "planetary_lords": planetary_lords})
+
+    # New: Conceptual Phonetic Vibration
+    phonetic_vibration = calculator.analyze_phonetic_vibration(full_name)
+
+    # New: Validation Logic for Expression Number
+    expression_validation = calculator.check_expression_validity(expression_num, life_path_num, lo_shu_grid, profession_desire or "")
+
+    # New: Edge Case Handling
+    edge_cases = calculator.analyze_edge_cases(expression_num, life_path_num, lo_shu_grid, profession_desire or "", birth_number) # Pass birth_number
+
+    # Calculate compatibility and insights (existing)
+    compatibility_insights = calculate_number_compatibility(expression_num, life_path_num)
+    karmic_lessons = analyze_karmic_lessons(full_name) # This now includes Lo Shu missing numbers
+
     return {
         "full_name": full_name,
         "birth_date": birth_date,
+        "birth_time": birth_time,
+        "birth_place": birth_place,
+        "profession_desire": profession_desire, # Added to profile
         "expression_number": expression_num,
         "expression_details": expression_details,
         "life_path_number": life_path_num,
         "life_path_details": life_path_details,
+        "birth_number": birth_number, # New
         "soul_urge_number": soul_urge_num,
         "soul_urge_details": soul_urge_details,
         "personality_number": personality_num,
         "personality_details": personality_details,
+        "lo_shu_grid": lo_shu_grid, # New
+        "ascendant_info": ascendant_info, # New (conceptual)
+        "moon_sign_info": moon_sign_info, # New (conceptual)
+        "planetary_lords": planetary_lords, # New (conceptual)
+        "planetary_compatibility": planetary_compatibility, # New
+        "phonetic_vibration": phonetic_vibration, # New (conceptual)
+        "expression_validation": expression_validation, # New
+        "edge_cases": edge_cases, # New
         "compatibility_insights": compatibility_insights,
         "karmic_lessons": karmic_lessons,
-        "profile_hash": hashlib.md5(f"{full_name}{birth_date}".encode()).hexdigest()
+        "profile_hash": hashlib.md5(f"{full_name}{birth_date}{birth_time}{birth_place}{profession_desire}".encode()).hexdigest()
     }
 
 def calculate_number_compatibility(expression: int, life_path: int) -> Dict:
@@ -743,15 +1061,15 @@ def calculate_number_compatibility(expression: int, life_path: int) -> Dict:
     }
 
 def analyze_karmic_lessons(name: str) -> Dict:
-    """Analyze karmic lessons from missing numbers in name"""
+    """Analyze karmic lessons from missing numbers in name (Chaldean) and Lo Shu Grid"""
     calc = AdvancedNumerologyCalculator()
-    name_numbers = set()
     
+    # Chaldean missing numbers from name
+    name_numbers = set()
     for letter in name.upper():
         if letter in calc.NUMEROLOGY_MAP:
-            name_numbers.add(calc.NUMEROLOGY_MAP[letter])
-    
-    missing_numbers = sorted(list(set(range(1, 10)) - name_numbers)) # Ensure consistent order
+            name_numbers.add(calc.NUMEROLOGY_MAP[letter][0]) # Get numerical value
+    missing_from_name = sorted(list(set(range(1, 10)) - name_numbers))
     
     karmic_lessons_map = {
         1: "Learning independence and leadership (Self-reliance, initiative)",
@@ -765,11 +1083,11 @@ def analyze_karmic_lessons(name: str) -> Dict:
         9: "Developing universal compassion (Humanitarianism, completion)"
     }
     
-    lessons_list = [karmic_lessons_map[num] for num in missing_numbers]
+    lessons_list = [karmic_lessons_map[num] for num in missing_from_name]
     
     return {
-        "missing_numbers": missing_numbers,
-        "lessons": lessons_list,
+        "missing_numbers_from_name": missing_from_name,
+        "lessons_from_name": lessons_list,
         "priority_lesson": lessons_list[0] if lessons_list else "All core lessons integrated"
     }
 
@@ -930,7 +1248,7 @@ def get_development_recommendations(profile: Dict) -> Dict:
     """Get personalized development recommendations"""
     expression = profile.get('expression_number', 5)
     life_path = profile.get('life_path_number', 5)
-    karmic_lessons = profile.get('karmic_lessons', {}).get('lessons', [])
+    karmic_lessons = profile.get('karmic_lessons', {}).get('lessons_from_name', []) # Updated key
     
     return {
         "immediate_focus": f"Develop your Expression {expression} energy through {get_growth_opportunities(expression)[0].lower()}",
@@ -1042,6 +1360,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Paragraph("✨ Your Current Numerological Profile", styles['Heading1'])) 
     Story.append(Paragraph(f"<b>Expression Number {report_data.get('expression_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('expression_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
     Story.append(Paragraph(f"<b>Life Path Number {report_data.get('life_path_number')}</b>: {AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(report_data.get('life_path_number'), {}).get('core', 'Universal energy')}", styles['BodyText']))
+    Story.append(Paragraph(f"<b>Birth Number {report_data.get('birth_number')}</b>: Day of birth influence.", styles['BodyText'])) # Added Birth Number
     Story.append(Paragraph(f"<b>Compatibility Analysis</b>: {report_data.get('compatibility_insights', {}).get('description', 'Your numbers work in harmony.')}", styles['BodyText']))
     
     if report_data.get('soul_urge_number'):
@@ -1060,11 +1379,72 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.2 * inch))
 
     # Karmic Lessons
-    if report_data.get('karmic_lessons', {}).get('lessons'):
+    if report_data.get('karmic_lessons', {}).get('lessons_from_name'): # Updated key
         Story.append(Paragraph("🔮 Karmic Lessons to Address", styles['Heading2']))
-        for lesson in report_data['karmic_lessons']['lessons']:
+        for lesson in report_data['karmic_lessons']['lessons_from_name']: # Updated key
             Story.append(Paragraph(f"• {lesson}", styles['Bullet']))
         Story.append(Spacer(1, 0.1 * inch))
+
+    # Lo Shu Grid Analysis
+    if report_data.get('lo_shu_grid'):
+        lo_shu = report_data['lo_shu_grid']
+        Story.append(Paragraph("🗺️ Lo Shu Grid Analysis", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Digits in DOB</b>: {lo_shu.get('grid_counts')}", styles['BodyText']))
+        if lo_shu.get('missing_numbers'):
+            Story.append(Paragraph("<b>Missing Numbers & Lessons</b>:", styles['BoldBodyText']))
+            for lesson in lo_shu['missing_lessons']:
+                Story.append(Paragraph(f"• Number {lesson['number']}: {lesson['impact']}", styles['Bullet']))
+        else:
+            Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['BodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+    # Astrological Integration (Conceptual)
+    if report_data.get('ascendant_info') or report_data.get('moon_sign_info') or report_data.get('planetary_lords'):
+        astro = report_data
+        Story.append(Paragraph("🌌 Astro-Numerological Insights (Conceptual)", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Ascendant/Lagna</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
+        Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['BodyText']))
+        if astro.get('planetary_compatibility', {}).get('compatibility_flags'):
+            Story.append(Paragraph("<b>Planetary Compatibility Flags</b>:", styles['BoldBodyText']))
+            for flag in astro['planetary_compatibility']['compatibility_flags']:
+                Story.append(Paragraph(f"• {flag}", styles['Bullet']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+    # Phonetic Vibration (Conceptual)
+    if report_data.get('phonetic_vibration'):
+        phonetics = report_data['phonetic_vibration']
+        Story.append(Paragraph("🗣️ Phonetic Vibration Analysis (Conceptual)", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Overall Harmony Score</b>: {phonetics['score']:.2f} ({'Harmonious' if phonetics['is_harmonious'] else 'Needs Consideration'})", styles['BodyText']))
+        if phonetics.get('notes'):
+            Story.append(Paragraph("<b>Notes</b>:", styles['BoldBodyText']))
+            for note in phonetics['notes']:
+                Story.append(Paragraph(f"• {note}", styles['Bullet']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+    # Expression Number Validation
+    if report_data.get('expression_validation'):
+        exp_val = report_data['expression_validation']
+        Story.append(Paragraph("✅ Expression Number Validation", styles['Heading2']))
+        Story.append(Paragraph(f"<b>Validity Status</b>: {'Valid' if exp_val['is_valid'] else 'Needs Attention'}", styles['BodyText']))
+        if exp_val.get('flags'):
+            Story.append(Paragraph("<b>Flags/Concerns</b>:", styles['BoldBodyText']))
+            for flag in exp_val['flags']:
+                Story.append(Paragraph(f"• {flag}", styles['Bullet']))
+        Story.append(Paragraph(f"<b>Recommendation</b>: {exp_val['recommendation']}", styles['BodyText']))
+        Story.append(Spacer(1, 0.1 * inch))
+
+    # Edge Case Handling
+    if report_data.get('edge_cases'):
+        edge_cases = report_data['edge_cases']
+        if edge_cases:
+            Story.append(Paragraph("⚠️ Identified Edge Cases", styles['Heading2']))
+            for ec in edge_cases:
+                Story.append(Paragraph(f"<b>Type</b>: {ec['type']}", styles['BoldBodyText']))
+                Story.append(Paragraph(f"Description: {ec['description']}", styles['BodyText']))
+                Story.append(Paragraph(f"Resolution Guidance: {ec['resolution_guidance']}", styles['BodyText']))
+                Story.append(Spacer(1, 0.1 * inch))
+        Story.append(Spacer(1, 0.1 * inch))
+
 
     # Timing Recommendations
     if report_data.get('timing_recommendations'):
@@ -1162,8 +1542,15 @@ def chat(): # This remains a synchronous Flask view
     try:
         if report_request:
             logger.info(f"Attempting to parse GENERATE_ADVANCED_REPORT message: {message}")
-            # Generate comprehensive profile
-            profile = get_comprehensive_numerology_profile(report_request.full_name, report_request.birth_date)
+            # Generate comprehensive profile - now includes new astro/lo shu data
+            profile = get_comprehensive_numerology_profile(
+                report_request.full_name, 
+                report_request.birth_date,
+                # These might be None as the current frontend doesn't capture them
+                birth_time=None, 
+                birth_place=None,
+                profession_desire=report_request.desired_outcome # Pass desired outcome as profession_desire
+            )
             
             # Determine target numbers for name suggestions
             target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(report_request.desired_outcome)
@@ -1191,7 +1578,7 @@ def chat(): # This remains a synchronous Flask view
                 "desired_outcome": report_request.desired_outcome,
                 "current_expression_number": report_request.current_expression_number,
                 "current_life_path_number": report_request.current_life_path_number,
-                "profile_details": profile,
+                "profile_details": profile, # This now contains all advanced data
                 "timing_recommendations": timing_recommendations,
                 "uniqueness_score": uniqueness_score,
                 "potential_challenges": potential_challenges,
@@ -1220,12 +1607,19 @@ def chat(): # This remains a synchronous Flask view
                 "intro_response": report_response.content # This is the LLM generated Markdown report
             }
 
-            return jsonify({"response": report_response.content}), 200
+            return jsonify({"response": report_response.content, "full_report_data_for_pdf": full_report_data}), 200
 
         elif validation_request:
             logger.info(f"Attempting to parse VALIDATE_NAME_ADVANCED message: {message}")
-            # Generate comprehensive profile for original name
-            original_profile = get_comprehensive_numerology_profile(validation_request.original_full_name, validation_request.birth_date)
+            # Generate comprehensive profile for original name - now includes new astro/lo shu data
+            original_profile = get_comprehensive_numerology_profile(
+                validation_request.original_full_name, 
+                validation_request.birth_date,
+                # These might be None as the current frontend doesn't capture them
+                birth_time=None, 
+                birth_place=None,
+                profession_desire=validation_request.desired_outcome # Pass desired outcome as profession_desire
+            )
             
             # Resolve the full name for calculation based on suggested part
             full_name_for_validation = NameSuggestionEngine.resolve_full_name_for_calculation(
@@ -1233,8 +1627,28 @@ def chat(): # This remains a synchronous Flask view
                 validation_request.suggested_name
             )
             
-            # Calculate numerology for suggested name
+            # Calculate numerology for suggested name - now includes planetary ruler
             suggested_expression_num, suggested_expression_details = AdvancedNumerologyCalculator.calculate_expression_number(full_name_for_validation)
+
+            # Prepare data for LLM validation prompt
+            llm_validation_input_data = {
+                "original_full_name": validation_request.original_full_name,
+                "birth_date": validation_request.birth_date,
+                "original_expression_number": original_profile['expression_number'],
+                "original_life_path_number": original_profile['life_path_number'],
+                "suggested_name": validation_request.suggested_name,
+                "suggested_expression_num": suggested_expression_num,
+                "suggested_core_interpretation": AdvancedNumerologyCalculator.NUMEROLOGY_INTERPRETATIONS.get(suggested_expression_num, {}).get('core', 'N/A'),
+                "desired_outcome": validation_request.desired_outcome,
+                "lo_shu_grid": original_profile['lo_shu_grid'],
+                "ascendant_info": original_profile['ascendant_info'],
+                "moon_sign_info": original_profile['moon_sign_info'],
+                "planetary_lords": original_profile['planetary_lords'],
+                "planetary_compatibility": AdvancedNumerologyCalculator.check_planetary_compatibility(suggested_expression_num, {"ascendant_info": original_profile['ascendant_info'], "moon_sign_info": original_profile['moon_sign_info'], "planetary_lords": original_profile['planetary_lords']}),
+                "phonetic_vibration": AdvancedNumerologyCalculator.analyze_phonetic_vibration(validation_request.suggested_name),
+                "expression_validation_for_suggested": AdvancedNumerologyCalculator.check_expression_validity(suggested_expression_num, original_profile['life_path_number'], original_profile['lo_shu_grid'], validation_request.desired_outcome)
+            }
+
 
             # IMPLEMENTATION: Use the new NAME_VALIDATION_SYSTEM_PROMPT and NAME_VALIDATION_HUMAN_PROMPT
             system_message = SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT)
@@ -1291,63 +1705,21 @@ def chat(): # This remains a synchronous Flask view
 @performance_monitor
 def generate_pdf_report_endpoint():
     """Endpoint to generate and return a PDF numerology report."""
-    data = request.json
+    # This endpoint now expects the full_report_data_for_pdf directly from the frontend
+    # which contains all the pre-calculated numerology and LLM response.
+    report_data = request.json
     
-    # Extract necessary data from the request body
-    full_name = data.get('full_name')
-    birth_date = data.get('birth_date')
-    desired_outcome = data.get('desired_outcome')
-    current_expression_number = data.get('current_expression_number')
-    current_life_path_number = data.get('current_life_path_number')
-    intro_response = data.get('intro_response') # The LLM-generated Markdown report
-    suggested_names_data = data.get('suggested_names') # Get suggested names from request
-
-    if not all([full_name, birth_date, desired_outcome, current_expression_number, current_life_path_number, intro_response]):
-        return jsonify({"error": "Missing required data for PDF generation."}), 400
+    # Basic validation for essential fields
+    if not all([report_data.get('full_name'), report_data.get('birth_date'), report_data.get('intro_response')]):
+        return jsonify({"error": "Missing essential data for PDF generation."}), 400
 
     try:
-        # Re-calculate comprehensive profile to ensure all data for PDF is fresh and complete
-        profile = get_comprehensive_numerology_profile(full_name, birth_date)
+        pdf_bytes = create_numerology_pdf(report_data)
         
-        # Generate additional insights required for the PDF
-        timing_recommendations = generate_timing_recommendations(profile)
-        uniqueness_score = calculate_uniqueness_score(profile)
-        potential_challenges = identify_potential_challenges(profile)
-        development_recommendations = get_development_recommendations(profile)
-        yearly_forecast = generate_yearly_forecast(profile)
-
-        # Reconstruct NameSuggestionsOutput object from dictionary data
-        suggested_names_obj = NameSuggestionsOutput(
-            suggestions=[NameSuggestion(**s) for s in suggested_names_data['suggestions']],
-            reasoning=suggested_names_data['reasoning']
-        ) if suggested_names_data else NameSuggestionsOutput(suggestions=[], reasoning="No name suggestions provided.")
-
-        pdf_report_data = {
-            "full_name": full_name,
-            "birth_date": birth_date,
-            "desired_outcome": desired_outcome,
-            "expression_number": profile['expression_number'],
-            "life_path_number": profile['life_path_number'],
-            "soul_urge_number": profile['soul_urge_number'],
-            "personality_number": profile['personality_number'],
-            "compatibility_insights": profile['compatibility_insights'],
-            "karmic_lessons": profile['karmic_lessons'],
-            "timing_recommendations": timing_recommendations,
-            "uniqueness_score": uniqueness_score, 
-            "potential_challenges": potential_challenges,
-            "development_recommendations": development_recommendations,
-            "yearly_forecast": yearly_forecast,
-            "intro_response": intro_response, # Pass the LLM-generated Markdown report
-            "suggested_names": suggested_names_obj # Pass the NameSuggestionsOutput object
-        }
-
-        pdf_bytes = create_numerology_pdf(pdf_report_data)
-        
-        # Log the size of the generated PDF bytes
         logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
 
         # Determine filename
-        filename = f"Numerology_Report_{full_name.replace(' ', '_')}.pdf"
+        filename = f"Numerology_Report_{report_data['full_name'].replace(' ', '_')}.pdf"
         
         return send_file(
             io.BytesIO(pdf_bytes),
