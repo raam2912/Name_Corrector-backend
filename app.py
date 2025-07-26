@@ -2280,25 +2280,22 @@ def validate_name_endpoint():
         logger.error(f"Error validating name: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred during name validation. Please try again later."}), 500
 
-@app.route('/generate_pdf_report', methods=['POST'])
-@rate_limited("5 per hour")
+@app.route('/generate_text_report', methods=['POST'])
+@rate_limited("5 per minute") # Apply a rate limit appropriate for preview generation
 @performance_monitor
-async def generate_pdf_report_endpoint():
+async def generate_text_report_endpoint():
     """
-    Endpoint to generate and return a PDF numerology report.
-    This endpoint now expects the full client profile data AND the confirmed_suggestions
-    directly from the frontend.
+    Endpoint to generate and return the numerology report content as plain text (Markdown).
+    This is used for the frontend preview.
     """
     report_data_from_frontend = request.json
     
-    # Ensure essential data is present, including confirmed_suggestions
+    # Ensure essential data is present
     if not all([report_data_from_frontend.get('full_name'), report_data_from_frontend.get('birth_date'), report_data_from_frontend.get('confirmed_suggestions') is not None]):
-        return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
+        return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
 
     try:
-        # First, ensure we have the full comprehensive profile data
-        # This is crucial because the LLM prompt and PDF generation need it.
-        # We assume the frontend sends the *original* profile data + confirmed suggestions.
+        # Get comprehensive profile data (reusing existing logic)
         profile_details = get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
@@ -2310,7 +2307,7 @@ async def generate_pdf_report_endpoint():
         # Add confirmed suggestions to the profile data for the LLM
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
-        # Generate the main report content using the LLM
+        # Generate the main report content using the LLM (same logic as PDF generation)
         llm_input_data = json.dumps(profile_details, indent=2)
         
         report_prompt = ChatPromptTemplate.from_messages([
@@ -2320,36 +2317,19 @@ async def generate_pdf_report_endpoint():
         
         report_chain = report_prompt | llm_manager.creative_llm # Use creative LLM for report generation
         
-        logger.info("Calling LLM for advanced report generation...")
+        logger.info("Calling LLM for text report generation (preview)...")
         llm_report_response = await report_chain.ainvoke({})
-        logger.info("LLM advanced report generation complete.")
+        logger.info("LLM text report generation complete.")
 
-        # Prepare data for PDF generation
-        pdf_data = {
-            "full_name": profile_details['full_name'],
-            "birth_date": profile_details['birth_date'],
-            "profile_details": profile_details, # Pass the full profile details
-            "intro_response": llm_report_response.content, # The LLM-generated Markdown
-            "confirmed_suggestions": profile_details['confirmed_suggestions'] # Confirmed suggestions
-        }
-
-        pdf_bytes = create_numerology_pdf(pdf_data)
-        
-        logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
-
-        filename = f"Numerology_Report_{report_data_from_frontend['full_name'].replace(' ', '_')}.pdf"
-        
-        return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=filename
-        )
+        # Return the content directly as JSON
+        return jsonify({"report_content": llm_report_response.content}), 200
 
     except Exception as e:
-        logger.error(f"Error generating PDF report: {e}", exc_info=True)
-        return jsonify({"error": f"Failed to generate PDF report: {e}"}), 500
+        logger.error(f"Error generating text report for preview: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to generate text report for preview: {e}"}), 500
+# --- END OF NEW CODE FOR REPORT PREVIEW ---
 
+# --- Existing /chat endpoint (for context) ---
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute")
 @performance_monitor
