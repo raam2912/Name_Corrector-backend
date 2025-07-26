@@ -169,12 +169,14 @@ class LLMManager:
 
     def _initialize_llms(self):
         google_api_key = os.getenv("GOOGLE_API_KEY")
+        # Removed debug print statement as it's no longer needed
+
         if not google_api_key:
             logger.error("GOOGLE_API_KEY environment variable not set.")
             raise ValueError("GOOGLE_API_KEY is not set. Please set it to use the Generative AI models.")
 
         try:
-            # FIX: Add convert_system_message_to_human=True to all ChatGoogleGenerativeAI instances
+            # Using gemini-1.5-flash as requested
             self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
             self.creative_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
             self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
@@ -340,7 +342,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - **Markdown Formatting**: Use headers (`#`, `##`, `###`), bold text (`**text**`), italic text (`*text*`), and bullet points (`* item`).
 - **Highlighting for Readability**:
     - **Crucial Takeaway**: For key insights or critical advice, start a paragraph with "<b>Crucial Takeaway:</b> " followed by the insight. Use this frequently for vital information.
-    - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation. Use this to draw attention to important interpretations.
+    - **Key Insight**: For significant revelations, start a paragraph with "<b>Key Insight:</b> " followed by the revelation.
     - **Important Note**: For cautionary or vital information, start a paragraph with "<b>Important Note:</b> " followed by the note.
     - Use `**bold**` for all numerological terms (e.g., **Expression Number**, **Life Path Number**) and key concepts.
 - **STRICT ADHERENCE TO NAMES**: When referring to the client's original or suggested names, you MUST use the exact spelling provided in the input data. Do NOT alter or simplify the spelling of names (e.g., if the input is 'Naraayanan', use 'Naraayanan', not 'Narayanan').
@@ -855,7 +857,6 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
 
     # Simple detection of "harsh" consonant combinations (conceptual)
     harsh_combinations = ["TH", "SH", "CH", "GH", "PH", "CK", "TCH", "DGE", "GHT", "STR", "SCR", "SPL"] # Expanded examples
-    harsh_flags = [combo for combo in cleaned_name if combo in cleaned_name] # This line was incorrect, fixed below
     
     # Corrected harsh_flags logic:
     harsh_flags = []
@@ -2120,7 +2121,8 @@ class NameSuggestionEngine:
     @staticmethod
     async def generate_name_suggestions(llm_instance: ChatGoogleGenerativeAI, original_full_name: str, desired_outcome: str, target_expression_numbers: List[int]) -> NameSuggestionsOutput:
         """
-        Generates name suggestions using the LLM.
+        Generates name suggestions using the LLM and then recalculates Expression Numbers
+        using the backend's numerology logic for accuracy.
         """
         parser_instructions = parser.get_format_instructions()
         
@@ -2136,8 +2138,16 @@ class NameSuggestionEngine:
         chain = prompt | llm_instance | parser
         
         try:
-            response = await chain.ainvoke({})
-            return response
+            llm_response_output = await chain.ainvoke({})
+            
+            # --- CRITICAL: Recalculate Expression Numbers for LLM suggestions ---
+            # This ensures the numerological feasibility is based on our Python logic, not just LLM's text generation
+            for suggestion in llm_response_output.suggestions:
+                calculated_exp_num, _ = calculate_expression_number_with_details(suggestion.name)
+                suggestion.expression_number = calculated_exp_num
+            # --- END CRITICAL SECTION ---
+
+            return llm_response_output
         except Exception as e:
             logger.error(f"LLM Name Suggestion Generation Error: {e}", exc_info=True)
             raise ValueError(f"Failed to generate name suggestions: {e}")
@@ -2181,7 +2191,12 @@ async def initial_suggestions_endpoint():
             target_numbers
         )
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
+
+        # Convert the Pydantic NameSuggestionsOutput object to a dictionary
+        # The .dict() method will recursively convert nested Pydantic objects (like NameSuggestion)
+        # into dictionaries, making them JSON serializable.
         suggestions_data = name_suggestions_output.dict()
+
         return jsonify({
             "suggestions": suggestions_data["suggestions"],
             "reasoning": suggestions_data["reasoning"],
@@ -2210,12 +2225,15 @@ async def validate_name_endpoint():
     try:
         # validate_suggested_name_rules is synchronous, so no await needed here
         is_valid, rationale = validate_suggested_name_rules(suggested_name, client_profile)
+        
+        # Calculate expression number for the suggested name to return it
+        suggested_exp_num, _ = calculate_expression_number_with_details(suggested_name)
 
         return jsonify({
             "suggested_name": suggested_name,
             "is_valid": is_valid,
             "rationale": rationale,
-            "expression_number": calculate_expression_number_with_details(suggested_name)[0]
+            "expression_number": suggested_exp_num # Ensure this is the calculated value
         }), 200
 
     except Exception as e:

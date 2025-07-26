@@ -1,11 +1,17 @@
-Flask[async]
+Flask[async,redis]
 Flask-Cors
 Flask-Limiter
 Flask-Caching
 python-dotenv
-langchain==0.1.16
-langchain-google-genai==0.0.11
-pydantic==1.10.13
-psutil
 reportlab
-gunicorn
+langchain
+langchain-core
+langchain-google-genai
+pydantic==1.10.13 # Ensure compatibility with .dict()
+uvicorn # Added for ASGI worker
+google-generativeai # Ensure this is present for direct Gemini API interaction via LangChain
+google-api-core
+googleapis-common-protos
+grpcio
+grpcio-status
+tenacity
