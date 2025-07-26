@@ -2181,10 +2181,10 @@ async def initial_suggestions_endpoint():
             target_numbers
         )
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
-
+        suggestions_data = name_suggestions_output.dict()
         return jsonify({
-            "suggestions": name_suggestions_output.suggestions,
-            "reasoning": name_suggestions_output.reasoning,
+            "suggestions": suggestions_data["suggestions"],
+            "reasoning": suggestions_data["reasoning"],
             "profile_data": profile_data
         }), 200
 

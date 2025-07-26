@@ -20,7 +20,7 @@ async def test_gemini_connection():
     try:
         # Use the same model and settings as in your Flask app
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.0-pro",
+            model="gemini-1.5-flash",
             google_api_key=google_api_key,
             temperature=0.7,
             convert_system_message_to_human=True
