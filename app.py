@@ -89,7 +89,6 @@ CORS(app, resources={r"/*": {"origins": [
 logger.info("CORS configured for the Flask app.")
 
 # --- Decorators ---
-# Removed @performance_monitor as psutil is removed.
 def cached_operation(timeout=3600): # Increased cache timeout for profile data
     def decorator(func):
         @wraps(func)
@@ -761,18 +760,6 @@ def check_planetary_compatibility(expression_number: int, astro_info: Dict) -> D
         if ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9:
              compatibility_flags.append(f"Caution: Expression {expression_number} (Mars) may conflict with a Ketu/Neptune-ruled Ascendant ({ascendant_info.get('sign', 'N/A')}).")
 
-        # General non-alignment (if not covered by specific conflicts/favors)
-        # This logic is complex and might lead to too many flags. Better to focus on explicit conflicts/alignments.
-        # if expression_planet and expression_number not in favorable_map_by_ascendant_ruler.get(ascendant_ruler, []) and \
-        #    not ((ascendant_ruler == 'Sun (☉)' and expression_number in [8, 4]) or \
-        #         (ascendant_ruler == 'Moon (☽)' and expression_number == 8) or \
-        #         (ascendant_ruler == 'Jupiter (♃)' and expression_number in [4, 8]) or \
-        #         (ascendant_ruler == 'Mercury (☿)' and expression_number in [4, 8]) or \
-        #         (ascendant_ruler == 'Venus (♀)' and expression_number == 8) or \
-        #         (ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9)):
-        #     compatibility_flags.append(f"Expression {expression_number} ({expression_planet}) may not have direct harmony with your Ascendant ruler ({ascendant_ruler}).")
-
-
     # Rule 2: Planetary Conflicts/Support from conceptual chart (from PDF)
     if expression_number == 8 and any(p['planet'] == 'Saturn (♄)' and p['nature'] == 'Malefic' for p in planetary_lords):
         compatibility_flags.append("Caution: Expression 8 (Saturn) may be challenging if your conceptual chart indicates a debilitated Saturn, potentially amplifying obstacles.")
@@ -1181,7 +1168,7 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         2: ["Build self-confidence and assertiveness", "Practice decisive action", "Establish clear personal boundaries"],
         3: ["Focus and prioritize energy", "Develop discipline in creative pursuits", "Cultivate deeper, more meaningful relationships"],
         4: ["Embrace flexibility and adaptability", "Take regular breaks to avoid burnout", "Express creativity outside of work"],
-        5: ["Practice grounding and stability", "Develop commitment and follow-through", "Avoid impulsive decisions and overindulgence"],
+        5: ["Restlessness", "Commitment issues", "Impulsiveness", "Overindulgence"],
         6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
         7: ["Engage in practical application of knowledge", "Seek community and connection", "Balance introspection with external engagement"],
         8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy", "Focus on ethical power usage"],
