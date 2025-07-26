@@ -2,7 +2,7 @@ import os
 import datetime
 import re
 import json
-import asyncio
+import asyncio # <-- Import asyncio
 import logging
 from functools import wraps
 from typing import Dict, List, Optional, Tuple, Any
@@ -17,11 +17,8 @@ from collections import Counter
 import sys
 import random
 
-# CORRECTED: Added ThreadPoolExecutor import
-from concurrent.futures import ThreadPoolExecutor
-
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin # <-- Import cross_origin for clarity, though CORS(app) handles it
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
@@ -54,7 +51,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('numerology_app.log'),
-        logging.StreamHandler(sys.stdout) # Correctly use StreamHandler for sys.stdout
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
@@ -74,17 +71,17 @@ try:
     limiter = Limiter(
         app,
         default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.getenv('REDIS_URL', 'memory://') # Use memory:// for local dev if Redis not available
+        storage_uri=os.getenv('REDIS_URL', 'memory://')
     )
     logger.info("Flask-Caching and Flask-Limiter initialized successfully.")
 except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
 
-# CORS Configuration
+# CORS Configuration - CRITICAL FIX: Explicitly list Netlify domain
 CORS(app, resources={r"/*": {"origins": [
-    "https://namecorrectionsheelaa.netlify.app", # <-- Add your exact Netlify URL here
+    "https://namecorrectionsheelaa.netlify.app", # <-- Explicitly added your Netlify domain
     "https://*.netlify.app",                     # <-- Keep this for other potential Netlify deploys
-    "http://localhost:3000",                     # <-- For local development
+    "http://localhost:3000",                     # <-- For local frontend development
     "http://127.0.0.1:5000"                      # <-- If your Flask runs on 127.0.0.1:5000 locally
 ], "supports_credentials": True}})
 
@@ -99,9 +96,6 @@ def cached_operation(timeout=300):
                 logger.warning(f"Cache not initialized, skipping caching for {func.__name__}.")
                 return func(*args, **kwargs)
 
-            # Generate a cache key from function arguments
-            # This needs to be robust for dicts, lists, etc.
-            # For simplicity, let's use a hash of args and kwargs
             key_parts = [str(arg) for arg in args]
             for k, v in sorted(kwargs.items()):
                 key_parts.append(f"{k}={v}")
@@ -162,73 +156,50 @@ class NameSuggestion(BaseModel):
     expression_number: int = Field(description="The calculated Expression Number for the suggested name.")
 
 class NameSuggestionsOutput(BaseModel):
-    suggestions: List[NameSuggestion] = Field(description="A list of suggested name variations with their rationales and expression numbers.")
-    reasoning: str = Field(description="Overall reasoning for the selection of target numbers and the approach to name generation.")
+    suggestions: List[NameSuggestion] = Field(description="A list of suggested name variations.")
+    reasoning: str = Field(description="Overall reasoning for the name suggestion strategy.")
 
-# --- Langchain Model Initialization ---
+parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
+
+# --- LLM Manager ---
 class LLMManager:
     def __init__(self):
         self.llm = None
         self.creative_llm = None
         self.analytical_llm = None
         self.memory = None
-        self.validation_chat_memories = {}
-        self.executor = ThreadPoolExecutor(max_workers=3)
+        self._initialize_llms()
 
-    def initialize(self) -> bool:
-        """Initialize multiple LLM instances for different purposes"""
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            logger.error("GOOGLE_API_KEY environment variable not found. LLM initialization failed.")
-            return False
+    def _initialize_llms(self):
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not google_api_key:
+            logger.error("GOOGLE_API_KEY environment variable not set.")
+            raise ValueError("GOOGLE_API_KEY is not set. Please set it to use the Generative AI models.")
 
         try:
-            self.llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                google_api_key=api_key,
-                temperature=0.7,
-                top_p=0.9,
-                top_k=40,
-                convert_system_message_to_human=True
-            )
-
-            self.creative_llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                google_api_key=api_key,
-                temperature=0.9, # Increased for more creative/detailed report generation
-                top_p=0.95,
-                top_k=60,
-                convert_system_message_to_human=True
-            )
-
-            self.analytical_llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                google_api_key=api_key,
-                temperature=0.3,
-                top_p=0.8,
-                top_k=20,
-                convert_system_message_to_human=True
-            )
-
-            self.memory = ConversationBufferWindowMemory(
-                memory_key="chat_history",
-                return_messages=True,
-                k=10
-            )
-
+            # General purpose LLM for chat
+            self.llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.7)
+            # Creative LLM for name suggestions and report generation (more creative output)
+            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.9)
+            # Analytical LLM for validation (more factual, less creative)
+            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.3)
+            
+            # Memory for chat history
+            self.memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True)
+            
             logger.info("All LLM instances initialized successfully.")
-            return True
-
         except Exception as e:
-            logger.error(f"Error initializing LLM: {e}")
-            return False
+            logger.error(f"Failed to initialize LLM instances: {e}")
+            raise
 
 llm_manager = LLMManager()
-
-# --- Custom Pydantic Parser ---
-parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
-
-# ... (Previous imports and Flask app initialization) ...
+logger.info("Initializing Numerology Application...")
+try:
+    llm_manager._initialize_llms()
+    logger.info("Application initialized successfully")
+except Exception as e:
+    logger.error(f"Application initialization failed: {e}")
+    sys.exit(1) # Exit if LLMs can't be initialized
 
 # --- REFINED PROMPTS FOR NUMEROLOGY APPLICATION ---
 NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.
@@ -431,7 +402,6 @@ GENERAL_CHAT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant 
 - Respectful of numerological traditions
 When users need personalized services, guide them toward providing complete information for proper analysis."""
 
-### START OF NEW/MODIFIED CODE: NAME_VALIDATION_SYSTEM_PROMPT ###
 NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise, rule-based validation of name suggestions. Your role is to act as a rigorous numerological and astro-numerological validator.
 
 ## YOUR MISSION:
@@ -459,7 +429,6 @@ Based on the provided client profile and the suggested name's calculated data, p
 ## OUTPUT FORMAT:
 Provide your response directly, starting with "YES" or "NO", followed by a comprehensive, rule-based explanation.
 """
-### END OF NEW/MODIFIED CODE: NAME_VALIDATION_SYSTEM_PROMPT ###
 
 # --- Helper Functions (Numerology Calculations) ---
 def clean_name(name: str) -> str:
@@ -939,7 +908,9 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
 # --- Main Profile Calculation Function ---
 @cached_operation(timeout=3600)
 @performance_monitor
-def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, desired_outcome: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
+# This function itself is not a route, so it can remain async if it performs awaitable operations.
+# The `asyncio.run()` will handle calling it from a sync context.
+async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, desired_outcome: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
     """
     Get comprehensive numerology profile with caching and advanced calculations.
     Now accepts suggested_name_expression_num to update Lo Shu Grid for validation context.
@@ -1232,7 +1203,7 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         2: ["Build self-confidence and assertiveness", "Practice decisive action", "Establish clear personal boundaries"],
         3: ["Focus and prioritize energy", "Develop discipline in creative pursuits", "Cultivate deeper, more meaningful relationships"],
         4: ["Embrace flexibility and adaptability", "Take regular breaks to avoid burnout", "Express creativity outside of work"],
-        5: ["Practice commitment and follow-through", "Develop grounding habits like meditation", "Plan ahead to manage impulses"],
+        5: ["Restlessness", "Commitment issues", "Impulsiveness", "Overindulgence"],
         6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
         7: ["Actively engage in social activities", "Practice expressing emotions openly", "Apply knowledge practically in daily life"],
         8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy"],
@@ -1499,8 +1470,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     if expression_number == 4 and birth_day_number == 4:
          edge_cases.append({
             "type": "Double 4 (Expression & Birth Day Number - Amplified Karma)",
-            "description": "Having both Expression and Birth Day Numbers as 4 can amplify the karmic lessons associated with hard work, discipline, and potential rigidity. It suggests a life path heavily focused on building and structure, which can sometimes feel burdensome and limit flexibility.",
-            "resolution_guidance": "It's crucial to balance hard work with self-care and flexibility. Seek opportunities for creative expression and avoid becoming too rigid or overwhelmed by responsibility. Astrological validation is highly recommended to understand specific challenges and periods of intense effort."
+            "description": "Having both Expression and Birth Day Numbers as 4 can amplify the karmic lessons associated with hard work, discipline, and potential rigidity. It suggests a life path heavily focused on building and structure, which can sometimes feel burdensome and limit flexibility. Astrological validation is highly recommended to understand specific challenges and periods of intense effort."
         })
 
     # Lo Shu Grid lacks 5 or 6 (Avoid assigning name #5 or #6 to Expression if missing) (from PDF)
@@ -1651,7 +1621,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
         edge_cases.append({
             "type": f"Expression {expression_number} with Malefic Moon Influence",
             "description": f"Expression {expression_number} (Moon/Ketu) may bring emotional volatility, mood swings, or difficulties in relationships if your conceptual chart indicates a malefic Moon. This can impact inner peace.",
-            "resolution_guidance": "Practice emotional regulation and self-care. Seek stability in your environment. A name with a different Expression number might offer more emotional resilience."
+            "resolution_guidance": "Practice emotional regulation and self-care. Seek stability in your environment. A name with a different Expression number might offer a more emotional resilience."
         })
 
     # If chart favors Sun, a name totaling 1 may amplify positivity.
@@ -1671,7 +1641,6 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
 
     return edge_cases
 
-### START OF NEW/MODIFIED CODE: validate_suggested_name_rules function ###
 # --- Validation Logic for a Single Name ---
 def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> Tuple[bool, str]:
     """
@@ -1773,7 +1742,6 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
         reasons.append("The suggested name has fundamental numerological or astrological conflicts that make it unsuitable.")
 
     return is_valid, " ".join(reasons).strip()
-### END OF NEW/MODIFIED CODE: validate_suggested_name_rules function ###
 
 # Function to add page numbers to the canvas (modified for onFirstPage/onLaterPages)
 def _header_footer(canvas_obj, doc):
@@ -2005,11 +1973,11 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Ascendant/Lagna (Rising Sign)</b>: {astro.get('ascendant_info', {}).get('sign', 'N/A')} (Conceptual Ruler: {astro.get('ascendant_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
-        Story.append(Paragraph(f"<b>Notes:</b> {astro.get('ascendant_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText'])) # Corrected
+        Story.append(Paragraph(f"<b>Notes:</b> {astro.get('ascendant_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Moon Sign/Rashi</b>: {astro.get('moon_sign_info', {}).get('sign', 'N/A')} (Conceptual Ruler: {astro.get('moon_sign_info', {}).get('ruler', 'N/A')})", styles['NormalBodyText']))
-        Story.append(Paragraph(f"<b>Notes:</b> {astro.get('moon_sign_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText'])) # Corrected
+        Story.append(Paragraph(f"<b>Notes:</b> {astro.get('moon_sign_info', {}).get('notes', 'N/A')}", styles['ItalicBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
         
         Story.append(Paragraph("<b>Conceptual Planetary Lords & Degrees (Benefic/Malefic Influences)</b>:", styles['BoldBodyText']))
@@ -2190,12 +2158,11 @@ class NameSuggestionEngine:
         chain = prompt | llm_instance | parser
         
         try:
-            # Use ainvoke for async call
-            response = await chain.ainvoke({})
+            # This is an async call, will be awaited by asyncio.run() in the route
+            response = await chain.ainvoke({}) 
             return response
         except Exception as e:
             logger.error(f"LLM Name Suggestion Generation Error: {e}", exc_info=True)
-            # Fallback or raise a more specific error
             raise ValueError(f"Failed to generate name suggestions: {e}")
 
 # --- Flask Routes ---
@@ -2204,13 +2171,13 @@ def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
 
+# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
 @app.route('/initial_suggestions', methods=['POST'])
 @rate_limited("10 per minute")
 @performance_monitor
-async def initial_suggestions_endpoint():
+def initial_suggestions_endpoint(): # <-- Changed from async def
     """
     Generates initial name suggestions based on the provided profile.
-    This endpoint does NOT generate the full report.
     """
     data = request.json
     full_name = data.get('full_name')
@@ -2221,30 +2188,30 @@ async def initial_suggestions_endpoint():
         return jsonify({"error": "Missing full_name, birth_date, or desired_outcome for initial suggestions."}), 400
 
     try:
-        # Get comprehensive profile data (without suggested name context for Lo Shu)
-        profile_data = get_comprehensive_numerology_profile(
+        # Wrap async calls with asyncio.run()
+        profile_data = asyncio.run(get_comprehensive_numerology_profile(
             full_name=full_name,
             birth_date=birth_date,
             birth_time=data.get('birth_time'),
             birth_place=data.get('birth_place'),
             desired_outcome=desired_outcome
-        )
+        ))
 
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
 
-        name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
-            llm_manager.creative_llm, # Use creative LLM for suggestions
+        # Wrap async calls with asyncio.run()
+        name_suggestions_output = asyncio.run(NameSuggestionEngine.generate_name_suggestions(
+            llm_manager.creative_llm,
             full_name,
             desired_outcome,
             target_numbers
-        )
+        ))
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
 
-        # Return the generated suggestions and the full profile data for frontend to store
         return jsonify({
             "suggestions": name_suggestions_output.suggestions,
             "reasoning": name_suggestions_output.reasoning,
-            "profile_data": profile_data # Send full profile data for later use in validation
+            "profile_data": profile_data
         }), 200
 
     except Exception as e:
@@ -2261,13 +2228,12 @@ def validate_name_endpoint():
     """
     data = request.json
     suggested_name = data.get('suggested_name')
-    client_profile = data.get('client_profile') # Full profile data from frontend
+    client_profile = data.get('client_profile')
 
     if not all([suggested_name, client_profile]):
         return jsonify({"error": "Missing suggested_name or client_profile for validation."}), 400
 
     try:
-        # The fix is here: validate_suggested_name_rules is now defined before this point.
         is_valid, rationale = validate_suggested_name_rules(suggested_name, client_profile)
 
         return jsonify({
@@ -2281,34 +2247,31 @@ def validate_name_endpoint():
         logger.error(f"Error validating name: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred during name validation. Please try again later."}), 500
 
-@app.route('/generate_text_report', methods=['POST'])
-@rate_limited("5 per minute") # Apply a rate limit appropriate for preview generation
+# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+@app.route('/generate_pdf_report', methods=['POST'])
+@rate_limited("5 per hour")
 @performance_monitor
-async def generate_text_report_endpoint():
+def generate_pdf_report_endpoint(): # <-- Changed from async def
     """
-    Endpoint to generate and return the numerology report content as plain text (Markdown).
-    This is used for the frontend preview.
+    Endpoint to generate and return a PDF numerology report.
     """
     report_data_from_frontend = request.json
     
-    # Ensure essential data is present
     if not all([report_data_from_frontend.get('full_name'), report_data_from_frontend.get('birth_date'), report_data_from_frontend.get('confirmed_suggestions') is not None]):
-        return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
+        return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
 
     try:
-        # Get comprehensive profile data (reusing existing logic)
-        profile_details = get_comprehensive_numerology_profile(
+        # Wrap async calls with asyncio.run()
+        profile_details = asyncio.run(get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
             desired_outcome=report_data_from_frontend.get('desired_outcome')
-        )
+        ))
         
-        # Add confirmed suggestions to the profile data for the LLM
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
-        # Generate the main report content using the LLM (same logic as PDF generation)
         llm_input_data = json.dumps(profile_details, indent=2)
         
         report_prompt = ChatPromptTemplate.from_messages([
@@ -2316,34 +2279,97 @@ async def generate_text_report_endpoint():
             HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
         ])
         
-        report_chain = report_prompt | llm_manager.creative_llm # Use creative LLM for report generation
+        report_chain = report_prompt | llm_manager.creative_llm
+        
+        logger.info("Calling LLM for advanced report generation...")
+        # Wrap async calls with asyncio.run()
+        llm_report_response = asyncio.run(report_chain.ainvoke({}))
+        logger.info("LLM advanced report generation complete.")
+
+        pdf_data = {
+            "full_name": profile_details['full_name'],
+            "birth_date": profile_details['birth_date'],
+            "profile_details": profile_details,
+            "intro_response": llm_report_response.content,
+            "confirmed_suggestions": profile_details['confirmed_suggestions']
+        }
+
+        pdf_bytes = create_numerology_pdf(pdf_data)
+        
+        logger.info(f"Generated PDF bytes size: {len(pdf_bytes)} bytes")
+
+        filename = f"Numerology_Report_{report_data_from_frontend['full_name'].replace(' ', '_')}.pdf"
+        
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to generate PDF report: {e}"}), 500
+
+# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+@app.route('/generate_text_report', methods=['POST'])
+@rate_limited("5 per minute")
+@performance_monitor
+def generate_text_report_endpoint(): # <-- Changed from async def
+    """
+    Endpoint to generate and return the numerology report content as plain text (Markdown).
+    This is used for the frontend preview.
+    """
+    report_data_from_frontend = request.json
+    
+    if not all([report_data_from_frontend.get('full_name'), report_data_from_frontend.get('birth_date'), report_data_from_frontend.get('confirmed_suggestions') is not None]):
+        return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
+
+    try:
+        # Wrap async calls with asyncio.run()
+        profile_details = asyncio.run(get_comprehensive_numerology_profile(
+            full_name=report_data_from_frontend['full_name'],
+            birth_date=report_data_from_frontend['birth_date'],
+            birth_time=report_data_from_frontend.get('birth_time'),
+            birth_place=report_data_from_frontend.get('birth_place'),
+            desired_outcome=report_data_from_frontend.get('desired_outcome')
+        ))
+        
+        profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
+
+        llm_input_data = json.dumps(profile_details, indent=2)
+        
+        report_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
+            HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
+        ])
+        
+        report_chain = report_prompt | llm_manager.creative_llm
         
         logger.info("Calling LLM for text report generation (preview)...")
-        llm_report_response = await report_chain.ainvoke({})
+        # Wrap async calls with asyncio.run()
+        llm_report_response = asyncio.run(report_chain.ainvoke({}))
         logger.info("LLM text report generation complete.")
 
-        # Return the content directly as JSON
         return jsonify({"report_content": llm_report_response.content}), 200
 
     except Exception as e:
         logger.error(f"Error generating text report for preview: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate text report for preview: {e}"}), 500
-# --- END OF NEW CODE FOR REPORT PREVIEW ---
 
-# --- Existing /chat endpoint (for context) ---
+# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute")
 @performance_monitor
-async def chat():
+def chat(): # <-- Changed from async def
     """
     Handles general chat messages.
-    The advanced report generation and initial suggestions are now separate endpoints.
     """
     data = request.json
     message = data.get('message')
     chat_type = data.get('type') # 'general_chat' or 'validation_chat'
 
-    if not message and chat_type != 'validation_chat': # 'validation_chat' might have empty message for initial prompt
+    if not message and chat_type != 'validation_chat':
         return jsonify({"error": "No message provided"}), 400
     
     if chat_type != 'validation_chat' and not SecurityManager.validate_input_security(message):
@@ -2363,10 +2389,8 @@ async def chat():
             if not original_profile or not suggested_name:
                 return jsonify({"error": "Missing original profile or suggested name for validation chat."}), 400
             
-            # Recalculate suggested name's expression for context
             suggested_expression_num, suggested_expression_details = calculate_expression_number_with_details(suggested_name)
 
-            # Extract original profile data for conceptual astro calculations
             birth_date_val = original_profile.get('birth_date')
             birth_time_val = original_profile.get('birth_time')
             birth_place_val = original_profile.get('birth_place')
@@ -2374,17 +2398,13 @@ async def chat():
             current_life_path_val = original_profile.get('life_path_number')
             current_birth_day_val = original_profile.get('birth_day_number')
 
-            # Perform conceptual astro calculations for the validation context
             val_astro_info = get_conceptual_astrological_data(birth_date_val, birth_time_val, birth_place_val)
             
-            # Prepare astro_info for compatibility and edge case checks
             val_planetary_compatibility = check_planetary_compatibility(suggested_expression_num, val_astro_info)
-            val_astro_info['planetary_compatibility'] = val_planetary_compatibility # Update with compatibility
+            val_astro_info['planetary_compatibility'] = val_planetary_compatibility
 
-            # NEW: Recalculate Lo Shu Grid including the suggested name's influence
             val_lo_shu_grid = calculate_lo_shu_grid_with_details(birth_date_val, suggested_expression_num)
             
-            # NEW: Phonetic vibration analysis for the suggested name, with desired outcome
             phonetic_vibration_for_suggested = get_phonetic_vibration_analysis(suggested_name, desired_outcome_val)
 
             llm_validation_input_data = {
@@ -2398,13 +2418,12 @@ async def chat():
                 "desired_outcome": desired_outcome_val,
                 "suggested_name": suggested_name,
                 "suggested_expression_num": suggested_expression_num,
-                "suggested_core_interpretation": "Interpretation for " + str(suggested_expression_num), # Placeholder for LLM to fill
-                "lo_shu_grid": val_lo_shu_grid, # This now includes suggested name's influence
-                "astro_info": val_astro_info, # Contains all astro details
-                "phonetic_vibration": phonetic_vibration_for_suggested, # This is now more detailed
+                "suggested_core_interpretation": "Interpretation for " + str(suggested_expression_num),
+                "lo_shu_grid": val_lo_shu_grid,
+                "astro_info": val_astro_info,
+                "phonetic_vibration": phonetic_vibration_for_suggested,
             }
 
-            # The prompt for validation chat
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])),
                 HumanMessage(
@@ -2426,7 +2445,7 @@ async def chat():
 
                         "**DETAILED NUMEROLOGICAL & ASTRO-NUMEROLOGICAL DATA FOR SUGGESTED NAME:**\n"
                         "Lo Shu Grid: {}\n"
-                        "Astro Info: {}\n" # Now includes all astro details
+                        "Astro Info: {}\n"
                         "Phonetic Vibration: {}\n\n"
 
                         "**CHAT HISTORY:**\n"
@@ -2446,7 +2465,8 @@ async def chat():
             
             chain = prompt | llm_manager.analytical_llm
 
-            ai_response = await chain.ainvoke({}) # Use ainvoke for async call
+            # Wrap async calls with asyncio.run()
+            ai_response = asyncio.run(chain.ainvoke({}))
             
             return jsonify({"response": ai_response.content}), 200
 
@@ -2462,7 +2482,8 @@ async def chat():
             
             chain = prompt | llm_manager.llm
             
-            ai_response = await chain.ainvoke({"input": message}) # Use ainvoke for async call
+            # Wrap async calls with asyncio.run()
+            ai_response = asyncio.run(chain.ainvoke({"input": message}))
             
             llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
             
@@ -2474,51 +2495,23 @@ async def chat():
         logger.error(f"Error in chat endpoint: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred. Please try again later."}), 500
 
-# ... (Rest of your error handlers and application initialization) ...
-
-# --- Error Handlers ---
-@app.errorhandler(429)
-def ratelimit_handler(e):
-    return jsonify({
-        "error": "Rate limit exceeded. Please try again later.",
-        "retry_after": getattr(e, 'retry_after', 60)
-    }), 429
-
+# Error handlers
 @app.errorhandler(400)
-def bad_request_handler(e):
-    return jsonify({"error": "Bad request. Please check your input."}), 400
-
-@app.errorhandler(500)
-def internal_error_handler(e):
-    logger.error(f"Internal server error: {e}", exc_info=True)
-    return jsonify({"error": "Internal server error. Please try again later."}), 500
+def bad_request(error):
+    logger.error(f"Bad Request: {error}")
+    return jsonify({"error": "Bad Request: " + str(error.description)}), 400
 
 @app.errorhandler(404)
-def not_found_handler(e):
-    return jsonify({"error": "Endpoint not found."}), 404
+def not_found(error):
+    logger.error(f"Not Found: {error}")
+    return jsonify({"error": "Not Found: The requested URL was not found on the server."}), 404
 
-# --- Application Initialization ---
-def initialize_application():
-    """Initialize all application components"""
-    logger.info("Initializing Numerology Application...")
-    
-    if not llm_manager.initialize():
-        logger.error("Failed to initialize LLM manager. Exiting application.")
-        sys.exit(1)
-    
-    logger.info("Application initialized successfully")
-    return True
+@app.errorhandler(500)
+def internal_server_error(error):
+    logger.error(f"Internal Server Error: {error}", exc_info=True)
+    return jsonify({"error": "Internal Server Error: The server encountered an internal error and was unable to complete your request. Please try again later."}), 500
 
-initialize_application()
-
-if __name__ == "__main__":
-    logger.info("Starting development server...")
-    # Using asyncio.run to run the Flask app in an async context for aiohttp/gunicorn compatibility
-    # For production, Gunicorn with an async worker (e.g., uvicorn) is recommended.
-    # For local testing, this is usually fine.
-    app.run(
-        host="0.0.0.0", 
-        port=int(os.getenv("PORT", 5000)), 
-        debug=os.getenv("FLASK_DEBUG", "False").lower() == "true"
-    )
-
+if __name__ == '__main__':
+    # When running locally, you might want to run with `flask run` or `gunicorn` directly.
+    # For Render, 'gunicorn app:app' command will handle this.
+    app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
