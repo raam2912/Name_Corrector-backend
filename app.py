@@ -5,15 +5,13 @@ import json
 import asyncio
 import logging
 from functools import wraps
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Counter, Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 import hashlib
 import time
 import secrets
 import hmac
-import psutil
-from collections import Counter
 import sys
 import random
 
@@ -88,6 +86,7 @@ CORS(app, resources={r"/*": {"origins": [
 logger.info("CORS configured for the Flask app.")
 
 # --- Decorators ---
+# Removed @performance_monitor as psutil is removed.
 def cached_operation(timeout=300):
     def decorator(func):
         @wraps(func)
@@ -118,20 +117,6 @@ def cached_operation(timeout=300):
             return result
         return wrapper
     return decorator
-
-def performance_monitor(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        start_time = time.perf_counter()
-        if asyncio.iscoroutinefunction(func):
-            result = await func(*args, **kwargs)
-        else:
-            result = func(*args, **kwargs)
-        end_time = time.perf_counter()
-        elapsed_time = end_time - start_time
-        logger.info(f"{func.__name__} executed in {elapsed_time:.3f} seconds")
-        return result
-    return wrapper
 
 # --- Security Manager ---
 class SecurityManager:
@@ -169,7 +154,6 @@ class LLMManager:
 
     def _initialize_llms(self):
         google_api_key = os.getenv("GOOGLE_API_KEY")
-        # Removed debug print statement as it's no longer needed
 
         if not google_api_key:
             logger.error("GOOGLE_API_KEY environment variable not set.")
@@ -286,11 +270,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - **Personality Number**:
     - Describe in detail how others perceive them, their outer persona, and the first impressions they make.
     - Discuss how this external presentation can be leveraged for their desired outcome.
-- **Integration Dynamics**:
-    - Analyze the alignment or potential conflict between their inner (Soul Urge) and outer (Personality) selves.
-    - Provide guidance on harmonizing these aspects for greater authenticity and impact.
-
-### 5. **🌟 STRATEGIC NAME CORRECTIONS: Your Path to Transformation** (CRITICAL, Highly Detailed)
+- **🌟 STRATEGIC NAME CORRECTIONS: Your Path to Transformation** (CRITICAL, Highly Detailed)
 - Present *only the confirmed suggested names provided in the input*, each with its Expression Number.
 - **Use the exact detailed rationales provided in the input data.**
 - Explain in multiple paragraphs how each suggestion specifically enhances their desired outcome, providing concrete scenarios.
@@ -902,7 +882,6 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
 
 # --- Main Profile Calculation Function ---
 @cached_operation(timeout=3600)
-@performance_monitor
 async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, desired_outcome: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
     """
     Get comprehensive numerology profile with caching and advanced calculations.
@@ -1606,7 +1585,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     if expression_number in [2,7] and any(p['planet'] == 'Moon (☽)' and p['nature'] == 'Benefic' for p in planetary_lords):
         edge_cases.append({
             "type": f"Expression {expression_number} with Favored Moon Influence",
-            "description": f"Expression {expression_number} (Moon/Ketu) is amplified by a favored Moon in your conceptual chart, enhancing intuition, emotional balance, and spiritual insight. This supports deep connections and inner peace.",
+            "description": f"Expression {expression_number} (Moon/Ketu) is amplified by a favored Moon in your conceptual chart, enhancing intuition and emotional balance, and spiritual insight. This supports deep connections and inner peace.",
             "resolution_guidance": "Trust your intuition and nurture your emotional well-being. Embrace your sensitive nature as a strength."
         })
     # If chart has malefic Moon, avoid 2 or 7 (implied from PDF's general rule of avoiding conflicts)
@@ -2160,7 +2139,6 @@ def home():
 
 @app.route('/initial_suggestions', methods=['POST'])
 @limiter.limit("10 per minute") # Apply limiter directly
-@performance_monitor
 async def initial_suggestions_endpoint():
     """
     Generates initial name suggestions based on the provided profile.
@@ -2209,7 +2187,6 @@ async def initial_suggestions_endpoint():
 
 @app.route('/validate_name', methods=['POST'])
 @limiter.limit("30 per minute") # Apply limiter directly
-@performance_monitor
 async def validate_name_endpoint():
     """
     Validates a single suggested name against the client's profile and rules.
@@ -2242,7 +2219,6 @@ async def validate_name_endpoint():
 
 @app.route('/generate_pdf_report', methods=['POST'])
 @limiter.limit("5 per hour") # Apply limiter directly
-@performance_monitor
 async def generate_pdf_report_endpoint():
     """
     Endpoint to generate and return a PDF numerology report.
@@ -2303,7 +2279,6 @@ async def generate_pdf_report_endpoint():
 
 @app.route('/generate_text_report', methods=['POST'])
 @limiter.limit("5 per minute") # Apply limiter directly
-@performance_monitor
 async def generate_text_report_endpoint():
     """
     Endpoint to generate and return the numerology report content as plain text (Markdown).
@@ -2346,7 +2321,6 @@ async def generate_text_report_endpoint():
 
 @app.route('/chat', methods=['POST'])
 @limiter.limit("30 per minute") # Apply limiter directly
-@performance_monitor
 async def chat():
     """
     Handles general chat messages.
