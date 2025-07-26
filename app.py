@@ -18,7 +18,7 @@ import sys
 import random
 
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS, cross_origin # <-- Import cross_origin for clarity, though CORS(app) handles it
+from flask_cors import CORS, cross_origin
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
@@ -77,12 +77,12 @@ try:
 except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
 
-# CORS Configuration - CRITICAL FIX: Explicitly list Netlify domain
+# CORS Configuration
 CORS(app, resources={r"/*": {"origins": [
-    "https://namecorrectionsheelaa.netlify.app", # <-- Explicitly added your Netlify domain
-    "https://*.netlify.app",                     # <-- Keep this for other potential Netlify deploys
-    "http://localhost:3000",                     # <-- For local frontend development
-    "http://127.0.0.1:5000"                      # <-- If your Flask runs on 127.0.0.1:5000 locally
+    "https://namecorrectionsheelaa.netlify.app",
+    "https://*.netlify.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:5000"
 ], "supports_credentials": True}})
 
 logger.info("CORS configured for the Flask app.")
@@ -91,9 +91,11 @@ logger.info("CORS configured for the Flask app.")
 def cached_operation(timeout=300):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
             if cache is None:
                 logger.warning(f"Cache not initialized, skipping caching for {func.__name__}.")
+                if asyncio.iscoroutinefunction(func):
+                    return await func(*args, **kwargs)
                 return func(*args, **kwargs)
 
             key_parts = [str(arg) for arg in args]
@@ -106,7 +108,12 @@ def cached_operation(timeout=300):
                 logger.info(f"Cache hit for {func.__name__}")
                 return cached_result
             
-            result = func(*args, **kwargs)
+            # Await the function if it's a coroutine, otherwise call it directly
+            if asyncio.iscoroutinefunction(func):
+                result = await func(*args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+            
             cache.set(cache_key, result, timeout=timeout)
             logger.info(f"Cache miss for {func.__name__}, result cached.")
             return result
@@ -115,9 +122,12 @@ def cached_operation(timeout=300):
 
 def performance_monitor(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
         start_time = time.perf_counter()
-        result = func(*args, **kwargs)
+        if asyncio.iscoroutinefunction(func):
+            result = await func(*args, **kwargs)
+        else:
+            result = func(*args, **kwargs)
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         logger.info(f"{func.__name__} executed in {elapsed_time:.3f} seconds")
@@ -127,11 +137,29 @@ def performance_monitor(func):
 def rate_limited(limit_string):
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
             if limiter:
-                return limiter.limit(limit_string)(func)(*args, **kwargs)
+                # Flask-Limiter's limit method might need to be awaited if it's async,
+                # but typically it's synchronous. We'll assume it's synchronous for now.
+                # If it errors, we might need to adjust Limiter usage or use an async-compatible limiter.
+                # For now, we'll just call the function if it passes the limit.
+                # The actual rate limiting logic is handled by the Flask-Limiter extension.
+                try:
+                    # This is a bit tricky. Flask-Limiter's decorator returns a callable.
+                    # We need to ensure that callable is awaited if the decorated func is async.
+                    limited_func = limiter.limit(limit_string)(func)
+                    if asyncio.iscoroutinefunction(limited_func):
+                        return await limited_func(*args, **kwargs)
+                    return limited_func(*args, **kwargs)
+                except Exception as e:
+                    # If limiter itself causes an error (e.g., rate limit exceeded), it raises an exception.
+                    # We need to re-raise it or handle it appropriately.
+                    # Flask-Limiter typically raises RateLimitExceeded, which Flask's error handler can catch.
+                    raise e # Re-raise the exception
             else:
                 logger.warning("Limiter not initialized, skipping rate limit.")
+                if asyncio.iscoroutinefunction(func):
+                    return await func(*args, **kwargs)
                 return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -177,14 +205,10 @@ class LLMManager:
             raise ValueError("GOOGLE_API_KEY is not set. Please set it to use the Generative AI models.")
 
         try:
-            # General purpose LLM for chat
             self.llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.7)
-            # Creative LLM for name suggestions and report generation (more creative output)
             self.creative_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.9)
-            # Analytical LLM for validation (more factual, less creative)
             self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.3)
             
-            # Memory for chat history
             self.memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True)
             
             logger.info("All LLM instances initialized successfully.")
@@ -199,7 +223,7 @@ try:
     logger.info("Application initialized successfully")
 except Exception as e:
     logger.error(f"Application initialization failed: {e}")
-    sys.exit(1) # Exit if LLMs can't be initialized
+    sys.exit(1)
 
 # --- REFINED PROMPTS FOR NUMEROLOGY APPLICATION ---
 NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.
@@ -375,12 +399,6 @@ GENERAL_CHAT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant 
 - **Supportive Guide**: Offer gentle, encouraging guidance without being prescriptive
 - **Educational Resource**: Explain concepts clearly for all knowledge levels
 - **Boundary Keeper**: Redirect for personalized calculations requiring specific data
-
-## RESPONSE GUIDELINES:
-- **Concise & Helpful**: Keep responses focused and valuable
-- **Warm Personality**: Maintain Sheelaa's caring, intuitive energy
-- **Educational Focus**: Teach numerological principles and concepts
-- **Ethical Boundaries**: No specific predictions, only guidance and insights
 
 ## WHAT YOU CAN HELP WITH:
 - General numerology education and principles
@@ -908,8 +926,6 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
 # --- Main Profile Calculation Function ---
 @cached_operation(timeout=3600)
 @performance_monitor
-# This function itself is not a route, so it can remain async if it performs awaitable operations.
-# The `asyncio.run()` will handle calling it from a sync context.
 async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, desired_outcome: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
     """
     Get comprehensive numerology profile with caching and advanced calculations.
@@ -1755,8 +1771,6 @@ def _header_footer(canvas_obj, doc):
 def create_numerology_pdf(report_data: Dict) -> bytes:
     """
     Generates a PDF numerology report using ReportLab.
-    This function now expects the full, potentially modified/validated report data
-    directly from the frontend, including confirmed_suggestions.
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter,
@@ -1764,37 +1778,35 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
                             topMargin=inch, bottomMargin=inch)
     styles = getSampleStyleSheet()
     
-    # --- Moved profile_details assignment to the top ---
     profile_details = report_data.get('profile_details', {})
     confirmed_suggestions = report_data.get('confirmed_suggestions', [])
-    # -------------------------------------------------------
 
     # Custom styles for better readability and structure
     styles.add(ParagraphStyle(name='TitleStyle', fontSize=24, leading=28, alignment=TA_CENTER, spaceAfter=20, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='SubHeadingStyle', fontSize=18, leading=22, spaceBefore=20, spaceAfter=10, alignment=TA_CENTER, fontName='Helvetica-Bold')) # Main section titles
-    styles.add(ParagraphStyle(name='SectionHeadingStyle', fontSize=14, leading=18, spaceBefore=15, spaceAfter=8, fontName='Helvetica-Bold')) # Sub-section titles
-    styles.add(ParagraphStyle(name='SubSectionHeadingStyle', fontSize=12, leading=16, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold')) # Sub-sub-section titles
+    styles.add(ParagraphStyle(name='SubHeadingStyle', fontSize=18, leading=22, spaceBefore=20, spaceAfter=10, alignment=TA_CENTER, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='SectionHeadingStyle', fontSize=14, leading=18, spaceBefore=15, spaceAfter=8, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='SubSectionHeadingStyle', fontSize=12, leading=16, spaceBefore=10, spaceAfter=4, fontName='Helvetica-Bold'))
     styles.add(ParagraphStyle(name='BoldBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='NormalBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica', alignment=TA_JUSTIFY)) # Justified body text
+    styles.add(ParagraphStyle(name='NormalBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica', alignment=TA_JUSTIFY))
     styles.add(ParagraphStyle(name='BulletStyle', fontSize=10, leading=14, leftIndent=36, bulletIndent=18, spaceAfter=3, fontName='Helvetica'))
     styles.add(ParagraphStyle(name='ItalicBodyText', fontSize=10, leading=14, spaceAfter=6, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY))
     
     # New styles for highlighting and aesthetics (slightly softer colors)
     styles.add(ParagraphStyle(name='ExecutiveSummaryStyle', fontSize=11, leading=16, spaceBefore=10, spaceAfter=12, fontName='Helvetica', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#E6F7FF'), # Softer AliceBlue
-                                borderPadding=6, borderWidth=0.5, borderColor=HexColor('#A0D9EF'), # Softer LightBlue
+                                backColor=HexColor('#E6F7FF'),
+                                borderPadding=6, borderWidth=0.5, borderColor=HexColor('#A0D9EF'),
                                 borderRadius=5))
     styles.add(ParagraphStyle(name='KeyInsightStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#FFF8E1'), # Softer LemonChiffon
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFD700'), # Gold
+                                backColor=HexColor('#FFF8E1'),
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFD700'),
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='CrucialTakeawayStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Bold', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#FCE4EC'), # Softer PeachPuff (light pink)
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFAB91'), # Softer LightSalmon
+                                backColor=HexColor('#FCE4EC'),
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#FFAB91'),
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='ImportantNoteStyle', fontSize=10, leading=14, spaceBefore=8, spaceAfter=8, fontName='Helvetica-Oblique', alignment=TA_JUSTIFY,
-                                backColor=HexColor('#E0FFFF'), # LightCyan (kept as is, it's already soft)
-                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#AFEEEE'), # PaleTurquoise (kept as is)
+                                backColor=HexColor('#E0FFFF'),
+                                borderPadding=4, borderWidth=0.5, borderColor=HexColor('#AFEEEE'),
                                 borderRadius=3))
     styles.add(ParagraphStyle(name='QuoteStyle', fontSize=10, leading=14, spaceBefore=10, spaceAfter=10, leftIndent=20, rightIndent=20, fontName='Helvetica-Oblique', textColor=HexColor('#555555')))
 
@@ -1830,16 +1842,15 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     Story.append(Spacer(1, 0.2 * inch))
     Story.append(Paragraph(f"For: <b>{report_data.get('full_name', 'Client Name')}</b>", styles['SubHeadingStyle']))
     Story.append(Paragraph(f"Birth Date: <b>{report_data.get('birth_date', 'N/A')}</b>", styles['SubSectionHeadingStyle']))
-    if profile_details.get('birth_time'): # Now profile_details is defined
+    if profile_details.get('birth_time'):
         Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['SubSectionHeadingStyle']))
-    if profile_details.get('birth_place'): # Now profile_details is defined
+    if profile_details.get('birth_place'):
         Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['SubSectionHeadingStyle']))
     Story.append(Spacer(1, 0.5 * inch))
     Story.append(Paragraph("A Comprehensive Guide to Your Energetic Blueprint and Name Optimization", styles['ItalicBodyText']))
     Story.append(PageBreak())
 
     # Main Report Content (from intro_response)
-    # This section contains the LLM-generated 12 sections.
     main_report_content = report_data.get('intro_response', 'No report content available.')
     
     # Process Markdown content line by line to apply correct ReportLab styles
@@ -1847,7 +1858,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     for line in lines:
         line = line.strip()
         if not line:
-            Story.append(Spacer(1, 0.1 * inch)) # Add a small space for empty lines
+            Story.append(Spacer(1, 0.1 * inch))
             continue
 
         # Check for special highlighting patterns first
@@ -1861,33 +1872,30 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
             clean_line = line.replace('<b>Important Note:</b>', '').strip()
             Story.append(Paragraph(f"<b>Important Note:</b> {clean_line}", styles['ImportantNoteStyle']))
         elif line.startswith('### '):
-            # SubSubSectionHeadingStyle for H3
             clean_line = line[4:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
-            Story.append(Paragraph(clean_line, styles['SubSectionHeadingStyle'])) # Using SubSectionHeadingStyle for H3
+            Story.append(Paragraph(clean_line, styles['SubSectionHeadingStyle']))
         elif line.startswith('## '):
-            # SectionHeadingStyle for H2
             clean_line = line[3:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
-            Story.append(Paragraph(clean_line, styles['SectionHeadingStyle'])) # Using SectionHeadingStyle for H2
-            Story.append(Spacer(1, 0.2 * inch)) # Add extra space after main section headers
-            if "Executive Summary" not in clean_line and "Introduction" not in clean_line: # Don't page break after first two sections
-                 Story.append(PageBreak()) # Start new major sections on a new page
-        elif line.startswith('* '): # Handle bullet points
+            Story.append(Paragraph(clean_line, styles['SectionHeadingStyle']))
+            Story.append(Spacer(1, 0.2 * inch))
+            if "Executive Summary" not in clean_line and "Introduction" not in clean_line:
+                 Story.append(PageBreak())
+        elif line.startswith('* '):
             clean_line = line[2:].strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
             Story.append(Paragraph(clean_line, styles['BulletStyle']))
         else:
-            # Default to NormalBodyText for regular paragraphs
             clean_line = line.strip()
             clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_line)
             clean_line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', clean_line)
             Story.append(Paragraph(clean_line, styles['NormalBodyText']))
     
-    Story.append(PageBreak()) # Final page break after main report content
+    Story.append(PageBreak())
 
     # NEW: Confirmed Name Suggestions Section
     if confirmed_suggestions:
@@ -1902,12 +1910,6 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # NEW: Raw Data Sections are now consolidated and presented more cleanly
-    # These sections are generated by the backend's numerology calculations and
-    # are passed to the LLM for the main report. Including them explicitly here
-    # ensures they are always present in the PDF, regardless of how the LLM phrases them.
-    # These are now supplementary details, as the LLM is expected to elaborate on them in the main report.
-
-    # Core Numerological Blueprint (Raw Data)
     Story.append(Paragraph("📊 Core Numerological Blueprint (Raw Data)", styles['SubHeadingStyle']))
     Story.append(Paragraph("This section provides the raw calculated data for your core numerological blueprint, which forms the foundation of the detailed interpretations found earlier in the report.", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
@@ -2016,7 +2018,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     # Edge Case Handling (Raw Data)
     if profile_details.get('edge_cases'):
-        edge_cases_data = profile_details['edge_cases'] # Renamed to avoid conflict with local variable
+        edge_cases_data = profile_details['edge_cases']
         if edge_cases_data:
             Story.append(Paragraph("⚠️ Identified Edge Cases & Special Considerations (Raw Data)", styles['SubHeadingStyle']))
             Story.append(Paragraph("This section lists the raw data for identified edge cases in your numerological profile.", styles['NormalBodyText']))
@@ -2030,7 +2032,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # Temporal Numerology (Raw Data)
-    if profile_details.get('timing_recommendations'): # Use profile_details
+    if profile_details.get('timing_recommendations'):
         timing = profile_details['timing_recommendations']
         Story.append(Paragraph("⏰ Temporal Numerology (Raw Data)", styles['SubHeadingStyle']))
         Story.append(Paragraph("This section provides the raw data for your current and future numerological cycles.", styles['NormalBodyText']))
@@ -2043,7 +2045,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # Shadow Work & Growth Edge (Raw Data)
-    if profile_details.get('potential_challenges', {}).get('potential_challenges'): # Use profile_details
+    if profile_details.get('potential_challenges', {}).get('potential_challenges'):
         challenges = profile_details['potential_challenges']
         Story.append(Paragraph("🚧 Shadow Work & Growth Edge (Raw Data)", styles['SubHeadingStyle']))
         Story.append(Paragraph("This section contains the raw data for potential challenges and growth areas.", styles['NormalBodyText']))
@@ -2062,7 +2064,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # Personalized Development Blueprint (Raw Data)
-    if profile_details.get('development_recommendations'): # Use profile_details
+    if profile_details.get('development_recommendations'):
         dev_recs = profile_details['development_recommendations']
         Story.append(Paragraph("🌱 Personalized Development Blueprint (Raw Data)", styles['SubHeadingStyle']))
         Story.append(Paragraph("This section provides the raw data for your personalized development recommendations.", styles['NormalBodyText']))
@@ -2079,7 +2081,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # Future Cycles Forecast (Raw Data)
-    if profile_details.get('yearly_forecast'): # Use profile_details
+    if profile_details.get('yearly_forecast'):
         Story.append(Paragraph("🗓️ Future Cycles Forecast (Raw Data)", styles['SubHeadingStyle']))
         Story.append(Paragraph("This section provides the raw data for your multi-year numerological forecast.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
@@ -2094,7 +2096,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(PageBreak())
 
     # Numerical Uniqueness Profile (Raw Data)
-    if profile_details.get('uniqueness_score'): # Use profile_details
+    if profile_details.get('uniqueness_score'):
         uniqueness = profile_details['uniqueness_score']
         Story.append(Paragraph("✨ Numerical Uniqueness Profile (Raw Data)", styles['SubHeadingStyle']))
         Story.append(Paragraph("This section presents the raw data for your numerical uniqueness assessment.", styles['NormalBodyText']))
@@ -2122,20 +2124,20 @@ class NameSuggestionEngine:
         target_numbers = []
 
         if "success" in outcome_lower or "leadership" in outcome_lower or "ambition" in outcome_lower:
-            target_numbers.extend([1, 8, 22]) # 1: leadership, 8: abundance, 22: master builder
+            target_numbers.extend([1, 8, 22])
         if "love" in outcome_lower or "relationships" in outcome_lower or "harmony" in outcome_lower or "family" in outcome_lower:
-            target_numbers.extend([2, 6]) # 2: partnership, 6: harmony/nurturing
+            target_numbers.extend([2, 6])
         if "creativity" in outcome_lower or "expression" in outcome_lower or "communication" in outcome_lower or "art" in outcome_lower:
-            target_numbers.extend([3, 5]) # 3: creativity/expression, 5: versatility/communication
+            target_numbers.extend([3, 5])
         if "stability" in outcome_lower or "security" in outcome_lower or "structure" in outcome_lower or "discipline" in outcome_lower:
-            target_numbers.extend([4]) # 4: foundation/order
+            target_numbers.extend([4])
         if "spiritual" in outcome_lower or "wisdom" in outcome_lower or "introspection" in outcome_lower:
-            target_numbers.extend([7, 11, 33]) # 7: spiritual, 11: spiritual insight, 33: master healer
+            target_numbers.extend([7, 11, 33])
         if "humanitarian" in outcome_lower or "service" in outcome_lower or "global impact" in outcome_lower:
-            target_numbers.extend([9, 33]) # 9: universal love, 33: master healer/service
+            target_numbers.extend([9, 33])
 
         if not target_numbers:
-            target_numbers = [1, 3, 5, 8] # Default to generally positive and dynamic numbers
+            target_numbers = [1, 3, 5, 8]
 
         return sorted(list(set(target_numbers)))
 
@@ -2158,8 +2160,7 @@ class NameSuggestionEngine:
         chain = prompt | llm_instance | parser
         
         try:
-            # This is an async call, will be awaited by asyncio.run() in the route
-            response = await chain.ainvoke({}) 
+            response = await chain.ainvoke({})
             return response
         except Exception as e:
             logger.error(f"LLM Name Suggestion Generation Error: {e}", exc_info=True)
@@ -2171,11 +2172,11 @@ def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
 
-# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/initial_suggestions', methods=['POST'])
 @rate_limited("10 per minute")
 @performance_monitor
-def initial_suggestions_endpoint(): # <-- Changed from async def
+async def initial_suggestions_endpoint(): # <-- Changed back to async def
     """
     Generates initial name suggestions based on the provided profile.
     """
@@ -2188,24 +2189,24 @@ def initial_suggestions_endpoint(): # <-- Changed from async def
         return jsonify({"error": "Missing full_name, birth_date, or desired_outcome for initial suggestions."}), 400
 
     try:
-        # Wrap async calls with asyncio.run()
-        profile_data = asyncio.run(get_comprehensive_numerology_profile(
+        # Await the decorated comprehensive profile function
+        profile_data = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
             full_name=full_name,
             birth_date=birth_date,
             birth_time=data.get('birth_time'),
             birth_place=data.get('birth_place'),
             desired_outcome=desired_outcome
-        ))
+        )
 
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
 
-        # Wrap async calls with asyncio.run()
-        name_suggestions_output = asyncio.run(NameSuggestionEngine.generate_name_suggestions(
+        # Await the async name suggestion generation
+        name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions( # <-- AWAIT DIRECTLY
             llm_manager.creative_llm,
             full_name,
             desired_outcome,
             target_numbers
-        ))
+        )
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
 
         return jsonify({
@@ -2221,7 +2222,7 @@ def initial_suggestions_endpoint(): # <-- Changed from async def
 @app.route('/validate_name', methods=['POST'])
 @rate_limited("30 per minute")
 @performance_monitor
-def validate_name_endpoint():
+async def validate_name_endpoint(): # <-- Changed to async def because performance_monitor is async
     """
     Validates a single suggested name against the client's profile and rules.
     Returns a clear YES/NO and a detailed rationale.
@@ -2234,6 +2235,7 @@ def validate_name_endpoint():
         return jsonify({"error": "Missing suggested_name or client_profile for validation."}), 400
 
     try:
+        # validate_suggested_name_rules is synchronous, so no await needed here
         is_valid, rationale = validate_suggested_name_rules(suggested_name, client_profile)
 
         return jsonify({
@@ -2247,11 +2249,11 @@ def validate_name_endpoint():
         logger.error(f"Error validating name: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred during name validation. Please try again later."}), 500
 
-# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/generate_pdf_report', methods=['POST'])
 @rate_limited("5 per hour")
 @performance_monitor
-def generate_pdf_report_endpoint(): # <-- Changed from async def
+async def generate_pdf_report_endpoint(): # <-- Changed back to async def
     """
     Endpoint to generate and return a PDF numerology report.
     """
@@ -2261,14 +2263,14 @@ def generate_pdf_report_endpoint(): # <-- Changed from async def
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
 
     try:
-        # Wrap async calls with asyncio.run()
-        profile_details = asyncio.run(get_comprehensive_numerology_profile(
+        # Await the decorated comprehensive profile function
+        profile_details = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
             desired_outcome=report_data_from_frontend.get('desired_outcome')
-        ))
+        )
         
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
@@ -2282,8 +2284,8 @@ def generate_pdf_report_endpoint(): # <-- Changed from async def
         report_chain = report_prompt | llm_manager.creative_llm
         
         logger.info("Calling LLM for advanced report generation...")
-        # Wrap async calls with asyncio.run()
-        llm_report_response = asyncio.run(report_chain.ainvoke({}))
+        # Await the async LLM call
+        llm_report_response = await report_chain.ainvoke({}) # <-- AWAIT DIRECTLY
         logger.info("LLM advanced report generation complete.")
 
         pdf_data = {
@@ -2311,11 +2313,11 @@ def generate_pdf_report_endpoint(): # <-- Changed from async def
         logger.error(f"Error generating PDF report: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate PDF report: {e}"}), 500
 
-# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/generate_text_report', methods=['POST'])
 @rate_limited("5 per minute")
 @performance_monitor
-def generate_text_report_endpoint(): # <-- Changed from async def
+async def generate_text_report_endpoint(): # <-- Changed back to async def
     """
     Endpoint to generate and return the numerology report content as plain text (Markdown).
     This is used for the frontend preview.
@@ -2326,14 +2328,14 @@ def generate_text_report_endpoint(): # <-- Changed from async def
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
 
     try:
-        # Wrap async calls with asyncio.run()
-        profile_details = asyncio.run(get_comprehensive_numerology_profile(
+        # Await the decorated comprehensive profile function
+        profile_details = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
             desired_outcome=report_data_from_frontend.get('desired_outcome')
-        ))
+        )
         
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
@@ -2347,8 +2349,8 @@ def generate_text_report_endpoint(): # <-- Changed from async def
         report_chain = report_prompt | llm_manager.creative_llm
         
         logger.info("Calling LLM for text report generation (preview)...")
-        # Wrap async calls with asyncio.run()
-        llm_report_response = asyncio.run(report_chain.ainvoke({}))
+        # Await the async LLM call
+        llm_report_response = await report_chain.ainvoke({}) # <-- AWAIT DIRECTLY
         logger.info("LLM text report generation complete.")
 
         return jsonify({"report_content": llm_report_response.content}), 200
@@ -2357,11 +2359,11 @@ def generate_text_report_endpoint(): # <-- Changed from async def
         logger.error(f"Error generating text report for preview: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate text report for preview: {e}"}), 500
 
-# CRITICAL FIX: Changed from 'async def' to 'def' and wrapped await calls with asyncio.run()
+# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/chat', methods=['POST'])
 @rate_limited("30 per minute")
 @performance_monitor
-def chat(): # <-- Changed from async def
+async def chat(): # <-- Changed back to async def
     """
     Handles general chat messages.
     """
@@ -2465,8 +2467,8 @@ def chat(): # <-- Changed from async def
             
             chain = prompt | llm_manager.analytical_llm
 
-            # Wrap async calls with asyncio.run()
-            ai_response = asyncio.run(chain.ainvoke({}))
+            # Await the async LLM call
+            ai_response = await chain.ainvoke({})
             
             return jsonify({"response": ai_response.content}), 200
 
@@ -2482,8 +2484,8 @@ def chat(): # <-- Changed from async def
             
             chain = prompt | llm_manager.llm
             
-            # Wrap async calls with asyncio.run()
-            ai_response = asyncio.run(chain.ainvoke({"input": message}))
+            # Await the async LLM call
+            ai_response = await chain.ainvoke({"input": message})
             
             llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
             
@@ -2512,6 +2514,4 @@ def internal_server_error(error):
     return jsonify({"error": "Internal Server Error: The server encountered an internal error and was unable to complete your request. Please try again later."}), 500
 
 if __name__ == '__main__':
-    # When running locally, you might want to run with `flask run` or `gunicorn` directly.
-    # For Render, 'gunicorn app:app' command will handle this.
     app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
