@@ -215,6 +215,7 @@ For each suggestion, provide a comprehensive 2-3 sentence explanation that:
 
 ## OUTPUT FORMAT:
 Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.
+**CRITICAL: DO NOT include any comments (e.g., // comments) in the JSON output.**
 
 ## QUALITY STANDARDS:
 - Each rationale must be substantive, specific, and compelling
@@ -569,7 +570,7 @@ def calculate_personality_number_with_details(name: str) -> Tuple[int, Dict]:
     cleaned_name = clean_name(name)
 
     for letter in cleaned_name:
-        if letter not in VOWELS: # Consonants
+        if letter not in VOWELS and letter != ' ': # Consonants
             value = get_chaldean_value(letter)
             total += value
             consonant_breakdown[letter] = consonant_breakdown.get(letter, 0) + value
@@ -600,10 +601,11 @@ def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expre
         # Reduce master numbers for Lo Shu Grid if they are not already single digits
         # The Lo Shu grid is typically 1-9. Master numbers are usually reduced to their single digit sum for grid analysis.
         grid_friendly_expression = calculate_single_digit(suggested_name_expression_num, allow_master_numbers=False)
-        grid_counts[grid_friendly_expression] += 1
-        logger.info(f"Lo Shu Grid updated with suggested name's expression number: {grid_friendly_expression}")
+        if 1 <= grid_friendly_expression <= 9: # Ensure it's a valid grid digit
+            grid_counts[grid_friendly_expression] += 1
+            logger.info(f"Lo Shu Grid updated with suggested name's expression number: {grid_friendly_expression}")
 
-    missing_numbers = sorted([i for i in range(1, 10) if i not in grid_counts])
+    missing_numbers = sorted([i for i in range(1, 10) if i not in grid_counts or grid_counts[i] == 0]) # Ensure 0 count also means missing
 
     missing_impact = {
         1: "Challenges with independence or self-assertion. Needs to develop leadership.",
@@ -626,10 +628,10 @@ def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expre
         "grid_counts": dict(grid_counts),
         "missing_numbers": missing_numbers,
         "missing_lessons": detailed_missing_lessons,
-        "has_5": 5 in grid_counts,
-        "has_6": 6 in grid_counts,
-        "has_3": 3 in grid_counts,
-        "has_8": 8 in grid_counts, # For Expression 8 validation
+        "has_5": grid_counts[5] > 0,
+        "has_6": grid_counts[6] > 0,
+        "has_3": grid_counts[3] > 0,
+        "has_8": grid_counts[8] > 0, # For Expression 8 validation
         "grid_updated_by_name": suggested_name_expression_num is not None
     }
 
@@ -1258,7 +1260,7 @@ def predict_success_areas(profile: Dict) -> Dict:
         5: ["Travel", "Technology", "Sales", "Journalism", "Public relations"],
         6: ["Healthcare", "Education", "Service", "Family business", "Community work"],
         7: ["Research", "Analysis", "Spirituality", "Science", "Philosophy"],
-        8: ["Business", "Finance", "Authority", "Real estate", "Law"],
+        8: ["Business", "Financial", "Authority", "Real estate", "Law"],
         9: ["Humanitarian work", "Teaching", "Global reach", "Philanthropy", "Social reform"],
         11: ["Spiritual leadership", "Intuitive development", "Innovation", "Inspiring masses"],
         22: ["Large-scale building", "Transformation", "Leadership in big organizations", "Practical idealism"],
@@ -1565,7 +1567,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     if expression_number == 6 and any(p['planet'] == 'Venus (♀)' and p['nature'] == 'Malefic' for p in planetary_lords):
         edge_cases.append({
             "type": "Expression 6 with Malefic Venus Influence",
-            "description": "Expression 6 (Venus) may bring challenges in relationships or domestic harmony if your conceptual chart indicates a malefic Venus. This can lead to difficulties in nurturing or finding balance.",
+            "description": "Expression 6 (Venus) may bring challenges in relationships or domestic life if your conceptual chart indicates a malefic Venus. This can lead to difficulties in nurturing or finding balance.",
             "resolution_guidance": "Focus on self-love and setting healthy boundaries in relationships. Avoid codependency. A name with a different Expression number might be more supportive."
         })
 
@@ -1910,7 +1912,7 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
     if profile_details.get('lo_shu_grid'):
         lo_shu = profile_details['lo_shu_grid']
         Story.append(Paragraph("🗺️ Lo Shu Grid Analysis (Raw Data)", styles['SubHeadingStyle']))
-        Story.append(Paragraph("This section presents the raw digit counts from your birth date, forming your unique Lo Shu Grid pattern.", styles['NormalBodyText']))
+        Story.append(Paragraph("This section provides the raw digit counts from your birth date, forming your unique Lo Shu Grid pattern.", styles['NormalBodyText']))
         Story.append(Spacer(1, 0.1 * inch))
 
         Story.append(Paragraph(f"<b>Digits in Birth Date</b>: {json.dumps(lo_shu.get('grid_counts'))}", styles['NormalBodyText']))
