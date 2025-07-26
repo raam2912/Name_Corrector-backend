@@ -175,9 +175,9 @@ class LLMManager:
 
         try:
             # FIX: Add convert_system_message_to_human=True to all ChatGoogleGenerativeAI instances
-            self.llm = ChatGoogleGenerativeAI(model="gemini-1.0-pro", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
-            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-1.0-pro", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
-            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-1.0-pro", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
+            self.llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
+            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
+            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
             
             self.memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True)
             
