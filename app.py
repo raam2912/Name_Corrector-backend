@@ -22,6 +22,9 @@ from flask_limiter.util import get_remote_address
 from flask_caching import Cache
 from dotenv import load_dotenv
 
+# NEW: Import WSGIMiddleware for Flask (WSGI) to Uvicorn (ASGI) compatibility
+from uvicorn.middleware.wsgi import WSGIMiddleware
+
 # ReportLab specific imports for PDF generation
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -548,7 +551,7 @@ def calculate_soul_urge_number_with_details(name: str) -> Tuple[int, Dict]:
             value = get_chaldean_value(letter)
             total += value
             vowel_breakdown[letter] = vowel_breakdown.get(letter, 0) + value
-
+    
     reduced = calculate_single_digit(total, True) # Soul Urge can be a Master Number
 
     return reduced, {
@@ -2469,5 +2472,13 @@ def internal_server_error(error):
     logger.error(f"Internal Server Error: {error}", exc_info=True)
     return jsonify({"error": "Internal Server Error: The server encountered an internal error and was unable to complete your request. Please try again later."}), 500
 
+# This is the WSGI application that Uvicorn will serve.
+# It wraps your Flask 'app' instance.
+asgi_app = WSGIMiddleware(app)
+
 if __name__ == '__main__':
+    # For local testing, you can run this file directly with `python app.py`
+    # or use uvicorn to test the ASGI compatibility:
+    # uvicorn app:asgi_app --host 0.0.0.0 --port 8000
     app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
+
