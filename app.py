@@ -90,7 +90,7 @@ logger.info("CORS configured for the Flask app.")
 
 # --- Decorators ---
 # Removed @performance_monitor as psutil is removed.
-def cached_operation(timeout=300):
+def cached_operation(timeout=3600): # Increased cache timeout for profile data
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -100,7 +100,8 @@ def cached_operation(timeout=300):
                     return await func(*args, **kwargs)
                 return func(*args, **kwargs)
 
-            key_parts = [str(arg) for arg in args]
+            # Create a unique cache key based on function name and arguments
+            key_parts = [func.__name__] + [str(arg) for arg in args]
             for k, v in sorted(kwargs.items()):
                 key_parts.append(f"{k}={v}")
             cache_key = hashlib.md5("_".join(key_parts).encode()).hexdigest()
@@ -425,7 +426,8 @@ def get_chaldean_value(char: str) -> int:
 
 def calculate_single_digit(number: int, allow_master_numbers: bool = True) -> int:
     """Reduces a number to a single digit, optionally preserving Master Numbers (11, 22, 33)."""
-    if allow_master_numbers and number in [11, 22, 33]:
+    MASTER_NUMBERS = {11, 22, 33} # Define locally for this function
+    if allow_master_numbers and number in MASTER_NUMBERS:
         return number
     while number > 9:
         number = sum(int(digit) for digit in str(number))
@@ -439,14 +441,14 @@ def calculate_expression_number_with_details(full_name: str) -> Tuple[int, Dict]
 
     # Chaldean map with planetary associations
     CHALDEAN_NUMEROLOGY_MAP_WITH_PLANETS = {
-        'A': (1, 'Sun (☉)'), 'J': (1, 'Sun (☉)'), 'S': (1, 'Sun (☉)'),
-        'B': (2, 'Moon (☽)'), 'K': (2, 'Moon (☽)'), 'T': (2, 'Moon (☽)'),
-        'C': (3, 'Jupiter (♃)'), 'G': (3, 'Jupiter (♃)'), 'L': (3, 'Jupiter (♃)'), 'U': (3, 'Jupiter (♃)'),
-        'D': (4, 'Rahu (☊)'), 'M': (4, 'Rahu (☊)'), 'V': (4, 'Rahu (☊)'),
+        'A': (1, 'Sun (☉)'), 'J': (1, 'Sun (☉)'), 'Q': (1, 'Sun (☉)'), 'Y': (1, 'Sun (☉)'),
+        'B': (2, 'Moon (☽)'), 'K': (2, 'Moon (☽)'), 'R': (2, 'Moon (☽)'),
+        'C': (3, 'Jupiter (♃)'), 'G': (3, 'Jupiter (♃)'), 'L': (3, 'Jupiter (♃)'), 'S': (3, 'Jupiter (♃)'),
+        'D': (4, 'Rahu (☊)'), 'M': (4, 'Rahu (☊)'), 'T': (4, 'Rahu (☊)'),
         'E': (5, 'Mercury (☿)'), 'H': (5, 'Mercury (☿)'), 'N': (5, 'Mercury (☿)'), 'X': (5, 'Mercury (☿)'),
-        'F': (6, 'Venus (♀)'), 'O': (6, 'Venus (♀)'), 'W': (6, 'Venus (♀)'),
-        'P': (7, 'Ketu / Neptune (☋)'), 'Z': (7, 'Ketu / Neptune (☋)'),
-        'I': (8, 'Saturn (♄)'), 'R': (8, 'Saturn (♄)'),
+        'U': (6, 'Venus (♀)'), 'V': (6, 'Venus (♀)'), 'W': (6, 'Venus (♀)'),
+        'O': (7, 'Ketu / Neptune (☋)'), 'Z': (7, 'Ketu / Neptune (☋)'),
+        'F': (8, 'Saturn (♄)'), 'P': (8, 'Saturn (♄)')
     }
     NUMBER_TO_PLANET_MAP = {
         1: 'Sun (☉)', 2: 'Moon (☽)', 3: 'Jupiter (♃)', 4: 'Rahu (☊)',
@@ -487,31 +489,25 @@ def calculate_life_path_number_with_details(birth_date_str: str) -> Tuple[int, D
     except ValueError:
         raise ValueError("Invalid birth date format. Please use YYYY-MM-DD.")
 
-    karmic_debt_present = []
+    karmic_debt_present_in_components = []
 
     # Check for karmic debt in the original numbers before reduction
     if month in KARMIC_DEBT_NUMBERS:
-        karmic_debt_present.append(month)
+        karmic_debt_present_in_components.append(month)
     if day in KARMIC_DEBT_NUMBERS:
-        karmic_debt_present.append(day)
+        karmic_debt_present_in_components.append(day)
     
-    # Reduce month, day, and year components, preserving master numbers
-    month_reduced = calculate_single_digit(month, True)
-    day_reduced = calculate_single_digit(day, True)
-    year_reduced = calculate_single_digit(sum(int(d) for d in str(year)), True) # Sum of year digits
+    # Sum all digits from the entire birth date string
+    total_sum_all_digits = sum(int(d) for d in re.sub(r'[^0-9]', '', birth_date_str))
 
-    total = month_reduced + day_reduced + year_reduced
-    final_number = calculate_single_digit(total, True) # Final reduction for Life Path, preserving master numbers
+    final_number = calculate_single_digit(total_sum_all_digits, True) # Final reduction for Life Path, preserving master numbers
 
     return final_number, {
-        "month": month,
-        "day": day,
-        "year": year,
-        "month_reduced": month_reduced,
-        "day_reduced": day_reduced,
-        "year_reduced": year_reduced,
-        "total_before_final_reduction": total,
-        "karmic_debt_numbers": list(set(karmic_debt_present)), # Ensure unique karmic debts
+        "original_month": month,
+        "original_day": day,
+        "original_year": year,
+        "total_sum_all_digits_before_reduction": total_sum_all_digits,
+        "karmic_debt_in_components": list(set(karmic_debt_present_in_components)), # Ensure unique karmic debts
         "is_master_number": final_number in MASTER_NUMBERS
     }
 
@@ -570,7 +566,7 @@ def calculate_personality_number_with_details(name: str) -> Tuple[int, Dict]:
     cleaned_name = clean_name(name)
 
     for letter in cleaned_name:
-        if letter not in VOWELS and letter != ' ': # Consonants
+        if letter not in VOWELS and letter != ' ' and letter in get_chaldean_map_keys(): # Consonants and in Chaldean map
             value = get_chaldean_value(letter)
             total += value
             consonant_breakdown[letter] = consonant_breakdown.get(letter, 0) + value
@@ -583,6 +579,10 @@ def calculate_personality_number_with_details(name: str) -> Tuple[int, Dict]:
         "is_master_number": reduced in MASTER_NUMBERS
     }
 
+def get_chaldean_map_keys():
+    """Helper to get all letters in the Chaldean map."""
+    return set('AIJQYBKRCGLSDMTEHNXUVWOFPZ')
+
 def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expression_num: Optional[int] = None) -> Dict:
     """
     Calculates the Lo Shu Grid digit counts from a birth date.
@@ -594,7 +594,7 @@ def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expre
     except ValueError:
         raise ValueError("Invalid birth date format for Lo Shu Grid. Please use YYYY-MM-DD.")
 
-    grid_counts = Counter(dob_digits)
+    grid_counts = Counter(d for d in dob_digits if 1 <= d <= 9) # Only count digits 1-9 from DOB
 
     # If a suggested name's expression number is provided, add its single digit to the grid counts
     if suggested_name_expression_num is not None:
@@ -762,14 +762,15 @@ def check_planetary_compatibility(expression_number: int, astro_info: Dict) -> D
              compatibility_flags.append(f"Caution: Expression {expression_number} (Mars) may conflict with a Ketu/Neptune-ruled Ascendant ({ascendant_info.get('sign', 'N/A')}).")
 
         # General non-alignment (if not covered by specific conflicts/favors)
-        if expression_planet and expression_number not in favorable_map_by_ascendant_ruler.get(ascendant_ruler, []) and \
-           not ((ascendant_ruler == 'Sun (☉)' and expression_number in [8, 4]) or \
-                (ascendant_ruler == 'Moon (☽)' and expression_number == 8) or \
-                (ascendant_ruler == 'Jupiter (♃)' and expression_number in [4, 8]) or \
-                (ascendant_ruler == 'Mercury (☿)' and expression_number in [4, 8]) or \
-                (ascendant_ruler == 'Venus (♀)' and expression_number == 8) or \
-                (ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9)):
-            compatibility_flags.append(f"Expression {expression_number} ({expression_planet}) may not have direct harmony with your Ascendant ruler ({ascendant_ruler}).")
+        # This logic is complex and might lead to too many flags. Better to focus on explicit conflicts/alignments.
+        # if expression_planet and expression_number not in favorable_map_by_ascendant_ruler.get(ascendant_ruler, []) and \
+        #    not ((ascendant_ruler == 'Sun (☉)' and expression_number in [8, 4]) or \
+        #         (ascendant_ruler == 'Moon (☽)' and expression_number == 8) or \
+        #         (ascendant_ruler == 'Jupiter (♃)' and expression_number in [4, 8]) or \
+        #         (ascendant_ruler == 'Mercury (☿)' and expression_number in [4, 8]) or \
+        #         (ascendant_ruler == 'Venus (♀)' and expression_number == 8) or \
+        #         (ascendant_ruler == 'Ketu / Neptune (☋)' and expression_number == 9)):
+        #     compatibility_flags.append(f"Expression {expression_number} ({expression_planet}) may not have direct harmony with your Ascendant ruler ({ascendant_ruler}).")
 
 
     # Rule 2: Planetary Conflicts/Support from conceptual chart (from PDF)
@@ -1180,14 +1181,14 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         2: ["Build self-confidence and assertiveness", "Practice decisive action", "Establish clear personal boundaries"],
         3: ["Focus and prioritize energy", "Develop discipline in creative pursuits", "Cultivate deeper, more meaningful relationships"],
         4: ["Embrace flexibility and adaptability", "Take regular breaks to avoid burnout", "Express creativity outside of work"],
-        5: ["Restlessness", "Commitment issues", "Impulsiveness", "Overindulgence"],
+        5: ["Practice grounding and stability", "Develop commitment and follow-through", "Avoid impulsive decisions and overindulgence"],
         6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
-        7: ["Introspection", "Study and research", "Apply knowledge practically in daily life"],
-        8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy"],
-        9: ["Manage emotional volatility", "Accept imperfections in others", "Practice self-compassion and forgiveness"],
-        11: ["Practice grounding exercises (e.g., walking in nature)", "Manage nervous energy through mindfulness", "Set realistic and achievable goals"],
-        22: ["Delegate tasks effectively to avoid overwhelm", "Prioritize self-care and rest", "Break down large goals into smaller, manageable steps"],
-        33: ["Emotional overwhelm, taking on others' pain, and tendency toward self-sacrifice"]
+        7: ["Engage in practical application of knowledge", "Seek community and connection", "Balance introspection with external engagement"],
+        8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy", "Focus on ethical power usage"],
+        9: ["Manage emotional volatility through mindfulness", "Accept imperfections in others and self", "Practice self-compassion and forgiveness", "Set clear boundaries"],
+        11: ["Practice grounding exercises (e.g., walking in nature)", "Manage nervous energy through mindfulness and meditation", "Set realistic and achievable goals, breaking down grand visions"],
+        22: ["Delegate tasks effectively to avoid overwhelm", "Prioritize self-care and rest", "Break down large goals into smaller, manageable steps", "Seek practical mentorship"],
+        33: ["Learn to set boundaries for emotional well-being", "Balance selfless service with self-care", "Avoid martyrdom and taking on others' burdens excessively"]
     }
     return strategies.get(expression, ["Practice mindfulness", "Seek balance", "Stay grounded"])
 
@@ -1195,18 +1196,18 @@ def get_mitigation_strategies(expression: int) -> List[str]:
 def get_growth_opportunities(expression: int) -> List[str]:
     """Get growth opportunities based on expression number"""
     opportunities = {
-        1: ["Leadership development", "Mentoring others", "Innovation projects"],
-        2: ["Conflict resolution", "Team building", "Emotional intelligence"],
-        3: ["Public speaking", "Creative projects", "Social networking"],
-        4: ["Project management", "Systems thinking", "Financial planning"],
-        5: ["Cultural exploration", "Technology adoption", "Network expansion"],
-        6: ["Community service", "Healing arts", "Family development"],
-        7: ["Research projects", "Spiritual studies", "Analytical work"],
-        8: ["Business development", "Financial management", "Strategic planning"],
-        9: ["Global initiatives", "Teaching opportunities", "Humanitarian work"],
-        11: ["Spiritual leadership", "Intuitive development", "Inspiring others"],
-        22: ["Large-scale project execution", "Building lasting structures", "Transformational leadership"],
-        33: ["Global humanitarian efforts", "Teaching universal love", "Healing initiatives"]
+        1: ["Leadership development", "Mentoring others", "Innovation projects", "Pioneering new ventures"],
+        2: ["Conflict resolution", "Team building", "Emotional intelligence", "Diplomacy and negotiation"],
+        3: ["Public speaking", "Creative projects", "Social networking", "Expressive arts"],
+        4: ["Project management", "Systems thinking", "Financial planning", "Building lasting structures"],
+        5: ["Cultural exploration", "Technology adoption", "Network expansion", "Dynamic problem-solving"],
+        6: ["Community service", "Healing arts", "Family development", "Nurturing environments"],
+        7: ["Research projects", "Spiritual studies", "Analytical work", "Deep philosophical inquiry"],
+        8: ["Business development", "Financial management", "Strategic planning", "Philanthropy and large-scale impact"],
+        9: ["Global initiatives", "Teaching opportunities", "Humanitarian work", "Universal compassion advocacy"],
+        11: ["Spiritual leadership", "Intuitive development", "Inspiring others", "Visionary pursuits"],
+        22: ["Large-scale project execution", "Building lasting structures", "Transformational leadership", "Manifesting grand visions"],
+        33: ["Global humanitarian efforts", "Teaching universal love", "Healing initiatives", "Selfless service leadership"]
     }
     return opportunities.get(expression, ["Personal development", "Skill building", "Service opportunities"])
 
@@ -1217,27 +1218,32 @@ def calculate_uniqueness_score(profile: Dict) -> Dict:
     birth_day_number = profile.get('birth_day_number', 0)
     
     rarity_multiplier = 1.0
+    rarity_factors = []
+
     if expression in [11, 22, 33]:
         rarity_multiplier += 0.5
+        rarity_factors.append(f"Master Expression Number ({expression})")
     if life_path in [11, 22, 33]:
         rarity_multiplier += 0.5
+        rarity_factors.append(f"Master Life Path Number ({life_path})")
     if birth_day_number in [11, 22, 33]:
         rarity_multiplier += 0.3
+        rarity_factors.append(f"Master Birth Day Number ({birth_day_number})")
 
     # Consider rare combinations
     combination_rarity_score = 0.0
-    if (expression, life_path) in [(1,8), (8,1), (4,5), (5,4)]: # Examples of challenging/unique combos
+    if (expression == 8 and life_path == 1) or (expression == 1 and life_path == 8):
+        combination_rarity_score += 0.4
+        rarity_factors.append("Expression 8 / Life Path 1 Conflict (Rare Challenge)")
+    if (expression in {4,8} and life_path in {3,6,9,11,33}): # Examples of challenging/unique combos
         combination_rarity_score += 0.2
-    if (expression, life_path) in [(11,22), (22,11), (11,33), (33,11), (22,33), (33,22)]: # Master number combos
+        rarity_factors.append("Challenging core number combination")
+    if (expression in {11,22,33} and life_path in {11,22,33}): # Master number combos
         combination_rarity_score += 0.3
+        rarity_factors.append("Multiple Master Numbers in core profile")
 
     uniqueness = min(0.95, (combination_rarity_score + 0.3) * rarity_multiplier)
     
-    rarity_factors = []
-    if rarity_multiplier > 1.0:
-        rarity_factors.append("Presence of Master Numbers")
-    if combination_rarity_score > 0:
-        rarity_factors.append("Unique core number combination")
     if not rarity_factors:
         rarity_factors.append("Standard numerical pattern")
 
@@ -1488,7 +1494,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
                 })
 
     # Karmic Debt Numbers in Birth Date or Original Name
-    original_karmic_debts = profile_data.get('karmic_lessons', {}).get('birth_date_karmic_debts', [])
+    original_karmic_debts = profile_data.get('life_path_details', {}).get('karmic_debt_in_components', [])
     
     # To check for karmic debt in original name's expression, we need its unreduced total.
     # Assuming `expression_details` contains `total_before_reduction` for the *original* name.
@@ -1891,19 +1897,25 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 
     Story.append(Paragraph("<b>Life Path Number:</b>", styles['BoldBodyText']))
     Story.append(Paragraph(f"Value: {profile_details.get('life_path_number', 'N/A')}", styles['NormalBodyText']))
-    Story.append(Paragraph(f"Details: Month {profile_details.get('life_path_details', {}).get('month_reduced', 'N/A')}, Day {profile_details.get('life_path_details', {}).get('day_reduced', 'N/A')}, Year {profile_details.get('life_path_details', {}).get('year_reduced', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Details: Original Month {profile_details.get('life_path_details', {}).get('original_month', 'N/A')}, Original Day {profile_details.get('life_path_details', {}).get('original_day', 'N/A')}, Original Year {profile_details.get('life_path_details', {}).get('original_year', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Total sum of all digits before final reduction: {profile_details.get('life_path_details', {}).get('total_sum_all_digits_before_reduction', 'N/A')}", styles['NormalBodyText']))
+    if profile_details.get('life_path_details', {}).get('karmic_debt_in_components'):
+        Story.append(Paragraph(f"Karmic Debt in Birth Date Components: {', '.join(map(str, profile_details.get('life_path_details', {}).get('karmic_debt_in_components')))}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Birth Day Number:</b>", styles['BoldBodyText']))
     Story.append(Paragraph(f"Value: {profile_details.get('birth_day_number', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Original Day: {profile_details.get('birth_day_details', {}).get('original_day', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Soul Urge Number:</b>", styles['BoldBodyText']))
     Story.append(Paragraph(f"Value: {profile_details.get('soul_urge_number', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Total before reduction: {profile_details.get('soul_urge_details', {}).get('total_before_reduction', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Personality Number:</b>", styles['BoldBodyText']))
     Story.append(Paragraph(f"Value: {profile_details.get('personality_number', 'N/A')}", styles['NormalBodyText']))
+    Story.append(Paragraph(f"Total before reduction: {profile_details.get('personality_details', {}).get('total_before_reduction', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.2 * inch))
     Story.append(PageBreak())
 
@@ -1918,8 +1930,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph(f"<b>Digits in Birth Date</b>: {json.dumps(lo_shu.get('grid_counts'))}", styles['NormalBodyText']))
         if lo_shu.get('missing_numbers'):
             Story.append(Paragraph("<b>Missing Numbers</b>:", styles['BoldBodyText']))
-            for num in lo_shu['missing_numbers']:
-                Story.append(Paragraph(f"• {num}", styles['BulletStyle']))
+            for num_data in lo_shu['missing_lessons']: # Use missing_lessons for detailed impact
+                Story.append(Paragraph(f"• {num_data['number']}: {num_data['impact']}", styles['BulletStyle']))
         else:
             Story.append(Paragraph("All numbers 1-9 are present in your birth date, indicating a balanced Lo Shu Grid.", styles['NormalBodyText']))
         
