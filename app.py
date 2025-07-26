@@ -423,13 +423,24 @@ def get_chaldean_value(char: str) -> int:
     }
     return chaldean_map.get(char.upper(), 0)
 
+# Line 407:
 def calculate_single_digit(number: int, allow_master_numbers: bool = True) -> int:
     """Reduces a number to a single digit, optionally preserving Master Numbers (11, 22, 33)."""
-    MASTER_NUMBERS = {11, 22, 33} # Define locally for this function
+    MASTER_NUMBERS = {11, 22, 33}
+    
+    # First check: if the initial number is a Master Number and allowed, return it directly.
+    # This handles cases like 11, 22, 33 directly passed in.
     if allow_master_numbers and number in MASTER_NUMBERS:
         return number
+    
+    # Line 412: (The crucial change starts here)
+    # Reduce until single digit or a Master Number (if allowed) is reached
     while number > 9:
         number = sum(int(digit) for digit in str(number))
+        # If a Master Number is reached during reduction AND allowed, stop reduction
+        if allow_master_numbers and number in MASTER_NUMBERS:
+            break # Stop here, don't reduce further
+            
     return number
 
 def calculate_expression_number_with_details(full_name: str) -> Tuple[int, Dict]:
