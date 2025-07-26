@@ -2,7 +2,7 @@ import os
 import datetime
 import re
 import json
-import asyncio # <-- Import asyncio
+import asyncio
 import logging
 from functools import wraps
 from typing import Dict, List, Optional, Tuple, Any
@@ -91,7 +91,7 @@ logger.info("CORS configured for the Flask app.")
 def cached_operation(timeout=300):
     def decorator(func):
         @wraps(func)
-        async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
+        async def wrapper(*args, **kwargs):
             if cache is None:
                 logger.warning(f"Cache not initialized, skipping caching for {func.__name__}.")
                 if asyncio.iscoroutinefunction(func):
@@ -108,7 +108,6 @@ def cached_operation(timeout=300):
                 logger.info(f"Cache hit for {func.__name__}")
                 return cached_result
             
-            # Await the function if it's a coroutine, otherwise call it directly
             if asyncio.iscoroutinefunction(func):
                 result = await func(*args, **kwargs)
             else:
@@ -122,7 +121,7 @@ def cached_operation(timeout=300):
 
 def performance_monitor(func):
     @wraps(func)
-    async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
+    async def wrapper(*args, **kwargs):
         start_time = time.perf_counter()
         if asyncio.iscoroutinefunction(func):
             result = await func(*args, **kwargs)
@@ -133,36 +132,6 @@ def performance_monitor(func):
         logger.info(f"{func.__name__} executed in {elapsed_time:.3f} seconds")
         return result
     return wrapper
-
-def rate_limited(limit_string):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs): # <--- IMPORTANT: This wrapper is now async
-            if limiter:
-                # Flask-Limiter's limit method might need to be awaited if it's async,
-                # but typically it's synchronous. We'll assume it's synchronous for now.
-                # If it errors, we might need to adjust Limiter usage or use an async-compatible limiter.
-                # For now, we'll just call the function if it passes the limit.
-                # The actual rate limiting logic is handled by the Flask-Limiter extension.
-                try:
-                    # This is a bit tricky. Flask-Limiter's decorator returns a callable.
-                    # We need to ensure that callable is awaited if the decorated func is async.
-                    limited_func = limiter.limit(limit_string)(func)
-                    if asyncio.iscoroutinefunction(limited_func):
-                        return await limited_func(*args, **kwargs)
-                    return limited_func(*args, **kwargs)
-                except Exception as e:
-                    # If limiter itself causes an error (e.g., rate limit exceeded), it raises an exception.
-                    # We need to re-raise it or handle it appropriately.
-                    # Flask-Limiter typically raises RateLimitExceeded, which Flask's error handler can catch.
-                    raise e # Re-raise the exception
-            else:
-                logger.warning("Limiter not initialized, skipping rate limit.")
-                if asyncio.iscoroutinefunction(func):
-                    return await func(*args, **kwargs)
-                return func(*args, **kwargs)
-        return wrapper
-    return decorator
 
 # --- Security Manager ---
 class SecurityManager:
@@ -1187,7 +1156,7 @@ def generate_timing_recommendations(profile: Dict) -> Dict:
         4: ["Building foundations", "Organizing finances", "Working diligently", "Establishing security"],
         5: ["Embracing change", "Traveling", "Seeking new experiences", "Adapting to new situations"],
         6: ["Focusing on family/home", "Providing service", "Nurturing self and others", "Cultivating harmony"],
-        7: ["Introspection", "Study and research", "Spiritual development", "Seeking inner truth"],
+        7: ["Introspection", "Study and research", "Seeking inner truth"],
         8: ["Material achievement", "Business expansion", "Financial management", "Exercising power responsibly"],
         9: ["Completion of cycles", "Humanitarian efforts", "Letting go of the past", "Universal compassion"],
         11: ["Spiritual insight", "Inspiring others", "Intuitive breakthroughs", "Mastering higher vibrations"],
@@ -1221,7 +1190,7 @@ def get_mitigation_strategies(expression: int) -> List[str]:
         4: ["Embrace flexibility and adaptability", "Take regular breaks to avoid burnout", "Express creativity outside of work"],
         5: ["Restlessness", "Commitment issues", "Impulsiveness", "Overindulgence"],
         6: ["Set healthy boundaries and learn to say no", "Prioritize self-care and personal needs", "Avoid over-commitment and martyrdom"],
-        7: ["Actively engage in social activities", "Practice expressing emotions openly", "Apply knowledge practically in daily life"],
+        7: ["Introspection", "Study and research", "Apply knowledge practically in daily life"],
         8: ["Balance work-life commitments", "Nurture personal relationships", "Practice generosity and philanthropy"],
         9: ["Manage emotional volatility", "Accept imperfections in others", "Practice self-compassion and forgiveness"],
         11: ["Practice grounding exercises (e.g., walking in nature)", "Manage nervous energy through mindfulness", "Set realistic and achievable goals"],
@@ -2172,11 +2141,10 @@ def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
 
-# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/initial_suggestions', methods=['POST'])
-@rate_limited("10 per minute")
+@limiter.limit("10 per minute") # Apply limiter directly
 @performance_monitor
-async def initial_suggestions_endpoint(): # <-- Changed back to async def
+async def initial_suggestions_endpoint():
     """
     Generates initial name suggestions based on the provided profile.
     """
@@ -2189,8 +2157,7 @@ async def initial_suggestions_endpoint(): # <-- Changed back to async def
         return jsonify({"error": "Missing full_name, birth_date, or desired_outcome for initial suggestions."}), 400
 
     try:
-        # Await the decorated comprehensive profile function
-        profile_data = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
+        profile_data = await get_comprehensive_numerology_profile(
             full_name=full_name,
             birth_date=birth_date,
             birth_time=data.get('birth_time'),
@@ -2200,8 +2167,7 @@ async def initial_suggestions_endpoint(): # <-- Changed back to async def
 
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
 
-        # Await the async name suggestion generation
-        name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions( # <-- AWAIT DIRECTLY
+        name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
             llm_manager.creative_llm,
             full_name,
             desired_outcome,
@@ -2220,9 +2186,9 @@ async def initial_suggestions_endpoint(): # <-- Changed back to async def
         return jsonify({"error": "An internal server error occurred while generating initial suggestions. Please try again later."}), 500
 
 @app.route('/validate_name', methods=['POST'])
-@rate_limited("30 per minute")
+@limiter.limit("30 per minute") # Apply limiter directly
 @performance_monitor
-async def validate_name_endpoint(): # <-- Changed to async def because performance_monitor is async
+async def validate_name_endpoint():
     """
     Validates a single suggested name against the client's profile and rules.
     Returns a clear YES/NO and a detailed rationale.
@@ -2249,11 +2215,10 @@ async def validate_name_endpoint(): # <-- Changed to async def because performan
         logger.error(f"Error validating name: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred during name validation. Please try again later."}), 500
 
-# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/generate_pdf_report', methods=['POST'])
-@rate_limited("5 per hour")
+@limiter.limit("5 per hour") # Apply limiter directly
 @performance_monitor
-async def generate_pdf_report_endpoint(): # <-- Changed back to async def
+async def generate_pdf_report_endpoint():
     """
     Endpoint to generate and return a PDF numerology report.
     """
@@ -2263,8 +2228,7 @@ async def generate_pdf_report_endpoint(): # <-- Changed back to async def
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
 
     try:
-        # Await the decorated comprehensive profile function
-        profile_details = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
+        profile_details = await get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
@@ -2284,8 +2248,7 @@ async def generate_pdf_report_endpoint(): # <-- Changed back to async def
         report_chain = report_prompt | llm_manager.creative_llm
         
         logger.info("Calling LLM for advanced report generation...")
-        # Await the async LLM call
-        llm_report_response = await report_chain.ainvoke({}) # <-- AWAIT DIRECTLY
+        llm_report_response = await report_chain.ainvoke({})
         logger.info("LLM advanced report generation complete.")
 
         pdf_data = {
@@ -2313,11 +2276,10 @@ async def generate_pdf_report_endpoint(): # <-- Changed back to async def
         logger.error(f"Error generating PDF report: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate PDF report: {e}"}), 500
 
-# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/generate_text_report', methods=['POST'])
-@rate_limited("5 per minute")
+@limiter.limit("5 per minute") # Apply limiter directly
 @performance_monitor
-async def generate_text_report_endpoint(): # <-- Changed back to async def
+async def generate_text_report_endpoint():
     """
     Endpoint to generate and return the numerology report content as plain text (Markdown).
     This is used for the frontend preview.
@@ -2328,8 +2290,7 @@ async def generate_text_report_endpoint(): # <-- Changed back to async def
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
 
     try:
-        # Await the decorated comprehensive profile function
-        profile_details = await get_comprehensive_numerology_profile( # <-- AWAIT DIRECTLY
+        profile_details = await get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
@@ -2349,8 +2310,7 @@ async def generate_text_report_endpoint(): # <-- Changed back to async def
         report_chain = report_prompt | llm_manager.creative_llm
         
         logger.info("Calling LLM for text report generation (preview)...")
-        # Await the async LLM call
-        llm_report_response = await report_chain.ainvoke({}) # <-- AWAIT DIRECTLY
+        llm_report_response = await report_chain.ainvoke({})
         logger.info("LLM text report generation complete.")
 
         return jsonify({"report_content": llm_report_response.content}), 200
@@ -2359,11 +2319,10 @@ async def generate_text_report_endpoint(): # <-- Changed back to async def
         logger.error(f"Error generating text report for preview: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate text report for preview: {e}"}), 500
 
-# CRITICAL FIX: Changed back to 'async def' because the decorators are now async
 @app.route('/chat', methods=['POST'])
-@rate_limited("30 per minute")
+@limiter.limit("30 per minute") # Apply limiter directly
 @performance_monitor
-async def chat(): # <-- Changed back to async def
+async def chat():
     """
     Handles general chat messages.
     """
@@ -2467,7 +2426,6 @@ async def chat(): # <-- Changed back to async def
             
             chain = prompt | llm_manager.analytical_llm
 
-            # Await the async LLM call
             ai_response = await chain.ainvoke({})
             
             return jsonify({"response": ai_response.content}), 200
@@ -2484,7 +2442,6 @@ async def chat(): # <-- Changed back to async def
             
             chain = prompt | llm_manager.llm
             
-            # Await the async LLM call
             ai_response = await chain.ainvoke({"input": message})
             
             llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
