@@ -82,9 +82,10 @@ except Exception as e:
 
 # CORS Configuration
 CORS(app, resources={r"/*": {"origins": [
-    "https://namecorrectionsheelaa.netlify.app",
-    "http://localhost:3000",
-    "https://*.netlify.app"
+    "https://namecorrectionsheelaa.netlify.app", # <-- Add your exact Netlify URL here
+    "https://*.netlify.app",                     # <-- Keep this for other potential Netlify deploys
+    "http://localhost:3000",                     # <-- For local development
+    "http://127.0.0.1:5000"                      # <-- If your Flask runs on 127.0.0.1:5000 locally
 ], "supports_credentials": True}})
 
 logger.info("CORS configured for the Flask app.")
