@@ -174,9 +174,10 @@ class LLMManager:
             raise ValueError("GOOGLE_API_KEY is not set. Please set it to use the Generative AI models.")
 
         try:
-            self.llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.7)
-            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.9)
-            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.3)
+            # FIX: Add convert_system_message_to_human=True to all ChatGoogleGenerativeAI instances
+            self.llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
+            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
+            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
             
             self.memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True)
             
@@ -854,7 +855,13 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
 
     # Simple detection of "harsh" consonant combinations (conceptual)
     harsh_combinations = ["TH", "SH", "CH", "GH", "PH", "CK", "TCH", "DGE", "GHT", "STR", "SCR", "SPL"] # Expanded examples
-    harsh_flags = [combo for combo in harsh_combinations if combo in cleaned_name]
+    harsh_flags = [combo for combo in cleaned_name if combo in cleaned_name] # This line was incorrect, fixed below
+    
+    # Corrected harsh_flags logic:
+    harsh_flags = []
+    for combo in harsh_combinations:
+        if combo in cleaned_name:
+            harsh_flags.append(combo)
 
     if harsh_flags:
         vibration_notes.append(f"Contains potentially harsh consonant combinations: {', '.join(harsh_flags)}. This might affect the overall sound vibration.")
