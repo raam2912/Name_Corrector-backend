@@ -58,6 +58,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
+
+# === PATCH: Chaldean Strict Name Validation ===
+LUCKY_NAME_NUMBERS = {1, 3, 5, 6, 9, 11, 22, 33}
+UNLUCKY_NAME_NUMBERS = {4, 8}
+KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
+
+EXPRESSION_COMPATIBILITY_MAP = {
+    1: {1, 5, 6, 9},
+    2: {2, 4, 6},
+    3: {3, 6, 9},
+    4: {1, 5, 6},
+    5: {1, 5, 6},
+    6: {3, 6, 9},
+    7: {2, 7},
+    8: {1, 5, 6},
+    9: {3, 6, 9},
+    11: {2, 6, 11},
+    22: {4, 8, 22},
+    33: {3, 6, 9, 33},
+}
+
+def is_expression_number_strictly_valid(expr_num: int, life_path: int, birth_number: int) -> bool:
+    if expr_num not in LUCKY_NAME_NUMBERS:
+        return False
+    if expr_num in UNLUCKY_NAME_NUMBERS:
+        return False
+    if life_path not in EXPRESSION_COMPATIBILITY_MAP.get(expr_num, set()):
+        return False
+    if birth_number not in EXPRESSION_COMPATIBILITY_MAP.get(expr_num, set()):
+        return False
+    return True
+# === END PATCH ===
+
 app = Flask(__name__)
 logger.info("Flask app instance created.")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
