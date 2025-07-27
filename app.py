@@ -180,34 +180,33 @@ except Exception as e:
     sys.exit(1)
 
 # --- REFINED PROMPTS FOR NUMEROLOGY APPLICATION ---
+# Removed any mention of "desired outcome" from prompts
 NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes.
 
 ## YOUR MISSION:
-Generate **12** strategically crafted full name variations that: # <<< CHANGED from 6 to 12
+Generate **12** strategically crafted full name variations that:
 - Maintain maximum similarity to the original name (90%+ resemblance)
-- Align precisely with target Expression Numbers (if provided, otherwise choose optimal)
-- Directly support the user's specific desired outcome
+- Align precisely with optimal Expression Numbers (chosen for general well-being and balance)
 - Sound natural, culturally appropriate, and **highly practical for real-world use**
-- **CRITICAL PRIORITY: Numerological validity (correct Expression Number for desired outcome, avoidance of Karmic Debts, alignment with core numbers) takes precedence over phonetic harmony if a trade-off is necessary.** # <<< NEW LINE for priority
+- **CRITICAL PRIORITY: Numerological validity (correct Expression Number, avoidance of Karmic Debts, alignment with core numbers) takes precedence over phonetic harmony if a trade-off is necessary.**
 
 ## MODIFICATION GUIDELINES:
 - **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals
 - **Preserve Core Identity**: Keep the essence and pronunciation as close as possible
 - **Cultural Sensitivity**: Ensure variations respect the original name's cultural context
-- **Practicality First**: Prioritize names that are easy to adopt and integrate into daily life. Avoid overly complex or unusual suggestions unless specifically requested.
+- **Practicality First**: Prioritize names that are easy to adopt and integrate into daily life. Avoid overly complex or unusual suggestions.
 
 ## RATIONALE REQUIREMENTS:
 For each suggestion, provide a comprehensive 2-3 sentence explanation that:
 1. **Specifies the exact numerological advantage** of the new Expression Number
-2. **Directly connects** this advantage to the user's specific desired outcome
-3. **Explains the energetic transformation** this change creates
-4. **Emphasizes positive impact** and specific benefits
+2. **Explains the energetic transformation** this change creates
+3. **Emphasizes positive impact** and specific benefits
 
 **When crafting rationales, consider these additional factors from the client's profile (if available):**
 - **Lo Shu Grid Balance**: How the new name helps balance missing energies (e.g., if 5 is missing, does the new name's Expression 5 help?)
 - **Planetary Compatibility**: How the new name's planetary ruler (from Chaldean mapping) aligns with their Ascendant/Lagna or avoids conflicts with malefic planetary lords.
 - **Phonetic Harmony**: Confirm the suggested name maintains a pleasant and strong vibrational tone.
-- **Edge Case Resolutions**: If the original profile had an exact edge case (e.g., Expression 8/Life Path 1 conflict), explain how the new name resolves or mitigates it.
+- **Edge Case Resolutions**: If the original profile had an exact edge case, explain how the new name resolves or mitigates it.
 
 ## OUTPUT FORMAT:
 Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.
@@ -220,14 +219,11 @@ Return a valid JSON object conforming to NameSuggestionsOutput schema with accur
 
 NAME_SUGGESTION_HUMAN_PROMPT = """**NUMEROLOGICAL NAME OPTIMIZATION REQUEST**
 **Original Name:** "{original_full_name}"
-**Desired Life Outcome:** "{desired_outcome}"
-**Target Expression Numbers (optional):** {target_expression_numbers}
-
-**TASK:** Create 6 name variations that are nearly identical to the original but numerologically optimized for the desired outcome. Each suggestion must include a detailed, specific rationale explaining its advantages.
+**TASK:** Create 12 name variations that are nearly identical to the original but numerologically optimized for general well-being and balance. Each suggestion must include a detailed, specific rationale explaining its advantages.
 
 **REQUIREMENTS:**
 - Maintain 90%+ similarity to original name
-- If target numbers are provided, aim for them. Otherwise, provide a diverse set of optimal Expression Numbers.
+- Aim for a diverse set of optimal Expression Numbers for general positive influence.
 - Provide compelling, detailed explanations for each suggestion
 - Ensure cultural appropriateness, natural sound, and **high practicality for adoption**"""
 
@@ -237,11 +233,11 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 ### 1. **Executive Summary** (Concise & Impactful)
 - Provide a high-level overview of the client's core numerological blueprint.
 - Summarize the primary insights and the most impactful name correction.
-- Highlight the key benefits of adopting the new name in relation to their desired outcome.
+- Highlight the key benefits of adopting the new name for overall well-being and energetic alignment.
 - This section should be concise but powerful, setting the stage for the detailed report.
 
 ### 2. **Introduction** (Warm & Personal)
-- Acknowledge their name, birth date, and desired outcome personally, reinforcing the sacred journey.
+- Acknowledge their name and birth date personally, reinforcing the sacred journey.
 - Create immediate connection and establish trust, emphasizing the report's transformative potential.
 - Set a positive, empowering tone for the entire report.
 - Explain the holistic approach, integrating various numerological and conceptual astrological systems.
@@ -269,11 +265,11 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
     - Explain how this internal drive influences their choices and aspirations.
 - **Personality Number**:
     - Describe in detail how others perceive them, their outer persona, and the first impressions they make.
-    - Discuss how this external presentation can be leveraged for their desired outcome.
+    - Discuss how this external presentation can be leveraged for their overall well-being.
 - **🌟 STRATEGIC NAME CORRECTIONS: Your Path to Transformation** (CRITICAL, Highly Detailed)
 - Present *only the confirmed suggested names provided in the input*, each with its Expression Number.
 - **Use the exact detailed rationales provided in the input data.**
-- Explain in multiple paragraphs how each suggestion specifically enhances their desired outcome, providing concrete scenarios.
+- Explain in multiple paragraphs how each suggestion specifically enhances their overall well-being and energetic alignment, providing concrete scenarios.
 - Compare energetic shifts from current to suggested numbers with rich descriptive language.
 - Provide comprehensive implementation guidance, including psychological preparation and practical steps for adopting the new name.
 - Offer detailed timing recommendations for name adoption, linking to their personal year cycles.
@@ -281,7 +277,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 
 ### 6. **Karmic Lessons & Soul Work: Unlocking Growth** (In-depth Analysis)
 - Detail **all** missing numbers from their **Lo Shu Grid** and their profound significance, providing multiple paragraphs of interpretation for each.
-- Explain how consciously addressing these lessons accelerates personal and spiritual growth, linking directly to their desired outcome.
+- Explain how consciously addressing these lessons accelerates personal and spiritual growth.
 - **Specifically mention any karmic debt numbers identified in their birth date or original name, explaining their origin and the specific lessons they present.**
 - Offer practical exercises or mindset shifts for integrating these lessons.
 
@@ -297,7 +293,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 
 ### 9. **Personalized Development Blueprint: Actionable Steps** (Highly Practical)
 - Outline immediate focus areas with specific, actionable steps for daily integration.
-- Detail a long-term vision aligned with their numbers and desired outcome, providing a roadmap.
+- Detail a long-term vision aligned with their numbers, providing a roadmap.
 - Suggest comprehensive monthly practices for sustained growth and energetic alignment.
 - **Provide specific actions that help integrate energies from their Lo Shu Grid or align with beneficial planetary influences, offering concrete examples.**
 
@@ -341,7 +337,6 @@ Please generate a detailed, transformational numerology report using this comple
 - Follow the exact 12-section structure outlined in your instructions.
 - Elaborate extensively on each section and sub-section - aim for truly comprehensive analysis, providing multiple paragraphs and examples for each point.
 - The 'Strategic Name Corrections' section should ONLY use the 'confirmed_suggestions' provided in the JSON input, along with their rationales.
-- Directly address how everything connects to their desired outcome.
 - Create a report that feels personally crafted, professionally valuable, and profoundly insightful."""
 
 # Removed GENERAL_CHAT_SYSTEM_PROMPT and NAME_VALIDATION_SYSTEM_PROMPT as chat functionality is removed.
@@ -772,7 +767,8 @@ def check_planetary_compatibility(expression_number: int, astro_info: Dict) -> D
         "compatibility_flags": list(set(compatibility_flags)) # Remove duplicates
     }
 
-def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dict[str, Any]:
+# Modified: Removed desired_outcome parameter
+def get_phonetic_vibration_analysis(full_name: str) -> Dict[str, Any]:
     """
     Performs a conceptual phonetic vibration analysis.
     In a real application, this would involve advanced phonetics and linguistic analysis.
@@ -822,17 +818,8 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
          qualitative_description += "The presence of repeated vowels gives it a sustained and perhaps melodious feel. "
          vibration_score -= 0.05
     
-    # Align with desired outcome (conceptual)
-    desired_outcome_lower = desired_outcome.lower()
-    if "financial" in desired_outcome_lower or "business" in desired_outcome_lower or "leadership" in desired_outcome_lower:
-        if "strong" in qualitative_description or "assertive" in qualitative_description or "direct" in qualitative_description:
-            qualitative_description += "This strong and direct phonetic quality aligns well with a desired public image in the financial or business world, suggesting confidence and clarity."
-        else:
-            qualitative_description += "While harmonious, the phonetic quality might lean towards gentle or flowing, which could be balanced with other energetic aspects for a strong financial presence."
-    elif "creative" in desired_outcome_lower or "artistic" in desired_outcome_lower:
-        if "flowing" in qualitative_description or "melodious" in qualitative_description:
-            qualitative_description += "The flowing and melodious phonetic quality is highly conducive to creative and artistic expression."
-    
+    # Removed: Logic that conditionally changes qualitative_description based on desired_outcome
+
     # General positive note if no specific issues found and no detailed description yet
     if not vibration_notes and not qualitative_description:
         qualitative_description = "The name appears to have a harmonious and balanced phonetic vibration with a pleasant flow, suitable for general positive interactions."
@@ -847,9 +834,9 @@ def get_phonetic_vibration_analysis(full_name: str, desired_outcome: str) -> Dic
         "qualitative_description": qualitative_description.strip()
     }
 
-# --- Main Profile Calculation Function ---
+# Modified: Removed desired_outcome parameter from function signature
 @cached_operation(timeout=3600)
-async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, desired_outcome: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
+async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, birth_time: Optional[str] = None, birth_place: Optional[str] = None, suggested_name_expression_num: Optional[int] = None) -> Dict:
     """
     Get comprehensive numerology profile with caching and advanced calculations.
     Now accepts suggested_name_expression_num to update Lo Shu Grid for validation context.
@@ -872,16 +859,17 @@ async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, 
     planetary_compatibility = check_planetary_compatibility(expression_num, astro_info)
     astro_info['planetary_compatibility'] = planetary_compatibility # Update astro_info with compatibility flags
 
-    # New: Conceptual Phonetic Vibration - Pass desired_outcome for more tailored description
-    phonetic_vibration = get_phonetic_vibration_analysis(full_name, desired_outcome or "")
+    # New: Conceptual Phonetic Vibration - Removed desired_outcome from call
+    phonetic_vibration = get_phonetic_vibration_analysis(full_name)
 
     # New: Edge Case Handling - Pass entire profile data for comprehensive analysis
+    # Removed desired_outcome from profile_for_edge_cases
     profile_for_edge_cases = {
         "expression_number": expression_num,
         "life_path_number": life_path_num,
         "birth_day_number": birth_day_num,
         "lo_shu_grid": lo_shu_grid,
-        "desired_outcome": desired_outcome,
+        # "desired_outcome": desired_outcome, # Removed
         "ascendant_info": astro_info.get('ascendant_info', {}),
         "moon_sign_info": astro_info.get('moon_sign_info', {}),
         "planetary_lords": astro_info.get('planetary_lords', []),
@@ -935,7 +923,7 @@ async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, 
         "birth_date": birth_date,
         "birth_time": birth_time,
         "birth_place": birth_place,
-        "desired_outcome": desired_outcome,
+        # "desired_outcome": desired_outcome, # Removed from profile data
         "expression_number": expression_num,
         "expression_details": expression_details,
         "life_path_number": life_path_num,
@@ -958,7 +946,8 @@ async def get_comprehensive_numerology_profile(full_name: str, birth_date: str, 
         "development_recommendations": development_recommendations, # Added
         "uniqueness_score": uniqueness_score_data, # Added
         "success_areas": success_areas_data, # Added
-        "profile_hash": hashlib.md5(f"{full_name}{birth_date}{birth_time}{birth_place}{desired_outcome}".encode()).hexdigest()
+        # Removed desired_outcome from hash calculation as well
+        "profile_hash": hashlib.md5(f"{full_name}{birth_date}{birth_time}{birth_place}".encode()).hexdigest()
     }
 
 def calculate_number_compatibility(expression: int, life_path: int) -> Dict:
@@ -1368,7 +1357,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     life_path_number = profile_data.get('life_path_number')
     birth_day_number = profile_data.get('birth_day_number')
     lo_shu_grid = profile_data.get('lo_shu_grid', {})
-    desired_outcome = profile_data.get('desired_outcome', '').lower()
+    # desired_outcome = profile_data.get('desired_outcome', '').lower() # Removed
     astro_info = profile_data.get('astro_info', {})
     planetary_lords = astro_info.get('planetary_lords', [])
     ascendant_info = astro_info.get('ascendant_info', {})
@@ -1431,16 +1420,16 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
         })
 
 
-    # Profession: Healer, Teacher (Accept 2, 7 only if supported by grid) (from PDF)
-    spiritual_professions = ["healer", "teacher", "counselor", "artist", "researcher", "spiritual guide"]
-    if any(p in desired_outcome for p in spiritual_professions):
-        if expression_number in {2, 7}:
-            if not (lo_shu_grid.get('has_5') and lo_shu_grid.get('has_6')):
-                edge_cases.append({
-                    "type": f"Spiritual Profession / Expression {expression_number} with Unsupportive Lo Shu Grid",
-                    "description": f"While Expression {expression_number} aligns with your desired spiritual profession, the missing 5 (grounding) or 6 (harmony/service) in your Lo Shu Grid might make it challenging to fully ground and manifest these energies practically.",
-                    "resolution_guidance": "Focus on practical application of your spiritual gifts and building stable foundations. Consider names that reinforce grounding numbers if appropriate, or consciously develop the missing energies."
-                })
+    # Removed: Profession-based edge cases as desired_outcome is removed.
+    # spiritual_professions = ["healer", "teacher", "counselor", "artist", "researcher", "spiritual guide"]
+    # if any(p in desired_outcome for p in spiritual_professions):
+    #     if expression_number in {2, 7}:
+    #         if not (lo_shu_grid.get('has_5') and lo_shu_grid.get('has_6')):
+    #             edge_cases.append({
+    #                 "type": f"Spiritual Profession / Expression {expression_number} with Unsupportive Lo Shu Grid",
+    #                 "description": f"While Expression {expression_number} aligns with your desired spiritual profession, the missing 5 (grounding) or 6 (harmony/service) in your Lo Shu Grid might make it challenging to fully ground and manifest these energies practically.",
+    #                 "resolution_guidance": "Focus on practical application of your spiritual gifts and building stable foundations. Consider names that reinforce grounding numbers if appropriate, or consciously develop the missing energies."
+    #             })
 
     # Karmic Debt Numbers in Birth Date or Original Name
     original_karmic_debts = profile_data.get('life_path_details', {}).get('karmic_debt_in_components', [])
@@ -1574,6 +1563,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     return edge_cases
 
 # --- Validation Logic for a Single Name ---
+# Modified: Removed desired_outcome from function signature and logic
 def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> Tuple[bool, str]:
     """
     Performs a rule-based validation for a single suggested name.
@@ -1588,7 +1578,7 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
     # Get client's core numbers
     life_path_num = client_profile.get('life_path_number')
     birth_day_num = client_profile.get('birth_day_number')
-    desired_outcome = client_profile.get('desired_outcome', '').lower()
+    # desired_outcome = client_profile.get('desired_outcome', '').lower() # Removed
 
     # Get Lo Shu Grid (potentially updated with suggested name's expression for analysis)
     lo_shu_grid_data = calculate_lo_shu_grid_with_details(client_profile.get('birth_date'), suggested_exp_num)
@@ -1651,27 +1641,28 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
              reasons.append("The suggested name's planetary influence shows no major conceptual astrological conflicts and some general alignment.")
 
     # Rule 5: Phonetic Vibration
-    phonetic_analysis = get_phonetic_vibration_analysis(suggested_name, desired_outcome)
+    # Modified: Removed desired_outcome from call
+    phonetic_analysis = get_phonetic_vibration_analysis(suggested_name)
     if not phonetic_analysis.get('is_harmonious'):
         is_valid = False
         reasons.append(f"Phonetic vibration concern: The name's sound may create subtle dissonance or not fully support the desired energy. {phonetic_analysis.get('qualitative_description', 'N/A')}")
     else:
         reasons.append(f"Phonetic vibration is harmonious: The name has a pleasant and supportive sound. {phonetic_analysis.get('qualitative_description', 'N/A')}")
 
-    # Rule 6: General Expression Number Suitability (based on desired outcome)
-    # This is a strong recommendation, if it's not optimal, it's a "No" for the practitioner.
-    optimal_for_outcome = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
-    if suggested_exp_num not in optimal_for_outcome:
-        is_valid = False # If it's not optimal, for a practitioner, it's a "No"
-        reasons.append(f"The Expression Number {suggested_exp_num} is not among the primary target numbers ({', '.join(map(str, optimal_for_outcome))}) for your desired outcome of '{desired_outcome}'. While not inherently 'bad', it's not optimally aligned for your stated goals.")
-    else:
-        reasons.append(f"The Expression Number {suggested_exp_num} aligns perfectly with your desired outcome of '{desired_outcome}', providing optimal energetic support.")
-
-    # Final check: if no specific invalidity reasons, but it's not explicitly valid either
+    # Removed: Rule 6: General Expression Number Suitability (based on desired outcome)
+    # optimal_for_outcome = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
+    # if suggested_exp_num not in optimal_for_outcome:
+    #     is_valid = False # If it's not optimal, for a practitioner, it's a "No"
+    #     reasons.append(f"The Expression Number {suggested_exp_num} is not among the primary target numbers ({', '.join(map(str, optimal_for_outcome))}) for your desired outcome of '{desired_outcome}'. While not inherently 'bad', it's not optimally aligned for your stated goals.")
+    # else:
+    #     reasons.append(f"The Expression Number {suggested_exp_num} aligns perfectly with your desired outcome of '{desired_outcome}', providing optimal energetic support.")
+    
+    # New Rule: General positive alignment if no specific issues
     if is_valid and not reasons:
-        reasons.append("The suggested name appears to be numerologically sound and generally positive, though no strong alignments or conflicts were identified by the rules.")
+        reasons.append("The suggested name is numerologically sound and energetically balanced for general positive influence.")
     elif not is_valid and not reasons:
         reasons.append("The suggested name has fundamental numerological or astrological conflicts that make it unsuitable.")
+
 
     return is_valid, " ".join(reasons).strip()
 
@@ -1836,6 +1827,8 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
         Story.append(Paragraph(f"<b>Birth Time:</b> {profile_details.get('birth_time', 'N/A')}", styles['NormalBodyText']))
     if profile_details.get('birth_place'):
         Story.append(Paragraph(f"<b>Birth Place:</b> {profile_details.get('birth_place', 'N/A')}", styles['NormalBodyText']))
+    # Removed: Desired Outcome from PDF raw data
+    # Story.append(Paragraph(f"<b>Desired Outcome:</b> {profile_details.get('desired_outcome', 'N/A')}", styles['NormalBodyText']))
     Story.append(Spacer(1, 0.1 * inch))
 
     Story.append(Paragraph("<b>Expression Number:</b>", styles['BoldBodyText']))
@@ -2037,34 +2030,18 @@ def create_numerology_pdf(report_data: Dict) -> bytes:
 # --- Name Suggestion Engine Class ---
 class NameSuggestionEngine:
     @staticmethod
-    def determine_target_numbers_for_outcome(desired_outcome: str) -> List[int]:
+    # Modified: Removed desired_outcome parameter
+    def determine_target_numbers_for_outcome() -> List[int]:
         """
-        Determines optimal Expression Numbers based on desired outcome.
-        This is a rule-based mapping.
+        Determines optimal Expression Numbers for general well-being and balance.
+        This is a rule-based mapping, now without 'desired_outcome' input.
         """
-        outcome_lower = desired_outcome.lower()
-        target_numbers = []
-
-        if "success" in outcome_lower or "leadership" in outcome_lower or "ambition" in outcome_lower:
-            target_numbers.extend([1, 8, 22])
-        if "love" in outcome_lower or "relationships" in outcome_lower or "harmony" in outcome_lower or "family" in outcome_lower:
-            target_numbers.extend([2, 6])
-        if "creativity" in outcome_lower or "expression" in outcome_lower or "communication" in outcome_lower or "art" in outcome_lower:
-            target_numbers.extend([3, 5])
-        if "stability" in outcome_lower or "security" in outcome_lower or "structure" in outcome_lower or "discipline" in outcome_lower:
-            target_numbers.extend([4])
-        if "spiritual" in outcome_lower or "wisdom" in outcome_lower or "introspection" in outcome_lower:
-            target_numbers.extend([7, 11, 33])
-        if "humanitarian" in outcome_lower or "service" in outcome_lower or "global impact" in outcome_lower:
-            target_numbers.extend([9, 33])
-
-        if not target_numbers:
-            target_numbers = [1, 3, 5, 8]
-
-        return sorted(list(set(target_numbers)))
+        # Default set of generally positive/balanced numbers
+        return sorted(list(set([1, 3, 5, 6, 8, 9, 11, 22, 33])))
 
     @staticmethod
-    async def generate_name_suggestions(llm_instance: ChatGoogleGenerativeAI, original_full_name: str, desired_outcome: str, target_expression_numbers: List[int]) -> NameSuggestionsOutput:
+    # Modified: Removed desired_outcome parameter
+    async def generate_name_suggestions(llm_instance: ChatGoogleGenerativeAI, original_full_name: str, target_expression_numbers: List[int]) -> NameSuggestionsOutput:
         """
         Generates name suggestions using the LLM and then recalculates Expression Numbers
         using the backend's numerology logic for accuracy.
@@ -2075,7 +2052,7 @@ class NameSuggestionEngine:
             SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
             HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
                 original_full_name=original_full_name,
-                desired_outcome=desired_outcome,
+                # Removed: desired_outcome from prompt
                 target_expression_numbers=target_expression_numbers
             ))
         ])
@@ -2112,10 +2089,12 @@ async def initial_suggestions_endpoint():
     data = request.json
     full_name = data.get('full_name')
     birth_date = data.get('birth_date')
-    desired_outcome = data.get('desired_outcome')
+    # Removed: desired_outcome from data extraction
+    # desired_outcome = data.get('desired_outcome')
 
-    if not all([full_name, birth_date, desired_outcome]):
-        return jsonify({"error": "Missing full_name, birth_date, or desired_outcome for initial suggestions."}), 400
+    # Removed: desired_outcome from validation
+    if not all([full_name, birth_date]):
+        return jsonify({"error": "Missing full_name or birth_date for initial suggestions."}), 400
 
     try:
         profile_data = await get_comprehensive_numerology_profile(
@@ -2123,15 +2102,16 @@ async def initial_suggestions_endpoint():
             birth_date=birth_date,
             birth_time=data.get('birth_time'),
             birth_place=data.get('birth_place'),
-            desired_outcome=desired_outcome
+            # Removed: desired_outcome from call
         )
 
-        target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
+        # Modified: Call without desired_outcome
+        target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome()
 
+        # Modified: Call without desired_outcome
         name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
             llm_manager.creative_llm,
             full_name,
-            desired_outcome,
             target_numbers
         )
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
@@ -2178,6 +2158,7 @@ async def validate_name_endpoint():
 
     try:
         # validate_suggested_name_rules is synchronous, so no await needed here
+        # Modified: Removed desired_outcome from call
         is_valid, rationale = validate_suggested_name_rules(suggested_name, client_profile)
         
         # Calculate expression number for the suggested name to return it
@@ -2214,19 +2195,22 @@ async def generate_pdf_report_endpoint():
     """
     report_data_from_frontend = request.json
     
+    # Removed desired_outcome from validation
     if not all([report_data_from_frontend.get('full_name'), report_data_from_frontend.get('birth_date'), report_data_from_frontend.get('confirmed_suggestions') is not None]):
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
 
     try:
+        # Modified: Removed desired_outcome from call
         profile_details = await get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
-            desired_outcome=report_data_from_frontend.get('desired_outcome')
         )
         
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
+        # Removed desired_outcome from profile_details being passed to LLM
+        # profile_details['desired_outcome'] = report_data_from_frontend.get('desired_outcome')
 
         llm_input_data = json.dumps(profile_details, indent=2)
         
@@ -2275,19 +2259,22 @@ async def generate_text_report_endpoint():
     """
     report_data_from_frontend = request.json
     
+    # Removed desired_outcome from validation
     if not all([report_data_from_frontend.get('full_name'), report_data_from_frontend.get('birth_date'), report_data_from_frontend.get('confirmed_suggestions') is not None]):
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for text report generation."}), 400
 
     try:
+        # Modified: Removed desired_outcome from call
         profile_details = await get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
-            desired_outcome=report_data_from_frontend.get('desired_outcome')
         )
         
         profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
+        # Removed desired_outcome from profile_details being passed to LLM
+        # profile_details['desired_outcome'] = report_data_from_frontend.get('desired_outcome')
 
         llm_input_data = json.dumps(profile_details, indent=2)
         
