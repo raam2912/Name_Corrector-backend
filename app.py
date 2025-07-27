@@ -79,12 +79,7 @@ except Exception as e:
     logger.warning(f"Could not initialize Redis features (Caching/Limiter might be unavailable): {e}")
 
 # CORS Configuration
-CORS(app, resources={r"/*": {"origins": [
-    "https://namecorrectionsheelaa.netlify.app",
-    "https://*.netlify.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:5000"
-], "supports_credentials": True}})
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 logger.info("CORS configured for the Flask app.")
 
