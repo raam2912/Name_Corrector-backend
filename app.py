@@ -349,92 +349,47 @@ Please generate a detailed, transformational numerology report using this comple
 - Directly address how everything connects to their desired outcome.
 - Create a report that feels personally crafted, professionally valuable, and profoundly insightful."""
 
-GENERAL_CHAT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant - a wise, knowledgeable, and approachable guide in the sacred science of numbers.
-
-## YOUR ROLE:
-- **Numerology Expert**: Provide accurate information about numerological principles
-- **Supportive Guide**: Offer gentle, encouraging guidance without being prescriptive
-- **Educational Resource**: Explain concepts clearly for all knowledge levels
-- **Boundary Keeper**: Redirect for personalized calculations requiring specific data
-
-## WHAT YOU CAN HELP WITH:
-- General numerology education and principles
-- Explaining number meanings and significance
-- Discussing numerological concepts and history
-- Providing general guidance about name energy
-- Answering questions about numerological practices
-
-## WHAT REQUIRES SPECIALIZED SERVICE:
-- Personal number calculations (need full name + birth date)
-- Specific name suggestions or validations
-- Comprehensive reports or detailed analysis
-- PDF generation or advanced consultations
-
-## COMMUNICATION STYLE:
-- Professional yet warm and accessible
-- Encouraging and empowering
-- Clear explanations without overwhelming detail
-- Respectful of numerological traditions
-When users need personalized services, guide them toward providing complete information for proper analysis."""
-
-NAME_VALIDATION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, specializing in precise, rule-based validation of name suggestions. Your role is to act as a rigorous numerological and astro-numerological validator.
-
-## YOUR MISSION:
-Based on the provided client profile and the suggested name's calculated data, provide a clear, concise "YES" or "NO" validation. Follow this with a detailed, rule-based rationale explaining *why* the name is valid or invalid, referencing specific numerological and conceptual astrological principles.
-
-## VALIDATION RULES (CRITICAL - Adhere Strictly):
-1.  **Master Numbers (11, 22, 33) as Expression Number**:
-    * **YES**: If the suggested name's Expression Number is a Master Number AND the client's Life Path Number OR Birth Day Number is also a Master Number (11, 22, 33) OR the corresponding reduced single digit (e.g., LP 2 for Exp 11, LP 4 for Exp 22, LP 6 for Exp 33). This indicates strong support for embodying the Master energy.
-    * **NO**: If the suggested name's Expression Number is a Master Number BUT there is NO supporting Master Life Path or Birth Day Number. Explain that the energy may be too intense or difficult to ground without foundational support.
-2.  **Karmic Debt Numbers (13, 14, 16, 19) as Unreduced Expression Total**:
-    * **NO**: If the *unreduced sum* of the suggested name's letters results in 13, 14, 16, or 19. Explain that these are karmic debt numbers that bring specific life challenges, and it's generally advised to avoid them as a primary Expression Number.
-3.  **Lo Shu Grid Balance (Missing Numbers)**:
-    * **YES (Positive Factor)**: If the suggested name's Expression Number (reduced to a single digit, e.g., 11->2, 22->4, 33->6 for grid purposes) *fills a missing number* in the client's Lo Shu Grid. Explain how this helps balance the client's energetic blueprint.
-    * **NO (Specific Conflict)**: If the suggested name's Expression Number is 8, AND the number 8 is *missing* from the client's Lo Shu Grid. Explain that this indicates a lack of foundational energy for managing material power, potentially leading to instability.
-4.  **Conceptual Astrological Compatibility**:
-    * **NO**: If the suggested name's Expression Number's planetary ruler (based on Chaldean mapping) has a *known conflict* with the client's conceptual Ascendant ruler or other conceptual malefic planetary influences in their chart (as indicated in the provided `astro_info` and `planetary_compatibility` data). Reference the specific conflict (e.g., "Expression 8 (Saturn) conflicts with Sun-ruled Ascendant").
-    * **YES (Positive Factor)**: If the suggested name's Expression Number's planetary ruler has a *strong alignment* with the client's conceptual Ascendant ruler or other conceptual benefic planetary influences. Reference the specific alignment.
-5.  **Phonetic Vibration**:
-    * **YES**: If the `phonetic_vibration` analysis indicates `is_harmonious: true`. Explain that the name has a pleasant and supportive sound.
-    * **NO**: If the `phonetic_vibration` analysis indicates `is_harmonious: false`. Explain that the name's sound may create subtle dissonance or not fully support the desired energy.
-6.  **Alignment with Desired Outcome**:
-    * **YES**: If the suggested name's Expression Number is among the `optimal_for_outcome` numbers determined for the client's `desired_outcome`. Explain how this number directly supports their goals.
-    * **NO**: If the suggested name's Expression Number is *not* among the `optimal_for_outcome` numbers for the client's `desired_outcome`. Explain that while the number might not be inherently "bad," it's not optimally aligned to energetically support their stated goals.
-
-## OUTPUT FORMAT:
-Provide your response directly, starting with "YES" or "NO", followed by a comprehensive, rule-based explanation.
-"""
+# Removed GENERAL_CHAT_SYSTEM_PROMPT and NAME_VALIDATION_SYSTEM_PROMPT as chat functionality is removed.
 
 # --- Helper Functions (Numerology Calculations) ---
+# These functions are globally defined and accessible by all endpoints.
+
+CHALDEAN_MAP = {
+    'A': 1, 'I': 1, 'J': 1, 'Q': 1, 'Y': 1,
+    'B': 2, 'K': 2, 'R': 2,
+    'C': 3, 'G': 3, 'L': 3, 'S': 3,
+    'D': 4, 'M': 4, 'T': 4,
+    'E': 5, 'H': 5, 'N': 5, 'X': 5,
+    'U': 6, 'V': 6, 'W': 6,
+    'O': 7, 'Z': 7,
+    'F': 8, 'P': 8
+}
+
+MASTER_NUMBERS = {11, 22, 33}
+KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
+
+PLANETARY_RULERS = {
+    1: "Sun", 2: "Moon", 3: "Jupiter", 4: "Uranus/Rahu", 5: "Mercury",
+    6: "Venus", 7: "Neptune/Ketu", 8: "Saturn", 9: "Mars",
+    11: "Higher Self/Intuition", 22: "Master Builder", 33: "Master Healer"
+}
+
 def clean_name(name: str) -> str:
     """Removes non-alphabetic characters and converts to uppercase."""
     return re.sub(r'[^a-zA-Z\s]', '', name).upper() # Allow spaces for full names
 
 def get_chaldean_value(char: str) -> int:
     """Returns the Chaldean numerology value for a single character."""
-    chaldean_map = {
-        'A': 1, 'I': 1, 'J': 1, 'Q': 1, 'Y': 1,
-        'B': 2, 'K': 2, 'R': 2,
-        'C': 3, 'G': 3, 'L': 3, 'S': 3,
-        'D': 4, 'M': 4, 'T': 4,
-        'E': 5, 'H': 5, 'N': 5, 'X': 5,
-        'U': 6, 'V': 6, 'W': 6,
-        'O': 7, 'Z': 7,
-        'F': 8, 'P': 8
-    }
-    return chaldean_map.get(char.upper(), 0)
+    return CHALDEAN_MAP.get(char.upper(), 0)
 
-# Line 407:
 def calculate_single_digit(number: int, allow_master_numbers: bool = True) -> int:
     """Reduces a number to a single digit, optionally preserving Master Numbers (11, 22, 33)."""
-    MASTER_NUMBERS = {11, 22, 33}
     
     # First check: if the initial number is a Master Number and allowed, return it directly.
     # This handles cases like 11, 22, 33 directly passed in.
     if allow_master_numbers and number in MASTER_NUMBERS:
         return number
     
-    # Line 412: (The crucial change starts here)
     # Reduce until single digit or a Master Number (if allowed) is reached
     while number > 9:
         number = sum(int(digit) for digit in str(number))
@@ -467,9 +422,7 @@ def calculate_expression_number_with_details(full_name: str) -> Tuple[int, Dict]
         9: 'Mars (♂)', # 9 is often associated with Mars in some systems
         11: 'Higher Moon / Spiritual Insight', 22: 'Higher Rahu / Master Builder', 33: 'Higher Jupiter / Master Healer'
     }
-    KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
-    MASTER_NUMBERS = {11, 22, 33}
-
+    
     for letter in cleaned_name:
         if letter in CHALDEAN_NUMEROLOGY_MAP_WITH_PLANETS:
             value, planet = CHALDEAN_NUMEROLOGY_MAP_WITH_PLANETS[letter]
@@ -493,8 +446,7 @@ def calculate_life_path_number_with_details(birth_date_str: str) -> Tuple[int, D
     Calculate Life Path Number (Destiny Number) by adding all digits of complete birth date.
     Master Numbers (11, 22, 33) are NOT reduced.
     """
-    KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
-    MASTER_NUMBERS = {11, 22, 33}
+    
     try:
         year, month, day = map(int, birth_date_str.split('-'))
     except ValueError:
@@ -521,14 +473,31 @@ def calculate_life_path_number_with_details(birth_date_str: str) -> Tuple[int, D
         "karmic_debt_in_components": list(set(karmic_debt_present_in_components)), # Ensure unique karmic debts
         "is_master_number": final_number in MASTER_NUMBERS
     }
-
+def check_karmic_debt(full_name: str) -> List[int]:
+    """
+    Checks for karmic debt numbers based on the unreduced sum of the name's Chaldean values.
+    Returns a list of karmic debt numbers found.
+    """
+    cleaned_name = clean_name(full_name)
+    total_unreduced = sum(get_chaldean_value(char) for char in cleaned_name)
+    
+    debts = []
+    # Check for karmic debt numbers based on the unreduced sum of the name
+    if total_unreduced in KARMIC_DEBT_NUMBERS:
+        debts.append(total_unreduced)
+    
+    # NOTE: This function specifically checks for karmic debt from the *name*.
+    # If you also need to check karmic debt from the *birth date*, that logic
+    # is typically handled within `calculate_life_path_number_with_details`
+    # or `analyze_karmic_lessons` by checking birth date components.
+    
+    return debts
 def calculate_birth_day_number_with_details(birth_date_str: str) -> Tuple[int, Dict]:
     """
     Calculates the Birth Day Number (Primary Ruling Number) from the day of birth.
     Master Numbers (11, 22, 33) are NOT reduced.
     Example: 25th = 2+5=7. 11th = 11.
     """
-    MASTER_NUMBERS = {11, 22, 33}
     if not birth_date_str:
         return 0, {"error": "No birth date provided."}
     try:
@@ -549,7 +518,6 @@ def calculate_birth_day_number_with_details(birth_date_str: str) -> Tuple[int, D
 def calculate_soul_urge_number_with_details(name: str) -> Tuple[int, Dict]:
     """Calculate soul urge (vowels only) using Chaldean map."""
     VOWELS = set('AEIOU')
-    MASTER_NUMBERS = {11, 22, 33}
     total = 0
     vowel_breakdown = {}
     cleaned_name = clean_name(name)
@@ -571,7 +539,6 @@ def calculate_soul_urge_number_with_details(name: str) -> Tuple[int, Dict]:
 def calculate_personality_number_with_details(name: str) -> Tuple[int, Dict]:
     """Calculate personality number (consonants only) using Chaldean map."""
     VOWELS = set('AEIOU')
-    MASTER_NUMBERS = {11, 22, 33}
     total = 0
     consonant_breakdown = {}
     cleaned_name = clean_name(name)
@@ -1057,23 +1024,12 @@ def analyze_karmic_lessons(name: str, birth_date_str: str) -> Dict:
     Analyze karmic lessons from missing numbers in name (Chaldean) and Lo Shu Grid.
     This now combines both aspects for a holistic view.
     """
-    KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
     
     # Karmic lessons from name (missing numbers in Chaldean letter values)
     name_numbers_present = set()
-    CHALDEAN_NUMEROLOGY_MAP = {
-        'A': 1, 'I': 1, 'J': 1, 'Q': 1, 'Y': 1,
-        'B': 2, 'K': 2, 'R': 2,
-        'C': 3, 'G': 3, 'L': 3, 'S': 3,
-        'D': 4, 'M': 4, 'T': 4,
-        'E': 5, 'H': 5, 'N': 5, 'X': 5,
-        'U': 6, 'V': 6, 'W': 6,
-        'O': 7, 'Z': 7,
-        'F': 8, 'P': 8
-    }
     for letter in clean_name(name):
-        if letter in CHALDEAN_NUMEROLOGY_MAP:
-            name_numbers_present.add(CHALDEAN_NUMEROLOGY_MAP[letter])
+        if letter in CHALDEAN_MAP: # Use the global CHALDEAN_MAP
+            name_numbers_present.add(CHALDEAN_MAP[letter])
     
     missing_from_name = sorted(list(set(range(1, 9)) - name_numbers_present)) # Chaldean only uses 1-8 for letters
     
@@ -1219,13 +1175,13 @@ def calculate_uniqueness_score(profile: Dict) -> Dict:
     rarity_multiplier = 1.0
     rarity_factors = []
 
-    if expression in [11, 22, 33]:
+    if expression in MASTER_NUMBERS:
         rarity_multiplier += 0.5
         rarity_factors.append(f"Master Expression Number ({expression})")
-    if life_path in [11, 22, 33]:
+    if life_path in MASTER_NUMBERS:
         rarity_multiplier += 0.5
         rarity_factors.append(f"Master Life Path Number ({life_path})")
-    if birth_day_number in [11, 22, 33]:
+    if birth_day_number in MASTER_NUMBERS:
         rarity_multiplier += 0.3
         rarity_factors.append(f"Master Birth Day Number ({birth_day_number})")
 
@@ -1237,7 +1193,7 @@ def calculate_uniqueness_score(profile: Dict) -> Dict:
     if (expression in {4,8} and life_path in {3,6,9,11,33}): # Examples of challenging/unique combos
         combination_rarity_score += 0.2
         rarity_factors.append("Challenging core number combination")
-    if (expression in {11,22,33} and life_path in {11,22,33}): # Master number combos
+    if (expression in MASTER_NUMBERS and life_path in MASTER_NUMBERS): # Master number combos
         combination_rarity_score += 0.3
         rarity_factors.append("Multiple Master Numbers in core profile")
 
@@ -1423,8 +1379,7 @@ def analyze_edge_cases(profile_data: Dict) -> List[Dict]:
     ascendant_info = astro_info.get('ascendant_info', {})
     
     # Common numerical constants
-    MASTER_NUMBERS = {11, 22, 33}
-    KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
+    
     NUMBER_TO_PLANET_MAP = {
         1: 'Sun (☉)', 2: 'Moon (☽)', 3: 'Jupiter (♃)', 4: 'Rahu (☊)',
         5: 'Mercury (☿)', 6: 'Venus (♀)', 7: 'Ketu / Neptune (☋)', 8: 'Saturn (♄)',
@@ -1649,18 +1604,18 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
     planetary_compatibility = check_planetary_compatibility(suggested_exp_num, astro_info)
 
     # Rule 1: Master Numbers (11, 22, 33) - only if supported by Life Path or Birth Day
-    if suggested_exp_num in [11, 22, 33]:
+    if suggested_exp_num in MASTER_NUMBERS:
         # If the suggested name is a Master Number, check if the client's Life Path or Birth Day
         # is also a Master Number or the same number (e.g., LP 2 for Exp 11, LP 4 for Exp 22, LP 6 for Exp 33)
         # This is a common numerological guideline for "grounding" Master Numbers.
         is_master_supported = False
-        if life_path_num in [11, 22, 33] or \
+        if life_path_num in MASTER_NUMBERS or \
            (suggested_exp_num == 11 and life_path_num == 2) or \
            (suggested_exp_num == 22 and life_path_num == 4) or \
            (suggested_exp_num == 33 and life_path_num == 6):
             is_master_supported = True
         
-        if birth_day_num in [11, 22, 33] or \
+        if birth_day_num in MASTER_NUMBERS or \
            (suggested_exp_num == 11 and birth_day_num == 2) or \
            (suggested_exp_num == 22 and birth_day_num == 4) or \
            (suggested_exp_num == 33 and birth_day_num == 6):
@@ -1673,7 +1628,7 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
             reasons.append(f"Master Expression {suggested_exp_num} is well-supported by your core numbers, offering immense potential for higher purpose and manifestation.")
     
     # Rule 2: Karmic Debt Numbers (13, 14, 16, 19) - avoid as final Expression (unreduced sum)
-    if suggested_exp_details.get('total_before_reduction') in [13, 14, 16, 19]:
+    if suggested_exp_details.get('total_before_reduction') in KARMIC_DEBT_NUMBERS:
         is_valid = False
         reasons.append(f"The suggested name's unreduced total ({suggested_exp_details.get('total_before_reduction')}) results in a Karmic Debt Number. This can bring significant life lessons and challenges. It is generally advised to avoid this as a primary Expression Number.")
     
@@ -2212,8 +2167,19 @@ async def validate_name_endpoint():
     suggested_name = data.get('suggested_name')
     client_profile = data.get('client_profile')
 
-    if not all([suggested_name, client_profile]):
-        return jsonify({"error": "Missing suggested_name or client_profile for validation."}), 400
+    # --- FIX START: Explicit Input Validation for /validate_name ---
+    if not data:
+        logger.error("Validation request received with no JSON data.")
+        return jsonify({"error": "No data provided for validation."}), 400
+
+    if not suggested_name or not isinstance(suggested_name, str) or not suggested_name.strip():
+        logger.error(f"Validation request missing or invalid 'suggested_name': '{suggested_name}'")
+        return jsonify({"error": "Missing or empty 'suggested_name' for validation."}), 400
+
+    if not client_profile or not isinstance(client_profile, dict):
+        logger.error(f"Validation request missing or invalid 'client_profile': '{client_profile}'")
+        return jsonify({"error": "Missing or invalid 'client_profile' for validation."}), 400
+    # --- FIX END: Explicit Input Validation for /validate_name ---
 
     try:
         # validate_suggested_name_rules is synchronous, so no await needed here
@@ -2221,12 +2187,24 @@ async def validate_name_endpoint():
         
         # Calculate expression number for the suggested name to return it
         suggested_exp_num, _ = calculate_expression_number_with_details(suggested_name)
+        
+        # Calculate other live values for the suggested name
+        first_name_value = calculate_single_digit(sum(get_chaldean_value(char) for char in clean_name(suggested_name).split(' ')[0]), False)
+        soul_urge_num, _ = calculate_soul_urge_number_with_details(suggested_name)
+        personality_num, _ = calculate_personality_number_with_details(suggested_name)
+    
+        karmic_debt_present = bool(check_karmic_debt(suggested_name))
+
 
         return jsonify({
             "suggested_name": suggested_name,
             "is_valid": is_valid,
             "rationale": rationale,
-            "expression_number": suggested_exp_num # Ensure this is the calculated value
+            "expression_number": suggested_exp_num, # Ensure this is the calculated value
+            "first_name_value": first_name_value,
+            "soul_urge_number": soul_urge_num,
+            "personality_number": personality_num,
+            "karmic_debt_present": karmic_debt_present
         }), 200
 
     except Exception as e:
@@ -2335,139 +2313,7 @@ async def generate_text_report_endpoint():
         logger.error(f"Error generating text report for preview: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate text report for preview: {e}"}), 500
 
-@app.route('/chat', methods=['POST'])
-@limiter.limit("30 per minute") # Apply limiter directly
-async def chat():
-    """
-    Handles general chat messages.
-    """
-    data = request.json
-    message = data.get('message')
-    chat_type = data.get('type') # 'general_chat' or 'validation_chat'
 
-    if not message and chat_type != 'validation_chat':
-        return jsonify({"error": "No message provided"}), 400
-    
-    if chat_type != 'validation_chat' and not SecurityManager.validate_input_security(message):
-        logger.warning(f"Security alert: Malicious input detected: {message}")
-        return jsonify({"error": "Invalid input. Potential security threat detected."}), 400
-
-    logger.info(f"Received request type: {chat_type}")
-
-    try:
-        if chat_type == 'validation_chat':
-            logger.info("Processing validation chat message.")
-            original_profile = data.get('original_profile')
-            suggested_name = data.get('suggested_name')
-            chat_history_from_frontend = data.get('chat_history', [])
-            current_message_content = data.get('current_message', '').strip()
-
-            if not original_profile or not suggested_name:
-                return jsonify({"error": "Missing original profile or suggested name for validation chat."}), 400
-            
-            suggested_expression_num, suggested_expression_details = calculate_expression_number_with_details(suggested_name)
-
-            birth_date_val = original_profile.get('birth_date')
-            birth_time_val = original_profile.get('birth_time')
-            birth_place_val = original_profile.get('birth_place')
-            desired_outcome_val = original_profile.get('desired_outcome')
-            current_life_path_val = original_profile.get('life_path_number')
-            current_birth_day_val = original_profile.get('birth_day_number')
-
-            val_astro_info = get_conceptual_astrological_data(birth_date_val, birth_time_val, birth_place_val)
-            
-            val_planetary_compatibility = check_planetary_compatibility(suggested_expression_num, val_astro_info)
-            val_astro_info['planetary_compatibility'] = val_planetary_compatibility
-
-            val_lo_shu_grid = calculate_lo_shu_grid_with_details(birth_date_val, suggested_expression_num)
-            
-            phonetic_vibration_for_suggested = get_phonetic_vibration_analysis(suggested_name, desired_outcome_val)
-
-            llm_validation_input_data = {
-                "original_full_name": original_profile['full_name'],
-                "birth_date": birth_date_val,
-                "birth_time": birth_time_val, 
-                "birth_place": birth_place_val, 
-                "original_expression_number": original_profile['expression_number'],
-                "original_life_path_number": current_life_path_val,
-                "original_birth_day_number": current_birth_day_val,
-                "desired_outcome": desired_outcome_val,
-                "suggested_name": suggested_name,
-                "suggested_expression_num": suggested_expression_num,
-                "suggested_core_interpretation": "Interpretation for " + str(suggested_expression_num),
-                "lo_shu_grid": val_lo_shu_grid,
-                "astro_info": val_astro_info,
-                "phonetic_vibration": phonetic_vibration_for_suggested,
-            }
-
-            prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=NAME_VALIDATION_SYSTEM_PROMPT.format(desired_outcome=llm_validation_input_data['desired_outcome'])),
-                HumanMessage(
-                    content=(
-                        "**CLIENT PROFILE FOR VALIDATION:**\n"
-                        f"Original Full Name: {llm_validation_input_data['original_full_name']}\n"
-                        f"Birth Date: {llm_validation_input_data['birth_date']}\n"
-                        f"Birth Time: {llm_validation_input_data['birth_time']}\n"
-                        f"Birth Place: {llm_validation_input_data['birth_place']}\n"
-                        f"Desired Outcome: {llm_validation_input_data['desired_outcome']}\n"
-                        f"Current Expression Number: {llm_validation_input_data['original_expression_number']}\n"
-                        f"Current Life Path Number: {llm_validation_input_data['original_life_path_number']}\n"
-                        f"Current Birth Day Number: {llm_validation_input_data['original_birth_day_number']}\n\n"
-
-                        "**SUGGESTED NAME FOR ANALYSIS:**\n"
-                        f"Name: {llm_validation_input_data['suggested_name']}\n"
-                        f"Calculated Expression Number: {llm_validation_input_data['suggested_expression_num']}\n"
-                        f"Core Interpretation: {llm_validation_input_data['suggested_core_interpretation']}\n\n"
-
-                        "**DETAILED NUMEROLOGICAL & ASTRO-NUMEROLOGICAL DATA FOR SUGGESTED NAME:**\n"
-                        "Lo Shu Grid: {}\n"
-                        "Astro Info: {}\n"
-                        "Phonetic Vibration: {}\n\n"
-
-                        "**CHAT HISTORY:**\n"
-                        "{}\n\n"
-
-                        "**LATEST USER MESSAGE:**\n"
-                        "{}"
-                    ).format(
-                        json.dumps(llm_validation_input_data['lo_shu_grid'], indent=2),
-                        json.dumps(llm_validation_input_data['astro_info'], indent=2),
-                        json.dumps(llm_validation_input_data['phonetic_vibration'], indent=2),
-                        "\n".join([f"{m.type.capitalize()}: {m.content}" for m in chat_history_from_frontend]),
-                        current_message_content
-                    )
-                )
-            ])
-            
-            chain = prompt | llm_manager.analytical_llm
-
-            ai_response = await chain.ainvoke({})
-            
-            return jsonify({"response": ai_response.content}), 200
-
-        elif message:
-            logger.info(f"Processing general chat message: {message}")
-            
-            llm_manager.memory.chat_memory.add_user_message(HumanMessage(content=message))
-            
-            prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=GENERAL_CHAT_SYSTEM_PROMPT),
-                llm_manager.memory.chat_memory.messages[-1] 
-            ])
-            
-            chain = prompt | llm_manager.llm
-            
-            ai_response = await chain.ainvoke({"input": message})
-            
-            llm_manager.memory.chat_memory.add_ai_message(AIMessage(content=ai_response.content))
-            
-            return jsonify({"response": ai_response.content}), 200
-        else:
-            return jsonify({"error": "Invalid request type or missing message."}), 400
-
-    except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}", exc_info=True)
-        return jsonify({"error": "An internal server error occurred. Please try again later."}), 500
 
 # Error handlers
 @app.errorhandler(400)
@@ -2494,4 +2340,4 @@ if __name__ == '__main__':
     # or use uvicorn to test the ASGI compatibility:
     # uvicorn app:asgi_app --host 0.0.0.0 --port 8000
     app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
-
+# END OF app.py - DO NOT DELETE THIS LINE
