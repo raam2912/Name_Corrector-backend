@@ -282,6 +282,82 @@ For each suggestion, provide a comprehensive 2-3 sentence explanation that:
 ## OUTPUT FORMAT:
 Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.
 **CRITICAL: DO NOT include any comments (e.g., // comments) in the JSON output.**
+## IMPORTANT REQUIREMENT:
+All suggested names MUST already be strictly numerologically valid:
+- The name must align with the person's Life Path Number and Birth Day Number make it so its advantageous and follows the lucky name correction of Chaldean numerology.
+- It must have a valid Expression Number (as per Chaldean numerology rules).
+- Avoid any name combinations that would result in karmic debts.
+- Do NOT suggest names unless they fully pass strict numerological evaluation.
+✅ Ideal Relationship Between Life Path Number & Name Number:
+1. Name Number should be supportive or compatible with the Life Path Number
+Name Number should vibrate harmoniously with the Life Path.
+
+Avoid numbers that are in direct conflict or create karmic obstacles.
+
+2. Avoid Conflict Numbers (especially 4 and 8)
+Life Path 4 or 8 often carry karmic debts; avoid reinforcing with a Name Number of 4 or 8.
+
+Never pair a Name Number = 4/8 with Life Path = 4/8 — this causes the 4-8 trap, bringing instability, delays, and losses.
+
+3. Name Number should ideally be one of the following LUCKY numbers:
+1, 3, 5, 6, 9, 11, 22, 33
+
+These are considered:
+
+Fortunate (1, 3, 5, 6, 9)
+
+Master numbers (11, 22, 33) – only if the individual can handle them.
+
+Avoid:
+
+4, 8, 7 (sometimes)
+
+🔁 Recommended Compatibility Pairs (Life Path ↔ Name Number):
+Life Path	Good Compatible Name Numbers
+1	1, 3, 5, 6
+2	2, 4, 6, 9
+3	1, 3, 5, 6, 9
+4	1, 5, 6 (NOT 4 or 8)
+5	1, 3, 5, 6, 9
+6	3, 5, 6, 9
+7	1, 5, 6, 9 (avoid 7, 8)
+8	1, 3, 5, 6 (avoid 4 or 8)
+9	3, 6, 9
+11	2, 6, 11, 22
+22	4, 6, 8, 22
+33	6, 9, 33
+
+💡 A Lucky Name Number that's also compatible with the Life Path Number boosts success, confidence, and inner alignment.
+
+🔒 Rules You Should Enforce in Name Correction:
+Reject suggestions where the new name:
+
+Has expression number = 4 or 8
+
+Is worse than or equal to the current name
+
+Is in conflict with Life Path Number
+
+Prioritize:
+
+Names with 1, 3, 5, 6, 9, 11, 22, 33
+
+Highest compatibility with Life Path
+
+Sort by:
+
+Lucky number score (1–5 stars)
+
+Compatibility with Life Path
+
+Minimal phonetic deviation
+
+🧠 Example:
+DOB: 14/09/1994 → Life Path = 1
+
+Original Name Number = 8 → Unlucky + Conflict
+
+Suggested Name Number = 6 → Compatible and lucky ✅
 
 ## QUALITY STANDARDS:
 - Each rationale must be substantive, specific, and compelling
@@ -381,12 +457,7 @@ ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assista
 - Synthesize all key insights from the report, reinforcing their inherent power.
 - Reiterate their capacity to shape destiny through conscious alignment.
 - Leave them feeling profoundly inspired, capable, and equipped with actionable wisdom.
-IMPORTANT REQUIREMENT:
-All suggested names MUST already be strictly numerologically valid:
-- The name must align with the person's Life Path Number and Birth Day Number make it so its advantageous and follows the lucky name correction of Chaldean numerology.
-- It must have a valid Expression Number (as per Chaldean numerology rules).
-- Avoid any name combinations that would result in karmic debts.
-- Do NOT suggest names unless they fully pass strict numerological evaluation.
+
 
 Return ONLY names that fully meet the above rules. No post-filtering will be applied.
 ## WRITING STANDARDS:
