@@ -2130,7 +2130,13 @@ class NameSuggestionEngine:
         Generates name suggestions using the LLM and then recalculates Expression Numbers
         using the backend's numerology logic for accuracy.
         """
-        parser_instructions = parser.get_format_instructions()
+        # The PydanticOutputParser defines the desired schema.
+        pydantic_parser = PydanticOutputParser(pydantic_object=NameSuggestionsOutput)
+
+        # NEW: The OutputFixingParser wraps the original parser and uses an LLM to correct parsing errors.
+        output_fixing_parser = OutputFixingParser.from_llm(parser=pydantic_parser, llm=llm_instance)
+        
+        parser_instructions = output_fixing_parser.get_format_instructions()
         
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
@@ -2141,21 +2147,28 @@ class NameSuggestionEngine:
             ))
         ])
         
-        chain = prompt | llm_instance | parser
+        # The chain now uses the robust OutputFixingParser.
+        chain = prompt | llm_instance | output_fixing_parser
         
         try:
+            logger.info("Generating name suggestions with OutputFixingParser.")
             llm_response_output = await chain.ainvoke({})
             
             # --- CRITICAL: Recalculate Expression Numbers for LLM suggestions ---
-            # This ensures the numerological feasibility is based on our Python logic, not just LLM's text generation
+            # This ensures the numerological feasibility is based on our Python logic, not just LLM's text generation.
+            # The OutputFixingParser should have already corrected the output to be valid JSON,
+            # so each suggestion.expression_number should be a valid integer.
             for suggestion in llm_response_output.suggestions:
                 calculated_exp_num, _ = calculate_expression_number_with_details(suggestion.name)
+                # We overwrite the LLM's calculation with our own verified one.
                 suggestion.expression_number = calculated_exp_num
             # --- END CRITICAL SECTION ---
 
+            logger.info("Successfully generated and validated name suggestions.")
             return llm_response_output
         except Exception as e:
-            logger.error(f"LLM Name Suggestion Generation Error: {e}", exc_info=True)
+            # If even the OutputFixingParser fails, we log the error and raise a clear exception.
+            logger.error(f"LLM Name Suggestion Generation Error even after attempting to fix: {e}", exc_info=True)
             raise ValueError(f"Failed to generate name suggestions: {e}")
 
 # --- Flask Routes ---
@@ -2421,4 +2434,3 @@ if __name__ == '__main__':
     # uvicorn app:asgi_app --host 0.0.0.0 --port 8000
     app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
 # END OF app.py - DO NOT DELETE THIS LINE
-
