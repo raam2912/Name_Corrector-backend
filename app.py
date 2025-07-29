@@ -2291,10 +2291,8 @@ class NameSuggestionEngine:
         prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
             HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
-                original_full_name=original_full_name,
-                # Removed: desired_outcome from prompt
-                target_expression_numbers=target_expression_numbers
-            ))
+    original_full_name=original_full_name
+))
         ])
         
         # The chain now uses the robust OutputFixingParser.
