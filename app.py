@@ -2193,7 +2193,7 @@ async def initial_suggestions_endpoint():
 
         suggestions_data = name_suggestions_output.dict()
 
-        # ✅ STRICT VALIDATION
+        # STRICT VALIDATION
         life_path_number = profile_data.get('life_path_number')
         birth_day_number = profile_data.get('birth_day_number')
 
@@ -2203,14 +2203,14 @@ async def initial_suggestions_endpoint():
             birth_day_number
         )
 
-        # ✅ Convert to frontend-compatible objects
+# ✅ Wrap in expected object format
         suggestions_data["suggestions"] = [{"name": name} for name in filtered]
 
         return jsonify({
-            "suggestions": suggestions_data["suggestions"],
-            "reasoning": suggestions_data["reasoning"],
-            "profile_data": profile_data
-        }), 200
+                        "suggestions": suggestions_data["suggestions"],
+                        "reasoning": suggestions_data["reasoning"],
+                        "profile_data": profile_data
+                    }), 200
 
     except Exception as e:
         logger.error(f"Error generating initial suggestions: {e}", exc_info=True)
