@@ -327,7 +327,7 @@ A=1, B=2, C=3, D=4, E=5, F=8, G=3, H=5, I=1, J=1, K=2, L=3, M=4, N=5, O=7, P=8, 
 Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.
 **CRITICAL: DO NOT include any comments (e.g., // comments) in the JSON output.**
 
-## QUALITY ASSURANCE CHECKLIST:
+## QUALITY ASSURANCE CHECKLIST: HIGHEST PRIOPRITY 
 Before finalizing each suggestion, verify:
 - ✅ Expression Number is in Lucky range (1,3,5,6,9,11,22,33)
 - ✅ Expression Number is compatible with provided Life Path
