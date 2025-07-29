@@ -497,6 +497,7 @@ Generate **12** strategically crafted full name variations that:
 
 ## QUALITY ASSURANCE CHECKLIST:
 Before finalizing each suggestion, verify:
+- **Core Numerology Compliance**: Both FNV and CMV must strictly adhere to allowed values(Their FNV AND CNV the must be Lucky Numbers 1, 5, 6)
 - ✅ Birth Number and Life Path have been correctly applied
 - ✅ Exception rules have been properly followed
 - ✅ Both FNV and CMV are within allowed values for this specific person
@@ -535,7 +536,7 @@ Create exactly 12 name variations that comply with this person's specific Core N
 3. **Exception Rule Adherence**: Follow all applicable Core Numerology rules
 4. **51 Rejection**: Never suggest names with FNV or CMV = 51
 5. **65 Permission**: Allow names with FNV or CMV = 65 if applicable
-6. **Maximum Similarity**: Maintain 90%+ resemblance through minimal modifications
+6. **Maximum Similarity**: Maintain resemblance through minimal modifications
 7. **Cultural Authenticity**: Preserve pronunciation and appropriateness
 8. **Practical Adoption**: Ensure real-world implementability
 
