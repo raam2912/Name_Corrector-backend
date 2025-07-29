@@ -488,8 +488,9 @@ Generate **12** strategically crafted full name variations that:
 - Use Chaldean numerology values for all calculations
 
 ## MODIFICATION GUIDELINES:
+-**ADHERE TO CORE NUMEROLOGY**: All modifications must strictly follow Core Numerology rules
 - **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals
-- **Preserve Core Identity**: Keep pronunciation and cultural essence identical (90%+ similarity)
+- **Preserve Core Identity**: Keep pronunciation and cultural essence identical 
 - **Strategic Letter Placement**: Add/remove letters that specifically target allowed values
 - **Cultural Sensitivity**: Ensure variations respect original name's cultural context
 - **Practicality First**: Prioritize names easily adoptable in real-world scenarios
