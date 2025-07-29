@@ -78,7 +78,45 @@ EXPRESSION_COMPATIBILITY_MAP = {
     22: {4, 8, 22},
     33: {3, 6, 9, 33},
 }
+CHALDEAN_MAP = {
+    'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 8, 'G': 3,
+    'H': 5, 'I': 1, 'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5,
+    'O': 7, 'P': 8, 'Q': 1, 'R': 2, 'S': 3, 'T': 4, 'U': 6,
+    'V': 6, 'W': 6, 'X': 5, 'Y': 1, 'Z': 7
+}
 
+MASTER_NUMBERS = {11, 22, 33}
+KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
+
+EXPRESSION_COMPATIBILITY_MAP = {
+    1: [1, 3, 5, 6],
+    2: [2, 4, 6, 9],
+    3: [1, 3, 5, 6, 9],
+    4: [1, 5, 6],
+    5: [1, 3, 5, 6, 9],
+    6: [3, 5, 6, 9],
+    7: [1, 5, 6, 9],
+    8: [1, 3, 5, 6],
+    9: [3, 6, 9],
+    11: [2, 6, 11, 22],
+    22: [4, 6, 8, 22],
+    33: [6, 9, 33]
+}
+
+def calculate_expression_number(name):
+    total = sum(CHALDEAN_MAP.get(c.upper(), 0) for c in name if c.isalpha())
+    return reduce_to_single_or_master(total), total
+
+def is_lucky_number(num):
+    return num in {1, 3, 5, 6, 9, 11, 22, 33}
+
+def is_karmic_debt_number(num):
+    return num in KARMIC_DEBT_NUMBERS
+
+def reduce_to_single_or_master(n):
+    while n > 9 and n not in MASTER_NUMBERS:
+        n = sum(int(d) for d in str(n))
+    return n
 def is_expression_number_strictly_valid(expr_num: int, life_path: int, birth_number: int) -> bool:
     if expr_num not in LUCKY_NAME_NUMBERS:
         return False
@@ -635,6 +673,27 @@ def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expre
         "has_8": grid_counts[8] > 0, # For Expression 8 validation
         "grid_updated_by_name": suggested_name_expression_num is not None
     }
+
+# === STRICT NUMEROLOGY FILTER LOGIC START ===
+
+def filter_strictly_valid_suggestions(suggestions, life_path_number, birth_day_number):
+    filtered = []
+    for name in suggestions:
+        expression, raw_sum = calculate_expression_number(name)
+        if not expression:
+            continue
+
+        is_lucky = is_lucky_number(expression)
+        is_not_karmic = not is_karmic_debt_number(raw_sum)
+        is_compatible = (
+            expression in EXPRESSION_COMPATIBILITY_MAP.get(life_path_number, []) or
+            expression in EXPRESSION_COMPATIBILITY_MAP.get(birth_day_number, [])
+        )
+
+        if is_lucky and is_not_karmic and is_compatible:
+            filtered.append(name)
+
+    return filtered
 
 def get_conceptual_astrological_data(birth_date: str, birth_time: Optional[str], birth_place: Optional[str]) -> Dict[str, Any]:
     """
@@ -1682,15 +1741,7 @@ def validate_suggested_name_rules(suggested_name: str, client_profile: Dict) -> 
     else:
         reasons.append(f"Phonetic vibration is harmonious: The name has a pleasant and supportive sound. {phonetic_analysis.get('qualitative_description', 'N/A')}")
 
-    # Removed: Rule 6: General Expression Number Suitability (based on desired outcome)
-    # optimal_for_outcome = NameSuggestionEngine.determine_target_numbers_for_outcome(desired_outcome)
-    # if suggested_exp_num not in optimal_for_outcome:
-    #     is_valid = False # If it's not optimal, for a practitioner, it's a "No"
-    #     reasons.append(f"The Expression Number {suggested_exp_num} is not among the primary target numbers ({', '.join(map(str, optimal_for_outcome))}) for your desired outcome of '{desired_outcome}'. While not inherently 'bad', it's not optimally aligned for your stated goals.")
-    # else:
-    #     reasons.append(f"The Expression Number {suggested_exp_num} aligns perfectly with your desired outcome of '{desired_outcome}', providing optimal energetic support.")
     
-    # New Rule: General positive alignment if no specific issues
     if is_valid and not reasons:
         reasons.append("The suggested name is numerologically sound and energetically balanced for general positive influence.")
     elif not is_valid and not reasons:
@@ -2154,6 +2205,15 @@ async def initial_suggestions_endpoint():
         # into dictionaries, making them JSON serializable.
         suggestions_data = name_suggestions_output.dict()
 
+# ✅ STRICT VALIDATION OF NAME SUGGESTIONS
+        life_path_number = profile_data.get('life_path_number')
+        birth_day_number = profile_data.get('birth_day_number')
+        suggestions_data["suggestions"] = filter_strictly_valid_suggestions(
+        suggestions_data["suggestions"],
+        life_path_number,
+        birth_day_number
+        )
+
         return jsonify({
             "suggestions": suggestions_data["suggestions"],
             "reasoning": suggestions_data["reasoning"],
@@ -2233,20 +2293,25 @@ async def generate_pdf_report_endpoint():
         return jsonify({"error": "Missing essential data (full_name, birth_date, or confirmed_suggestions) for PDF generation."}), 400
 
     try:
-        # Modified: Removed desired_outcome from call
         profile_details = await get_comprehensive_numerology_profile(
             full_name=report_data_from_frontend['full_name'],
             birth_date=report_data_from_frontend['birth_date'],
             birth_time=report_data_from_frontend.get('birth_time'),
             birth_place=report_data_from_frontend.get('birth_place'),
         )
-        
-        profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
-        # Removed desired_outcome from profile_details being passed to LLM
-        # profile_details['desired_outcome'] = report_data_from_frontend.get('desired_outcome')
+
+        # 🛡️ Hardened logic
+        profile_details['confirmed_suggestions_raw'] = report_data_from_frontend.get('confirmed_suggestions', [])
+
+        filtered_confirmed = filter_strictly_valid_suggestions(
+        profile_details['confirmed_suggestions_raw'],
+        profile_details.get('life_path_number'),
+        profile_details.get('birth_day_number')
+        )
+        profile_details['confirmed_suggestions'] = filtered_confirmed
+
 
         llm_input_data = json.dumps(profile_details, indent=2)
-        
         report_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
             HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
@@ -2298,16 +2363,22 @@ async def generate_text_report_endpoint():
 
     try:
         # Modified: Removed desired_outcome from call
+        # Calculate profile
         profile_details = await get_comprehensive_numerology_profile(
-            full_name=report_data_from_frontend['full_name'],
-            birth_date=report_data_from_frontend['birth_date'],
-            birth_time=report_data_from_frontend.get('birth_time'),
-            birth_place=report_data_from_frontend.get('birth_place'),
-        )
-        
-        profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
-        # Removed desired_outcome from profile_details being passed to LLM
-        # profile_details['desired_outcome'] = report_data_from_frontend.get('desired_outcome')
+        full_name=report_data_from_frontend['full_name'],
+        birth_date=report_data_from_frontend['birth_date'],
+        birth_time=report_data_from_frontend.get('birth_time'),
+        birth_place=report_data_from_frontend.get('birth_place'),)
+
+# Save raw (optional)
+        profile_details['confirmed_suggestions_raw'] = report_data_from_frontend.get('confirmed_suggestions', [])
+
+# ✅ Re-validate names before using in LLM
+        filtered_confirmed = filter_strictly_valid_suggestions(
+        profile_details['confirmed_suggestions_raw'],
+        profile_details.get('life_path_number'),
+        profile_details.get('birth_day_number'))
+        profile_details['confirmed_suggestions'] = filtered_confirmed
 
         llm_input_data = json.dumps(profile_details, indent=2)
         
@@ -2356,3 +2427,4 @@ if __name__ == '__main__':
     # uvicorn app:asgi_app --host 0.0.0.0 --port 8000
     app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT', 5000))
 # END OF app.py - DO NOT DELETE THIS LINE
+
