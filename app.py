@@ -261,6 +261,64 @@ def get_allowed_numbers_for_person(birth_day: int, birth_month: int, birth_year:
         'special_permissions': list(PERMITTED_SPECIAL_VALUES),
         'special_rejections': list(REJECTED_PERSONAL_VALUES)
     }
+def parse_birth_date(birth_date_str: str) -> tuple:
+    """Parse birth date string and return (day, month, year)"""
+    try:
+        for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']:
+            try:
+                birth_date = datetime.strptime(birth_date_str, date_format)
+                return birth_date.day, birth_date.month, birth_date.year
+            except ValueError:
+                continue
+        return 1, 1, 2000
+    except:
+        return 1, 1, 2000    
+def extract_numerology_data(full_name: str, birth_date_str: str) -> dict:
+    """Extract all required numerology data from name and birth date"""
+    try:
+        # Parse birth date
+        birth_date = None
+        birth_day = birth_month = birth_year = None
+        
+        # Try different date formats
+        for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']:
+            try:
+                birth_date = datetime.strptime(birth_date_str, date_format)
+                birth_day = birth_date.day
+                birth_month = birth_date.month
+                birth_year = birth_date.year
+                break
+            except ValueError:
+                continue
+        
+        if not birth_date:
+            birth_day, birth_month, birth_year = 1, 1, 2000
+        
+        # Get comprehensive numerology profile
+        profile = get_comprehensive_numerology_profile(full_name, birth_day, birth_month, birth_year)
+        
+        # Extract values with fallbacks
+        return {
+            'birth_day': birth_day,
+            'birth_month': birth_month,
+            'birth_year': birth_year,
+            'birth_number': profile.get('birth_number', 1),
+            'life_path_number': profile.get('life_path_number', 1),
+            'current_fnv': profile.get('first_name_value', 0),
+            'current_cmv': profile.get('complete_name_value', 0),
+            'allowed_values': profile.get('allowed_values', [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            'blocked_values': profile.get('blocked_values', []),
+            'applied_exceptions': profile.get('applied_exceptions', 'None')
+        }
+    except Exception as e:
+        # Return safe defaults if anything fails
+        return {
+            'birth_day': 1, 'birth_month': 1, 'birth_year': 2000,
+            'birth_number': 1, 'life_path_number': 1,
+            'current_fnv': 0, 'current_cmv': 0,
+            'allowed_values': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'blocked_values': [], 'applied_exceptions': 'None'
+        }    
 app = Flask(__name__)
 logger.info("Flask app instance created.")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
@@ -2304,7 +2362,16 @@ class NameSuggestionEngine:
     original_full_name: str,
     target_expression_numbers: List[int],
     life_path_number: Optional[int] = None,
-    current_expression_number: Optional[int] = None
+    current_expression_number: Optional[int] = None,
+    birth_day: Optional[int] = None,
+birth_month: Optional[int] = None,
+birth_year: Optional[int] = None,
+birth_number: Optional[int] = None,
+current_fnv: Optional[int] = None,
+current_cmv: Optional[int] = None,
+allowed_values: Optional[List[int]] = None,
+blocked_values: Optional[List[int]] = None,
+applied_exceptions: Optional[str] = None
 ) -> NameSuggestionsOutput:
         """
         Generates name suggestions using the LLM and then recalculates Expression Numbers
@@ -2322,8 +2389,16 @@ class NameSuggestionEngine:
     SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
     HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
     original_full_name=original_full_name,
-    life_path_number=life_path_number or "Unknown",
-    current_expression_number=current_expression_number or "Unknown"
+    birth_day=birth_day or 1,
+    birth_month=birth_month or 1,
+    birth_year=birth_year or 2000,
+    birth_number=birth_number or 1,
+    life_path_number=life_path_number or 1,
+    current_fnv=current_fnv or 0,
+    current_cmv=current_cmv or 0,
+    allowed_values=allowed_values or [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    blocked_values=blocked_values or [],
+    applied_exceptions=applied_exceptions or "None"
 ))
 ])
         
@@ -2367,6 +2442,9 @@ async def initial_suggestions_endpoint():
         return jsonify({"error": "Missing full_name or birth_date for initial suggestions."}), 400
 
     try:
+        # Parse birth date components
+        birth_day, birth_month, birth_year = parse_birth_date(birth_date)
+        
         profile_data = await get_comprehensive_numerology_profile(
             full_name=full_name,
             birth_date=birth_date,
@@ -2377,27 +2455,35 @@ async def initial_suggestions_endpoint():
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome()
 
         name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
-    llm_manager.creative_llm,
-    full_name,
-    target_numbers,
-    life_path_number=profile_data.get("life_path_number"),
-    current_expression_number=profile_data.get("expression_number")
-)
-
+            llm_manager.creative_llm,
+            full_name,
+            target_numbers,
+            life_path_number=profile_data.get("life_path_number"),
+            current_expression_number=profile_data.get("expression_number"),
+            birth_day=birth_day,
+            birth_month=birth_month,
+            birth_year=birth_year,
+            birth_number=profile_data.get("birth_number", 1),
+            current_fnv=profile_data.get("first_name_value", 0),
+            current_cmv=profile_data.get("complete_name_value", 0),
+            allowed_values=profile_data.get("allowed_values", [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+            blocked_values=profile_data.get("blocked_values", []),
+            applied_exceptions=profile_data.get("applied_exceptions", "None")
+        )
 
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
 
         suggestions_data = name_suggestions_output.dict()
 
         return jsonify({
-    "suggestions": suggestions_data["suggestions"],  # already validated by the LLM
-    "reasoning": suggestions_data["reasoning"],
-    "profile_data": profile_data
-}), 200
+            "suggestions": suggestions_data["suggestions"],
+            "reasoning": suggestions_data["reasoning"],
+            "profile_data": profile_data
+        }), 200
 
     except Exception as e:
-        logger.error(f"Error generating initial suggestions: {e}", exc_info=True)
-        return jsonify({"error": "An internal server error occurred while generating initial suggestions. Please try again later."}), 500
+        logger.error(f"Error generating initial suggestions: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 
