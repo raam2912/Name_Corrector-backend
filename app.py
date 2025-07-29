@@ -2275,7 +2275,13 @@ class NameSuggestionEngine:
 
     @staticmethod
     # Modified: Removed desired_outcome parameter
-    async def generate_name_suggestions(llm_instance: ChatGoogleGenerativeAI, original_full_name: str, target_expression_numbers: List[int]) -> NameSuggestionsOutput:
+    async def generate_name_suggestions(
+    llm_instance: ChatGoogleGenerativeAI,
+    original_full_name: str,
+    target_expression_numbers: List[int],
+    life_path_number: Optional[int] = None,
+    current_expression_number: Optional[int] = None
+) -> NameSuggestionsOutput:
         """
         Generates name suggestions using the LLM and then recalculates Expression Numbers
         using the backend's numerology logic for accuracy.
@@ -2291,8 +2297,10 @@ class NameSuggestionEngine:
         prompt = ChatPromptTemplate.from_messages([
     SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
     HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
-        original_full_name=original_full_name
-    ))
+    original_full_name=original_full_name,
+    life_path_number=life_path_number or "Unknown",
+    current_expression_number=current_expression_number or "Unknown"
+))
 ])
         
         # The chain now uses the robust OutputFixingParser.
@@ -2345,10 +2353,13 @@ async def initial_suggestions_endpoint():
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome()
 
         name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
-            llm_manager.creative_llm,
-            full_name,
-            target_numbers
-        )
+    llm_manager.creative_llm,
+    full_name,
+    target_numbers,
+    life_path_number=profile_data.get("life_path_number"),
+    current_expression_number=profile_data.get("expression_number")
+)
+
 
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
 
