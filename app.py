@@ -2163,20 +2163,13 @@ class NameSuggestionEngine:
 def home():
     """Basic home route for health check."""
     return "Hello from Flask!"
-
 @app.route('/initial_suggestions', methods=['POST'])
-@limiter.limit("10 per minute") # Apply limiter directly
+@limiter.limit("10 per minute")
 async def initial_suggestions_endpoint():
-    """
-    Generates initial name suggestions based on the provided profile.
-    """
     data = request.json
     full_name = data.get('full_name')
     birth_date = data.get('birth_date')
-    # Removed: desired_outcome from data extraction
-    # desired_outcome = data.get('desired_outcome')
 
-    # Removed: desired_outcome from validation
     if not all([full_name, birth_date]):
         return jsonify({"error": "Missing full_name or birth_date for initial suggestions."}), 400
 
@@ -2186,33 +2179,32 @@ async def initial_suggestions_endpoint():
             birth_date=birth_date,
             birth_time=data.get('birth_time'),
             birth_place=data.get('birth_place'),
-            # Removed: desired_outcome from call
         )
 
-        # Modified: Call without desired_outcome
         target_numbers = NameSuggestionEngine.determine_target_numbers_for_outcome()
 
-        # Modified: Call without desired_outcome
         name_suggestions_output = await NameSuggestionEngine.generate_name_suggestions(
             llm_manager.creative_llm,
             full_name,
             target_numbers
         )
+
         logger.info(f"Generated Initial Name Suggestions: {name_suggestions_output.json()}")
 
-        # Convert the Pydantic NameSuggestionsOutput object to a dictionary
-        # The .dict() method will recursively convert nested Pydantic objects (like NameSuggestion)
-        # into dictionaries, making them JSON serializable.
         suggestions_data = name_suggestions_output.dict()
 
-# ✅ STRICT VALIDATION OF NAME SUGGESTIONS
+        # ✅ STRICT VALIDATION
         life_path_number = profile_data.get('life_path_number')
         birth_day_number = profile_data.get('birth_day_number')
-        suggestions_data["suggestions"] = filter_strictly_valid_suggestions(
-        suggestions_data["suggestions"],
-        life_path_number,
-        birth_day_number
+
+        filtered = filter_strictly_valid_suggestions(
+            suggestions_data["suggestions"],
+            life_path_number,
+            birth_day_number
         )
+
+        # ✅ Convert to frontend-compatible objects
+        suggestions_data["suggestions"] = [{"name": name} for name in filtered]
 
         return jsonify({
             "suggestions": suggestions_data["suggestions"],
@@ -2223,6 +2215,8 @@ async def initial_suggestions_endpoint():
     except Exception as e:
         logger.error(f"Error generating initial suggestions: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred while generating initial suggestions. Please try again later."}), 500
+
+
 
 @app.route('/validate_name', methods=['POST'])
 @limiter.limit("30 per minute") # Apply limiter directly
