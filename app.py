@@ -2289,11 +2289,11 @@ class NameSuggestionEngine:
         parser_instructions = output_fixing_parser.get_format_instructions()
         
         prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
-            HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
-    original_full_name=original_full_name
-))
-        ])
+    SystemMessage(content=NAME_SUGGESTION_SYSTEM_PROMPT.format(parser_instructions=parser_instructions)),
+    HumanMessage(content=NAME_SUGGESTION_HUMAN_PROMPT.format(
+        original_full_name=original_full_name
+    ))
+])
         
         # The chain now uses the robust OutputFixingParser.
         chain = prompt | llm_instance | output_fixing_parser
