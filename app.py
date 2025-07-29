@@ -59,25 +59,15 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 
-# === PATCH: Chaldean Strict Name Validation ===
-LUCKY_NAME_NUMBERS = {1, 3, 5, 6, 9, 11, 22, 33}
+CORE_LUCKY_NUMBERS = {1, 5, 6}
+
+# Maintain backward compatibility while transitioning
+LUCKY_NAME_NUMBERS = CORE_LUCKY_NUMBERS 
 UNLUCKY_NAME_NUMBERS = {4, 8}
 KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
+REJECTED_PERSONAL_VALUES = {51}  # Business only
+PERMITTED_SPECIAL_VALUES = {65}
 
-EXPRESSION_COMPATIBILITY_MAP = {
-    1: {1, 5, 6, 9},
-    2: {2, 4, 6},
-    3: {3, 6, 9},
-    4: {1, 5, 6},
-    5: {1, 5, 6},
-    6: {3, 6, 9},
-    7: {2, 7},
-    8: {1, 5, 6},
-    9: {3, 6, 9},
-    11: {2, 6, 11},
-    22: {4, 8, 22},
-    33: {3, 6, 9, 33},
-}
 CHALDEAN_MAP = {
     'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 8, 'G': 3,
     'H': 5, 'I': 1, 'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5,
@@ -87,48 +77,190 @@ CHALDEAN_MAP = {
 
 MASTER_NUMBERS = {11, 22, 33}
 KARMIC_DEBT_NUMBERS = {13, 14, 16, 19}
-
 EXPRESSION_COMPATIBILITY_MAP = {
-    1: [1, 3, 5, 6],
-    2: [2, 4, 6, 9],
-    3: [1, 3, 5, 6, 9],
-    4: [1, 5, 6],
-    5: [1, 3, 5, 6, 9],
-    6: [3, 5, 6, 9],
-    7: [1, 5, 6, 9],
-    8: [1, 3, 5, 6],
-    9: [3, 6, 9],
-    11: [2, 6, 11, 22],
-    22: [4, 6, 8, 22],
-    33: [6, 9, 33]
+    1: [1, 5, 6],    # Simplified to core numbers
+    2: [1, 5, 6],    # Default to core numbers
+    3: [1, 3, 5],    # Special case for birth/life path 3
+    4: [1, 5, 6],    # Core numbers only
+    5: [1, 5, 6],    # Core numbers only
+    6: [1, 5, 6],    # Core numbers only (3 blocked if birth/life = 6)
+    7: [1, 5, 6],    # Core numbers only
+    8: [5, 6],       # 1 blocked for birth/life path 8
+    9: [1, 5, 6],    # Core numbers only
+    11: [1, 5, 6],   # Simplified
+    22: [1, 5, 6],   # Simplified
+    33: [1, 5, 6]    # Simplified
 }
+def _calculate_birth_number(day: int) -> int:
+    """Internal: Calculate birth number from day"""
+    return _reduce_to_single_digit(day)
 
-def calculate_expression_number(name):
-    total = sum(CHALDEAN_MAP.get(c.upper(), 0) for c in name if c.isalpha())
-    return reduce_to_single_or_master(total), total
+def _calculate_life_path_number(day: int, month: int, year: int) -> int:
+    """Internal: Calculate life path from full date"""
+    total = day + month + year
+    return _reduce_to_single_digit(total)
 
-def is_lucky_number(num):
-    return num in {1, 3, 5, 6, 9, 11, 22, 33}
+def _reduce_to_single_digit(n: int) -> int:
+    """Internal: Reduce to single digit (no masters for birth calculations)"""
+    while n > 9:
+        n = sum(int(d) for d in str(n))
+    return n
 
-def is_karmic_debt_number(num):
-    return num in KARMIC_DEBT_NUMBERS
+def _get_allowed_values_for_person(birth_number: int, life_path: int) -> set:
+    """
+    Internal: Apply Core Numerology exception rules
+    """
+    allowed = {1, 5, 6}  # Start with core lucky numbers
+    
+    # Exception 1: Birth/Life Path = 8 blocks value 1
+    if birth_number == 8 or life_path == 8:
+        allowed.discard(1)
+    
+    # Exception 2 & 4: Birth/Life Path = 3 rules
+    if birth_number == 3 or life_path == 3:
+        allowed.discard(6)  # Can't use 6
+        allowed.add(3)      # Can use 3
+    
+    # Exception 3: Birth/Life Path = 6 blocks value 3
+    if birth_number == 6 or life_path == 6:
+        allowed.discard(3)
+    
+    return allowed
 
+def _calculate_name_values(full_name: str) -> dict:
+    """Internal: Calculate both FNV and CMV"""
+    names = full_name.strip().split()
+    first_name = names[0] if names else ""
+    
+    # First Name Value (FNV)
+    fnv_total = sum(CHALDEAN_MAP.get(c.upper(), 0) for c in first_name if c.isalpha())
+    fnv_reduced = reduce_to_single_or_master(fnv_total)
+    
+    # Complete Name Value (CMV)
+    cmv_total = sum(CHALDEAN_MAP.get(c.upper(), 0) for c in full_name if c.isalpha())
+    cmv_reduced = reduce_to_single_or_master(cmv_total)
+    
+    return {
+        'fnv': fnv_reduced,
+        'fnv_total': fnv_total,
+        'cmv': cmv_reduced,
+        'cmv_total': cmv_total
+    }
+
+def _is_core_numerology_valid(full_name: str, birth_number: int, life_path: int) -> dict:
+    """Internal: Core numerology validation engine"""
+    values = _calculate_name_values(full_name)
+    allowed_values = _get_allowed_values_for_person(birth_number, life_path)
+    
+    # Check special value rules
+    fnv_rejected = values['fnv_total'] in REJECTED_PERSONAL_VALUES
+    cmv_rejected = values['cmv_total'] in REJECTED_PERSONAL_VALUES
+    fnv_special_permitted = values['fnv_total'] in PERMITTED_SPECIAL_VALUES
+    cmv_special_permitted = values['cmv_total'] in PERMITTED_SPECIAL_VALUES
+    
+    # Validation
+    fnv_valid = (values['fnv'] in allowed_values or fnv_special_permitted) and not fnv_rejected
+    cmv_valid = (values['cmv'] in allowed_values or cmv_special_permitted) and not cmv_rejected
+    
+    return {
+        'is_valid': fnv_valid and cmv_valid,
+        'fnv_valid': fnv_valid,
+        'cmv_valid': cmv_valid,
+        'values': values,
+        'allowed_values': allowed_values
+    }
 def reduce_to_single_or_master(n):
+    """EXISTING FUNCTION - Enhanced with Core Numerology compatibility"""
     while n > 9 and n not in MASTER_NUMBERS:
         n = sum(int(d) for d in str(n))
     return n
+
+def calculate_expression_number(name):
+    """EXISTING FUNCTION - Now returns Core Numerology compatible results"""
+    values = _calculate_name_values(name)
+    return values['cmv'], values['cmv_total']  # Maintain backward compatibility
+
+def is_lucky_number(num):
+    """EXISTING FUNCTION - Now uses Core Numerology rules"""
+    return num in CORE_LUCKY_NUMBERS
+
+def is_karmic_debt_number(num):
+    """EXISTING FUNCTION - Unchanged"""
+    return num in KARMIC_DEBT_NUMBERS
+
 def is_expression_number_strictly_valid(expr_num: int, life_path: int, birth_number: int) -> bool:
-    if expr_num not in LUCKY_NAME_NUMBERS:
-        return False
+    """
+    EXISTING FUNCTION - Seamlessly upgraded to Core Numerology
+    
+    This function now internally uses Core Numerology rules while maintaining
+    the same interface your existing code expects
+    """
+    # Get allowed values for this specific person
+    allowed_values = _get_allowed_values_for_person(birth_number, life_path)
+    
+    # Check if the expression number is in their allowed values
+    if expr_num in allowed_values:
+        return True
+    
+    # Check special permissions (like value 65)
+    if expr_num in PERMITTED_SPECIAL_VALUES:
+        return True
+    
+    # Check if it's in unlucky numbers
     if expr_num in UNLUCKY_NAME_NUMBERS:
         return False
-    if life_path not in EXPRESSION_COMPATIBILITY_MAP.get(expr_num, set()):
-        return False
-    if birth_number not in EXPRESSION_COMPATIBILITY_MAP.get(expr_num, set()):
-        return False
-    return True
-# === END PATCH ===
+    
+    return False
+def calculate_name_numbers_enhanced(full_name: str) -> dict:
+    """
+    ENHANCED VERSION: Returns both FNV and CMV with full details
+    Use this for new code, while calculate_expression_number remains for legacy
+    """
+    return _calculate_name_values(full_name)
 
+def is_name_valid_for_person(full_name: str, birth_day: int, birth_month: int, birth_year: int) -> dict:
+    """
+    NEW COMPREHENSIVE FUNCTION: Full Core Numerology validation
+    
+    Args:
+        full_name: Complete name to validate
+        birth_day, birth_month, birth_year: Birth date components
+    
+    Returns:
+        Complete validation results with detailed explanations
+    """
+    birth_number = _calculate_birth_number(birth_day)
+    life_path = _calculate_life_path_number(birth_day, birth_month, birth_year)
+    
+    result = _is_core_numerology_valid(full_name, birth_number, life_path)
+    
+    # Add birth information to result
+    result.update({
+        'birth_number': birth_number,
+        'life_path': life_path,
+        'birth_date': f"{birth_day:02d}/{birth_month:02d}/{birth_year}"
+    })
+    
+    return result
+
+def get_allowed_numbers_for_person(birth_day: int, birth_month: int, birth_year: int) -> dict:
+    """
+    NEW UTILITY FUNCTION: Get allowed numbers for name suggestions
+    
+    Returns what numbers this person can use based on their birth profile
+    """
+    birth_number = _calculate_birth_number(birth_day)
+    life_path = _calculate_life_path_number(birth_day, birth_month, birth_year)
+    allowed_values = _get_allowed_values_for_person(birth_number, life_path)
+    
+    return {
+        'birth_number': birth_number,
+        'life_path': life_path,
+        'allowed_values': sorted(list(allowed_values)),
+        'blocked_values': sorted(list(CORE_LUCKY_NUMBERS - allowed_values)),
+        'special_permissions': list(PERMITTED_SPECIAL_VALUES),
+        'special_rejections': list(REJECTED_PERSONAL_VALUES)
+    }
 app = Flask(__name__)
 logger.info("Flask app instance created.")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'numerology-secret-key-2024')
@@ -252,220 +384,112 @@ except Exception as e:
 
 # --- ENHANCED CHALDEAN NUMEROLOGY PROMPTS FOR NAME OPTIMIZATION ---
 # Strict Life Path compatibility with maximum name similarity preservation
-NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes through strict Chaldean numerology principles.
+NAME_SUGGESTION_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant and Master Name Strategist. Your expertise lies in creating numerologically aligned name variations that preserve cultural authenticity while optimizing energetic outcomes through strict Core Numerology principles.
 
 ## YOUR MISSION:
 Generate **12** strategically crafted full name variations that:
 - Maintain maximum similarity to the original name (90%+ resemblance)
-- Align precisely with Lucky Expression Numbers that are compatible with the Life Path Number
+- Align precisely with Core Lucky Numbers (1, 5, 6) while respecting birth-based restrictions
+- Target optimal First Name Value (FNV) and Complete Name Value (CMV) combinations
 - Sound natural, culturally appropriate, and **highly practical for real-world use**
-- **CRITICAL PRIORITY: Numerological validity (correct Expression Number, Life Path compatibility, avoidance of Karmic Debts) takes absolute precedence over phonetic harmony.**
+- **CRITICAL PRIORITY: Core Numerology validity takes absolute precedence over all other considerations.**
 
-## CHALDEAN NUMEROLOGY COMPATIBILITY MATRIX:
-### Lucky Expression Numbers: 1, 3, 5, 6, 9, 11, 22, 33
-### Forbidden Expression Numbers: 4, 8, 7 (sometimes)
-### Life Path → Compatible Expression Numbers:
-- Life Path 1: Compatible with Expression 1, 3, 5, 6
-- Life Path 2: Compatible with Expression 2, 4, 6, 9
-- Life Path 3: Compatible with Expression 1, 3, 5, 6, 9
-- Life Path 4: Compatible with Expression 1, 5, 6 (NEVER 4 or 8)
-- Life Path 5: Compatible with Expression 1, 3, 5, 6, 9
-- Life Path 6: Compatible with Expression 3, 5, 6, 9
-- Life Path 7: Compatible with Expression 1, 5, 6, 9 (avoid 7, 8)
-- Life Path 8: Compatible with Expression 1, 3, 5, 6 (NEVER 4 or 8)
-- Life Path 9: Compatible with Expression 3, 6, 9
-- Life Path 11: Compatible with Expression 2, 6, 11, 22
-- Life Path 22: Compatible with Expression 4, 6, 8, 22
-- Life Path 33: Compatible with Expression 6, 9, 33
+## CORE NUMEROLOGY RULES (MANDATORY COMPLIANCE):
 
-## STRICT VALIDATION RULES:
-### MANDATORY REJECTIONS - Never suggest names with:
-1. **Expression Number = 4 or 8** (except Life Path 2 can have Expression 4, Life Path 22 can have Expression 8)
-2. **Expression Number that conflicts with Life Path** (per compatibility matrix above)
-3. **Same or worse Expression Number** than the original name
-4. **Karmic Debt combinations** (13/4, 14/5, 16/7, 19/1 in birth date + conflicting name number)
+### **Primary Lucky Numbers:**
+- **Core Lucky Numbers: 1, 5, 6 ONLY**
+- Both FNV (First Name Value) and CMV (Complete Name Value) should target these numbers
+- All other numbers require special birth-based permissions
 
-### PRIORITY RANKING SYSTEM:
-1. **★★★★★ PREMIUM**: Expression Numbers 1, 3, 5, 6, 9 that are highly compatible with Life Path
-2. **★★★★☆ EXCELLENT**: Master Numbers 11, 22, 33 (only for spiritually evolved individuals)
-3. **★★★☆☆ ACCEPTABLE**: Numbers that meet minimum compatibility but aren't optimal
-4. **★★☆☆☆ AVOID**: Numbers that create mild conflicts
-5. **★☆☆☆☆ FORBIDDEN**: Numbers 4, 8, or incompatible combinations
+### **Birth-Based Exception Rules:**
+
+1. **Exception 1: Birth/Life Path = 8 Restriction**
+   - Cannot use value 1 for FNV or CMV
+   - Available: 5, 6 only
+
+2. **Exception 2: Birth/Life Path = 3 Restriction**
+   - Cannot use value 6 for FNV or CMV
+   - Available: 1, 5 only
+
+3. **Exception 3: Birth/Life Path = 6 Restriction**
+   - Cannot use value 3 for FNV or CMV
+   - Available: 1, 5, 6
+
+4. **Exception 4: Birth/Life Path = 3 Permission**
+   - CAN use value 3 for FNV or CMV
+   - Available: 1, 3, 5 (6 blocked by Exception 2)
+
+5. **Exception 5: The 51 Rejection Rule**
+   - FNV or CMV = 51 is REJECTED (even though it reduces to 6)
+
+6. **Exception 6: The 65 Permission Rule**
+   - FNV or CMV = 65 is ALLOWED (even though it reduces to 2)
+
+### **Dual Validation Requirement:**
+- Both FNV (First Name only) and CMV (Complete Name) must be valid
+- Use Chaldean numerology values for all calculations
 
 ## MODIFICATION GUIDELINES:
 - **Minimal Changes Only**: Single letter alterations, spelling variations, middle initial additions/removals
 - **Preserve Core Identity**: Keep pronunciation and cultural essence identical (90%+ similarity)
-- **Strategic Letter Placement**: Add/remove letters that specifically target desired Expression Numbers
-- **Cultural Sensitivity**: Ensure variations respect original name's cultural and linguistic context
-- **Practicality First**: Prioritize names easily adoptable in daily life, professional settings, and legal documents
+- **Strategic Letter Placement**: Add/remove letters that specifically target allowed values
+- **Cultural Sensitivity**: Ensure variations respect original name's cultural context
+- **Practicality First**: Prioritize names easily adoptable in real-world scenarios
 
-## RATIONALE REQUIREMENTS:
-For each suggestion, provide a comprehensive 3-4 sentence explanation that:
-1. **Specifies the exact numerological transformation** (Original Expression X → New Expression Y)
-2. **Explains Life Path compatibility** and why this pairing is harmonious/lucky
-3. **Details energetic benefits** and specific improvements in life areas
-4. **Addresses any resolved conflicts** from the original name's numerological challenges
-
-### Enhanced Rationale Factors:
-- **Lo Shu Grid Balance**: How the new Expression Number helps balance missing grid energies
-- **Planetary Compatibility**: Chaldean planetary associations and their harmony with birth chart
-- **Karmic Debt Resolution**: How the new name mitigates existing karmic obstacles
-- **4-8 Trap Avoidance**: Explicit confirmation of avoiding the destructive 4-8 combination
-- **Phonetic Preservation**: Confirmation that sound vibration remains culturally authentic
-
-## CALCULATION METHODOLOGY:
-### Use Chaldean Number Values:
-A=1, B=2, C=3, D=4, E=5, F=8, G=3, H=5, I=1, J=1, K=2, L=3, M=4, N=5, O=7, P=8, Q=1, R=2, S=3, T=9, U=6, V=6, W=6, X=5, Y=1, Z=7
-
-### Expression Number Calculation:
-1. Convert each letter to its Chaldean value
-2. Add all numbers for the full name
-3. Reduce to single digit (1-9) or Master Number (11, 22, 33)
-4. Cross-reference with Life Path for compatibility
-
-## OUTPUT FORMAT:
-Return a valid JSON object conforming to NameSuggestionsOutput schema with accurate expression_number calculations.
-**CRITICAL: DO NOT include any comments (e.g., // comments) in the JSON output.**
-
-## QUALITY ASSURANCE CHECKLIST: HIGHEST PRIOPRITY 
+## QUALITY ASSURANCE CHECKLIST:
 Before finalizing each suggestion, verify:
-- ✅ Expression Number is in Lucky range (1,3,5,6,9,11,22,33)
-- ✅ Expression Number is compatible with provided Life Path
+- ✅ Birth Number and Life Path have been correctly applied
+- ✅ Exception rules have been properly followed
+- ✅ Both FNV and CMV are within allowed values for this specific person
+- ✅ No 51 values in personal names
+- ✅ Special permission for 65 values noted if applicable
 - ✅ Name similarity is 90%+ to original
-- ✅ No 4-8 trap combinations
 - ✅ Cultural authenticity preserved
 - ✅ Practical for real-world adoption
-- ✅ Rationale explains specific numerological advantages
-- ✅ All 12 suggestions have unique Expression Numbers where possible
 
-## CRITICAL SUCCESS FACTORS:
-1. **ZERO TOLERANCE for incompatible combinations** - reject any suggestion that violates Life Path compatibility
-2. **Maximum name similarity** - preserve original essence while achieving numerological optimization
-3. **Practical implementation** - ensure names work in professional, social, and legal contexts
-4. **Comprehensive rationales** - explain exact numerological mechanics and life impact
-5. **Cultural respect** - maintain authentic pronunciation and cultural appropriateness
+Return only names that fully comply with Core Numerology rules for the individual's birth profile.
 
-## IMPORTANT REQUIREMENT:
-All suggested names MUST already be strictly numerologically valid:
-- The name must align with the person's Life Path Number and Birth Day Number make it so its advantageous and follows the lucky name correction of Chaldean numerology.
-- It must have a valid Expression Number (as per Chaldean numerology rules).
-- Avoid any name combinations that would result in karmic debts.
-- Do NOT suggest names unless they fully pass strict numerological evaluation.
+**REMEMBER: Each suggested name must be personalized to the individual's Birth Number and Life Path restrictions, targeting only their permitted values while maintaining maximum similarity to the original name.**""" + "{parser_instructions}"
 
-✅ Ideal Relationship Between Life Path Number & Name Number:
-1. Name Number should be supportive or compatible with the Life Path Number
-Name Number should vibrate harmoniously with the Life Path.
-
-Avoid numbers that are in direct conflict or create karmic obstacles.
-
-2. Avoid Conflict Numbers (especially 4 and 8)
-Life Path 4 or 8 often carry karmic debts; avoid reinforcing with a Name Number of 4 or 8.
-
-Never pair a Name Number = 4/8 with Life Path = 4/8 — this causes the 4-8 trap, bringing instability, delays, and losses.
-
-3. Name Number should ideally be one of the following LUCKY numbers:
-1, 3, 5, 6, 9, 11, 22, 33
-
-These are considered:
-
-Fortunate (1, 3, 5, 6, 9)
-
-Master numbers (11, 22, 33) – only if the individual can handle them.
-
-Avoid:
-
-4, 8, 7 (sometimes)
-
-🔁 Recommended Compatibility Pairs (Life Path ↔ Name Number):
-Life Path	Good Compatible Name Numbers
-1	1, 3, 5, 6
-2	2, 4, 6, 9
-3	1, 3, 5, 6, 9
-4	1, 5, 6 (NOT 4 or 8)
-5	1, 3, 5, 6, 9
-6	3, 5, 6, 9
-7	1, 5, 6, 9 (avoid 7, 8)
-8	1, 3, 5, 6 (avoid 4 or 8)
-9	3, 6, 9
-11	2, 6, 11, 22
-22	4, 6, 8, 22
-33	6, 9, 33
-
-💡 A Lucky Name Number that's also compatible with the Life Path Number boosts success, confidence, and inner alignment.
-
-🔒 Rules You Should Enforce in Name Correction:
-Reject suggestions where the new name:
-
-Has expression number = 4 or 8 (unless specifically allowed for Life Path 2 or 22)
-
-Is worse than or equal to the current name
-
-Is in conflict with Life Path Number
-
-Prioritize:
-
-Names with 1, 3, 5, 6, 9, 11, 22, 33
-
-Highest compatibility with Life Path
-
-Minimal phonetic deviation
-
-Sort by:
-
-Lucky number score (1–5 stars)
-
-Compatibility with Life Path
-
-Minimal phonetic deviation
-
-🧠 Example:
-DOB: 14/09/1994 → Life Path = 1
-
-Original Name Number = 8 → Unlucky + Conflict
-
-Suggested Name Number = 6 → Compatible and lucky ✅
-
-**REMEMBER: Each suggested name must be a numerological upgrade that creates harmony between Life Path and Expression Number while maintaining maximum similarity to the original name.**""" + "{parser_instructions}"
-
-NAME_SUGGESTION_HUMAN_PROMPT = """**CHALDEAN NUMEROLOGY NAME OPTIMIZATION REQUEST**
+NAME_SUGGESTION_HUMAN_PROMPT = """**CORE NUMEROLOGY NAME OPTIMIZATION REQUEST**
 
 **Client Profile:**
 - **Original Full Name:** "{original_full_name}"
+- **Birth Date:** {birth_day:02d}/{birth_month:02d}/{birth_year}
+- **Birth Number:** {birth_number}
 - **Life Path Number:** {life_path_number}
-- **Current Expression Number:** {current_expression_number}
+- **Current First Name Value (FNV):** {current_fnv}
+- **Current Complete Name Value (CMV):** {current_cmv}
+
+**CORE NUMEROLOGY ANALYSIS:**
+Based on Birth Number {birth_number} and Life Path {life_path_number}:
+- **Allowed Values:** {allowed_values}
+- **Blocked Values:** {blocked_values}
+- **Special Rules Applied:** {applied_exceptions}
 
 **OPTIMIZATION TASK:**
-Create exactly 12 name variations that are 90%+ similar to the original but numerologically optimized according to Chaldean principles and Life Path compatibility.
+Create exactly 12 name variations that comply with this person's specific Core Numerology restrictions.
 
 **MANDATORY REQUIREMENTS:**
-1. **Life Path Compatibility**: Only suggest Expression Numbers that are harmonious with Life Path {life_path_number}
-2. **Lucky Numbers Priority**: Focus on Expression Numbers 1, 3, 5, 6, 9, 11, 22, 33
-3. **Forbidden Combinations**: Never suggest Expression Numbers 4 or 8 (unless specifically compatible with Life Path)
-4. **Maximum Similarity**: Maintain 90%+ resemblance to original name through minimal modifications
-5. **Cultural Authenticity**: Preserve pronunciation and cultural appropriateness
-6. **Practical Adoption**: Ensure names are easily implementable in real-world scenarios
+1. **Personalized Restrictions**: Use ONLY the allowed values {allowed_values} for both FNV and CMV
+2. **Birth-Based Compliance**: Strictly avoid blocked values {blocked_values}
+3. **Exception Rule Adherence**: Follow all applicable Core Numerology rules
+4. **51 Rejection**: Never suggest names with FNV or CMV = 51
+5. **65 Permission**: Allow names with FNV or CMV = 65 if applicable
+6. **Maximum Similarity**: Maintain 90%+ resemblance through minimal modifications
+7. **Cultural Authenticity**: Preserve pronunciation and appropriateness
+8. **Practical Adoption**: Ensure real-world implementability
 
-**DETAILED RATIONALE REQUIREMENT:**
-Each suggestion must include a comprehensive explanation covering:
-- Exact numerological transformation (old → new Expression Number)
-- Life Path compatibility analysis
-- Specific energetic benefits and life improvements
-- Resolution of any existing numerological conflicts
-- Practical implementation advantages
+**VALIDATION REQUIREMENTS:**
+Each suggestion must:
+- Have both FNV and CMV within allowed values {allowed_values}
+- Avoid all birth-based restrictions for this specific person
+- Comply with special value rules (51 rejection, 65 permission)
+- Maintain cultural and phonetic authenticity
+- Provide clear numerical improvement over original name
+- Be practically adoptable in daily life
 
-**VALIDATION CONFIRMATION:**
-Confirm that each suggested name:
-- Has been calculated using proper Chaldean values
-- Achieves a compatible Expression Number per the matrix
-- Avoids all forbidden combinations (4-8 trap, Life Path conflicts)
-- Maintains cultural and phonetic authenticity
-- Provides genuine numerological improvement over the original
-
-**REQUIREMENTS:**
-- Maintain 90%+ similarity to original name
-- Aim for a diverse set of optimal Expression Numbers that are compatible with Life Path {life_path_number}
-- Provide compelling, detailed explanations for each suggestion
-- Ensure cultural appropriateness, natural sound, and **high practicality for adoption**"""
+Generate 12 compliant suggestions with detailed rationales explaining the Core Numerology compliance."""
 
 ADVANCED_REPORT_SYSTEM_PROMPT = """You are Sheelaa's Elite AI Numerology Assistant, renowned for delivering transformative, deeply personalized numerological insights. You create comprehensive reports that combine ancient wisdom with modern psychological understanding, **integrating Chaldean Numerology, Lo Shu Grid analysis, Astro-Numerology principles (based on provided data), and Phonology considerations.**
 
