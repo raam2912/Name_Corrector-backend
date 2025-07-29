@@ -754,24 +754,6 @@ def calculate_lo_shu_grid_with_details(birth_date_str: str, suggested_name_expre
 
 # === STRICT NUMEROLOGY FILTER LOGIC START ===
 
-def filter_strictly_valid_suggestions(suggestions, life_path_number, birth_day_number):
-    filtered = []
-    for name in suggestions:
-        expression, raw_sum = calculate_expression_number(name)
-        if not expression:
-            continue
-
-        is_lucky = is_lucky_number(expression)
-        is_not_karmic = not is_karmic_debt_number(raw_sum)
-        is_compatible = (
-            expression in EXPRESSION_COMPATIBILITY_MAP.get(life_path_number, []) or
-            expression in EXPRESSION_COMPATIBILITY_MAP.get(birth_day_number, [])
-        )
-
-        if is_lucky and is_not_karmic and is_compatible:
-            filtered.append(name)
-
-    return filtered
 
 def get_conceptual_astrological_data(birth_date: str, birth_time: Optional[str], birth_place: Optional[str]) -> Dict[str, Any]:
     """
@@ -2284,28 +2266,11 @@ async def initial_suggestions_endpoint():
 
         suggestions_data = name_suggestions_output.dict()
 
-        # STRICT VALIDATION
-        life_path_number = profile_data.get('life_path_number')
-        birth_day_number = profile_data.get('birth_day_number')
-
-        filtered = filter_strictly_valid_suggestions(
-            suggestions_data["suggestions"],
-            life_path_number,
-            birth_day_number
-        )
-
-# ✅ Wrap in expected object format
-        suggestions_data["suggestions"] = [
-        suggestion for suggestion in suggestions_data["suggestions"]
-        if suggestion["name"] in filtered
-]
-
-
         return jsonify({
-                        "suggestions": suggestions_data["suggestions"],
-                        "reasoning": suggestions_data["reasoning"],
-                        "profile_data": profile_data
-                    }), 200
+    "suggestions": suggestions_data["suggestions"],  # already validated by the LLM
+    "reasoning": suggestions_data["reasoning"],
+    "profile_data": profile_data
+}), 200
 
     except Exception as e:
         logger.error(f"Error generating initial suggestions: {e}", exc_info=True)
@@ -2390,21 +2355,21 @@ async def generate_pdf_report_endpoint():
         )
 
         # 🛡️ Hardened logic
-        profile_details['confirmed_suggestions_raw'] = report_data_from_frontend.get('confirmed_suggestions', [])
+        profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
-        filtered_confirmed = filter_strictly_valid_suggestions(
-        profile_details['confirmed_suggestions_raw'],
-        profile_details.get('life_path_number'),
-        profile_details.get('birth_day_number')
-        )
-        profile_details['confirmed_suggestions'] = filtered_confirmed
-
-
+# Build input for LLM
         llm_input_data = json.dumps(profile_details, indent=2)
+
         report_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
-            HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
-        ])
+    SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
+    HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
+]           )
+
+        report_chain = report_prompt | llm_manager.creative_llm
+
+        logger.info("Calling LLM for advanced report generation...")
+        llm_report_response = await report_chain.ainvoke({})
+        logger.info("LLM advanced report generation complete.")
         
         report_chain = report_prompt | llm_manager.creative_llm
         
@@ -2460,27 +2425,21 @@ async def generate_text_report_endpoint():
         birth_place=report_data_from_frontend.get('birth_place'),)
 
 # Save raw (optional)
-        profile_details['confirmed_suggestions_raw'] = report_data_from_frontend.get('confirmed_suggestions', [])
+        profile_details['confirmed_suggestions'] = report_data_from_frontend.get('confirmed_suggestions', [])
 
-# ✅ Re-validate names before using in LLM
-        filtered_confirmed = filter_strictly_valid_suggestions(
-        profile_details['confirmed_suggestions_raw'],
-        profile_details.get('life_path_number'),
-        profile_details.get('birth_day_number'))
-        profile_details['confirmed_suggestions'] = filtered_confirmed
-
+# Build input for LLM
         llm_input_data = json.dumps(profile_details, indent=2)
-        
+
         report_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
+         SystemMessage(content=ADVANCED_REPORT_SYSTEM_PROMPT),
             HumanMessage(content=ADVANCED_REPORT_HUMAN_PROMPT.format(llm_input_data=llm_input_data))
-        ])
-        
+            ])
+
         report_chain = report_prompt | llm_manager.creative_llm
-        
-        logger.info("Calling LLM for text report generation (preview)...")
+
+        logger.info("Calling LLM for advanced report generation...")
         llm_report_response = await report_chain.ainvoke({})
-        logger.info("LLM text report generation complete.")
+        logger.info("LLM advanced report generation complete.")
 
         return jsonify({"report_content": llm_report_response.content}), 200
 
