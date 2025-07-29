@@ -2217,7 +2217,11 @@ async def initial_suggestions_endpoint():
         )
 
 # ✅ Wrap in expected object format
-        suggestions_data["suggestions"] = [{"name": name} for name in filtered]
+        suggestions_data["suggestions"] = [
+        suggestion for suggestion in suggestions_data["suggestions"]
+        if suggestion["name"] in filtered
+]
+
 
         return jsonify({
                         "suggestions": suggestions_data["suggestions"],
