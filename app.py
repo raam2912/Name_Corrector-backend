@@ -420,9 +420,9 @@ class LLMManager:
 
         try:
             # Using gemini-1.5-flash as requested
-            self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
-            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
-            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
+            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api_key, temperature=0.7, convert_system_message_to_human=True)
+            self.creative_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api_key, temperature=0.9, convert_system_message_to_human=True)
+            self.analytical_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api_key, temperature=0.3, convert_system_message_to_human=True)
             
             self.memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history", return_messages=True)
             
